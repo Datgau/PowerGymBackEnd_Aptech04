@@ -5,6 +5,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -12,20 +13,24 @@ import java.util.Collections;
 @Service
 public class GoogleApiService {
 
-    private final String CLIENT_ID = "347228409229-cleofolo6ure8jfod58iml3thvjvp824.apps.googleusercontent.com";
+    @Value("${google.client-id}")
+    private String clientId;
 
     public GoogleUserData getUserInfo(String idTokenString) {
         try {
+
             GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
                     GoogleNetHttpTransport.newTrustedTransport(),
                     JacksonFactory.getDefaultInstance()
             )
-                    .setAudience(Collections.singletonList(CLIENT_ID))
+                    .setAudience(Collections.singletonList(clientId))
                     .build();
 
             GoogleIdToken idToken = verifier.verify(idTokenString);
+
             if (idToken == null) {
-                System.err.println("Invalid ID token");
+                System.out.println("Invalid ID token");
+                System.out.println("Expected clientId: " + clientId);
                 return null;
             }
 
@@ -40,7 +45,6 @@ public class GoogleApiService {
             return data;
 
         } catch (Exception e) {
-            System.err.println("Error verifying Google ID token: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
