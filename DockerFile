@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Copy toàn bộ backend vào container
 COPY . .
-
+# Cấp quyền execute cho mvnw
+RUN chmod +x mvnw
 # Build jar
 RUN ./mvnw clean package -DskipTests
 
