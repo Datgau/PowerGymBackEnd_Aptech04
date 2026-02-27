@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -27,7 +28,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService customUserDetailsService;
-    
+
     @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
     private String allowedOrigins;
 
@@ -49,6 +50,8 @@ public class SecurityConfig {
         return authProvider;
     }
 
+    // Test commit
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -66,11 +69,23 @@ public class SecurityConfig {
                 }))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> {
-                    System.out.println("=== Configuring authorization rules ===");
                     auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                            .requestMatchers("/api/auth/**").permitAll()
                             .requestMatchers("/ws/**").permitAll()
+                            // ADMIN ONLY (Must be before public GET rules)
+                            .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                            .requestMatchers("/api/stories/admin/**").hasRole("ADMIN")
+                            // =====================
+                            // PUBLIC GET ENDPOINTS
+                            // =====================
+                            .requestMatchers(HttpMethod.GET, "/api/gym/**").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/stories/**").permitAll()
+                            .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
+
+                            .requestMatchers(HttpMethod.POST, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.PUT, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.DELETE, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
+                            // AUTHENTICATED USERS
                             .anyRequest().authenticated();
                 })
                 .authenticationProvider(authenticationProvider())
@@ -108,4 +123,6 @@ public class SecurityConfig {
     }
 
 }
+
+
 

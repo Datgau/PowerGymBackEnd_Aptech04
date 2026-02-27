@@ -77,7 +77,7 @@ public class LikeService implements ILikeService {
 
         NotificationDTO dto = NotificationDTO.fromEntity(saved);
         messagingTemplate.convertAndSendToUser(
-                post.getUser().getUsername(),
+                post.getUser().getEmail(),
                 "/queue/notifications",
                 dto
         );

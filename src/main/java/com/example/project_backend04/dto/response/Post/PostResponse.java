@@ -35,7 +35,6 @@ public class PostResponse {
         // User info
         UserInfo userInfo = new UserInfo();
         userInfo.setId(post.getUser().getId());
-        userInfo.setUsername(post.getUser().getUsername());
         userInfo.setFullName(post.getUser().getFullName());
         userInfo.setAvatar(post.getUser().getAvatar());
         response.setUser(userInfo);

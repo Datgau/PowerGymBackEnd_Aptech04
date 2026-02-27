@@ -81,10 +81,9 @@ public class CommentService implements ICommentService {
 
         Notification saved = notificationRepository.save(notification);
 
-        // Gửi WebSocket notification với DTO (tránh circular reference)
         NotificationDTO dto = NotificationDTO.fromEntity(saved);
         messagingTemplate.convertAndSendToUser(
-                post.getUser().getUsername(),
+                post.getUser().getEmail(),
                 "/queue/notifications",
                 dto
         );

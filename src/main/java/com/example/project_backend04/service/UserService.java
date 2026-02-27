@@ -6,7 +6,7 @@ import com.example.project_backend04.entity.User;
 import com.example.project_backend04.mapper.UserMapper;
 import com.example.project_backend04.repository.RoleRepository;
 import com.example.project_backend04.repository.UserRepository;
-import com.example.project_backend04.service.IService.IGoogleCloudStorageService;
+import com.example.project_backend04.service.IService.ICloudinaryService;
 import com.example.project_backend04.service.IService.IUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,7 +24,7 @@ public class UserService implements IUserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final IGoogleCloudStorageService googleCloudStorageService;
+    private final ICloudinaryService cloudinaryService;
     private final UserMapper userMapper;
 
 
@@ -38,14 +38,18 @@ public class UserService implements IUserService {
 
             User user = optionalUser.get();
             String oldAvatarUrl = user.getAvatar();
+            
+            // Delete old avatar from Cloudinary
             if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
                 try {
-                    googleCloudStorageService.deleteFile(oldAvatarUrl);
+                    cloudinaryService.deleteFile(oldAvatarUrl);
                 } catch (Exception e) {
                     System.err.println("[Warning] Không thể xóa avatar cũ: " + e.getMessage());
                 }
             }
-            String newAvatarUrl = googleCloudStorageService.uploadSingleFile(avatarFile, "avatars");
+            
+            // Upload new avatar with optimization (600x600 for retina display)
+            String newAvatarUrl = ((CloudinaryService) cloudinaryService).uploadAvatar(avatarFile);
             user.setAvatar(newAvatarUrl);
             userRepository.save(user);
 
@@ -56,8 +60,8 @@ public class UserService implements IUserService {
     }
 
     @Override
-    public Optional<User> findByUsername(String username) {
-        return userRepository.findByUsername(username);
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
     @Override

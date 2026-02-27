@@ -1,12 +1,15 @@
 package com.example.project_backend04.controller;
 
-import com.example.project_backend04.service.IService.IGoogleCloudStorageService;
+import com.example.project_backend04.service.IService.ICloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
@@ -18,7 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UploadController {
 
-    private final IGoogleCloudStorageService storageService;
+    private final ICloudinaryService storageService;
 
     /**
      * Upload nhiều ảnh
@@ -38,7 +41,7 @@ public class UploadController {
                 return ResponseEntity.badRequest().body(error);
             }
 
-            // Upload to Google Cloud Storage
+            // Upload to Cloudinary
             List<String> imageUrls = storageService.uploadFiles(images, folder);
 
             Map<String, Object> result = new HashMap<>();
@@ -73,7 +76,7 @@ public class UploadController {
                 return ResponseEntity.badRequest().body(error);
             }
 
-            // Upload to Google Cloud Storage
+            // Upload to Cloudinary
             String imageUrl = storageService.uploadSingleFile(image, folder);
 
             Map<String, Object> result = new HashMap<>();

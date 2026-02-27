@@ -33,8 +33,8 @@ public class CommentController {
         System.out.println("User: " + (authentication != null ? authentication.getName() : "null"));
         
         try {
-            String username = authentication.getName();
-            User user = userService.findByUsername(username)
+            String email = authentication.getName();
+            User user = userService.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             var comment = commentService.addComment(postId, user.getId(), request.getContent());
@@ -81,8 +81,8 @@ public class CommentController {
             Authentication authentication
     ) {
         try {
-            String username = authentication.getName();
-            User user = userService.findByUsername(username)
+            String email = authentication.getName();
+            User user = userService.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             commentService.deleteComment(commentId, user.getId());

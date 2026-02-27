@@ -4,7 +4,7 @@ import com.example.project_backend04.entity.Post;
 import com.example.project_backend04.entity.PostImage;
 import com.example.project_backend04.entity.User;
 import com.example.project_backend04.repository.PostRepository;
-import com.example.project_backend04.service.IService.IGoogleCloudStorageService;
+import com.example.project_backend04.service.IService.ICloudinaryService;
 import com.example.project_backend04.service.IService.IPostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,10 +20,10 @@ import java.util.List;
 public class PostService implements IPostService {
 
     private final PostRepository postRepository;
-    private final IGoogleCloudStorageService storageService;
+    private final ICloudinaryService storageService;
 
     /**
-     * Tạo post mới với nhiều ảnh
+     * Tạo post mới với nhiều ảnh (tự động optimize)
      */
     @Transactional
     public Post createPost(User user, String content, List<MultipartFile> imageFiles) throws IOException {
@@ -31,9 +31,18 @@ public class PostService implements IPostService {
         post.setUser(user);
         post.setContent(content);
 
-        // Upload ảnh lên Google Cloud Storage
+        // Upload ảnh lên Cloudinary với optimization (1200x1200 cho retina)
         if (imageFiles != null && !imageFiles.isEmpty()) {
-            List<String> imageUrls = storageService.uploadFiles(imageFiles, "posts");
+            List<String> imageUrls = new ArrayList<>();
+            CloudinaryService cloudinaryService = (CloudinaryService) storageService;
+            
+            for (MultipartFile file : imageFiles) {
+                if (file != null && !file.isEmpty()) {
+                    String url = cloudinaryService.uploadPostImage(file);
+                    imageUrls.add(url);
+                }
+            }
+            
             post.setImageList(imageUrls);
 
             // Tạo PostImage entities
@@ -96,7 +105,7 @@ public class PostService implements IPostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        // Xóa ảnh khỏi Google Cloud Storage
+        // Xóa ảnh khỏi Cloudinary
         storageService.deleteFile(imageUrl);
 
         // Xóa khỏi JSON array
@@ -118,7 +127,7 @@ public class PostService implements IPostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        // Xóa tất cả ảnh khỏi Google Cloud Storage
+        // Xóa tất cả ảnh khỏi Cloudinary
         List<String> imageUrls = post.getImageList();
         for (String imageUrl : imageUrls) {
             storageService.deleteFile(imageUrl);

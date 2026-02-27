@@ -1,31 +1,34 @@
 package com.example.project_backend04.controller;
 
+
 import com.example.project_backend04.dto.request.Auth.*;
-import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.Auth.JwtResponse;
 import com.example.project_backend04.dto.response.Auth.LoginResponse;
 import com.example.project_backend04.dto.response.Auth.RegisterResponse;
-import com.example.project_backend04.entity.Role;
+import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.security.JwtService;
 import com.example.project_backend04.service.IService.IAuthService;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
     private final IAuthService authService;
     private final JwtService jwtService;
-    public AuthController(IAuthService authService, JwtService jwtService) {
-        this.authService = authService;
-        this.jwtService = jwtService;
-    }
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegisterResponse>> register(@Valid @RequestBody RegisterRequest request) {
         try {
@@ -67,7 +70,7 @@ public class AuthController {
                     .status(apiResponse.isSuccess() ? HttpStatus.OK : HttpStatus.UNAUTHORIZED)
                     .body(apiResponse);
 
-        } catch (Exception e) {
+        } catch (BadCredentialsException e) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(false, "Đăng nhập thất bại: " + e.getMessage()));
@@ -104,22 +107,25 @@ public class AuthController {
         return ResponseEntity.status(res.isSuccess() ? 200 : 401).body(res);
     }
 
-
-
-
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<?>> logout(@RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<ApiResponse<?>> logout(
+            @RequestBody RefreshTokenRequest request,
+            HttpServletResponse response) {
+
         try {
-            ApiResponse<?> response = authService.logout(request.getRefreshToken());
+            ApiResponse<?> result = authService.logout(request.getRefreshToken());
+
+            jwtService.clearRefreshTokenCookie(response);
+
             return ResponseEntity
-                    .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
-                    .body(response);
+                    .status(result.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
+                    .body(result);
+
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "Đăng xuất thất bại: " + e.getMessage()));
         }
     }
-
 
 }

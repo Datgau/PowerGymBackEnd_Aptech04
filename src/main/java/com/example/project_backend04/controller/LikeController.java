@@ -6,7 +6,10 @@ import com.example.project_backend04.service.IService.IUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,8 +31,8 @@ public class LikeController {
         System.out.println("User: " + (authentication != null ? authentication.getName() : "null"));
         
         try {
-            String username = authentication.getName();
-            User user = userService.findByUsername(username)
+            String email = authentication.getName();
+            User user = userService.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             boolean isLiked = likeService.toggleLike(postId, user.getId());

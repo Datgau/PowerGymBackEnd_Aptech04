@@ -31,7 +31,7 @@ public class CommentDTO {
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .userId(comment.getUser().getId())
-                .username(comment.getUser().getUsername())
+                .username(comment.getUser().getEmail())
                 .fullName(comment.getUser().getFullName())
                 .avatar(comment.getUser().getAvatar())
                 .build();

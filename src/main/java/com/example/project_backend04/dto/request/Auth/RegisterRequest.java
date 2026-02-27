@@ -13,9 +13,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RegisterRequest {
 
-    @NotBlank(message = "Username không được để trống")
-    private String username;
-
     @Email(message = "Email không hợp lệ")
     @NotBlank(message = "Email không được để trống")
     private String email;
@@ -30,6 +27,7 @@ public class RegisterRequest {
 
     @NotBlank(message = "ConfirmPassword không được để trống")
     private String confirmPassword;
+
 
     private String fullName;
 

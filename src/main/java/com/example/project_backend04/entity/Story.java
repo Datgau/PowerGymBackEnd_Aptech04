@@ -1,7 +1,11 @@
 package com.example.project_backend04.entity;
 
+import com.example.project_backend04.enums.StoryStatus;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
 @Data
@@ -25,14 +29,34 @@ public class Story {
     @Column(nullable = false)
     private String imageUrl;
 
+    @Column(length = 100)
+    private String title;
+
+    @Column(length = 50)
+    private String tag;
+
     @Column(columnDefinition = "VARCHAR(500)")
-    private String caption;
+    private String content;
+
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private StoryStatus status = StoryStatus.PENDING;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @Column(nullable = false)
     private LocalDateTime expiresAt;
+
+    @Column
+    private LocalDateTime approvedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;
 
     @PrePersist
     void onCreate() {

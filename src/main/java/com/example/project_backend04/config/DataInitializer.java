@@ -21,27 +21,30 @@ public class DataInitializer {
     @Bean
     CommandLineRunner initRolesAndAdmin() {
         return args -> {
-            if (roleRepository.findRoleByName("USER").isEmpty()) {
-                Role userRole = new Role();
-                userRole.setName("USER");
-                roleRepository.save(userRole);
-                System.out.println("Role USER created");
-            }
 
-            if (roleRepository.findRoleByName("ADMIN").isEmpty()) {
-                Role adminRole = new Role();
-                adminRole.setName("ADMIN");
-                roleRepository.save(adminRole);
-                System.out.println("Role ADMIN created");
-            }
 
-            if (authRepository.findByUsername("admin").isEmpty()) {
+            Role userRole = roleRepository.findRoleByName("USER")
+                    .orElseGet(() -> {
+                        Role role = new Role();
+                        role.setName("USER");
+                        return roleRepository.save(role);
+                    });
+
+
+            Role adminRole = roleRepository.findRoleByName("ADMIN")
+                    .orElseGet(() -> {
+                        Role role = new Role();
+                        role.setName("ADMIN");
+                        return roleRepository.save(role);
+                    });
+
+
+            if (authRepository.findByEmail("admin@gmail.com").isEmpty()) {
                 User admin = new User();
-                admin.setUsername("admin");
                 admin.setEmail("admin@gmail.com");
                 admin.setPassword(passwordEncoder.encode("Admin01+"));
-                Role adminRole = roleRepository.findRoleByName("ADMIN").get();
                 admin.setRole(adminRole);
+
                 authRepository.save(admin);
                 System.out.println("Admin user created");
             }

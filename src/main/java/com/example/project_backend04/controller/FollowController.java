@@ -1,12 +1,10 @@
 package com.example.project_backend04.controller;
 
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
-import com.example.project_backend04.entity.User;
 import com.example.project_backend04.security.CustomUserDetails;
 import com.example.project_backend04.service.IService.FollowService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 @RestController

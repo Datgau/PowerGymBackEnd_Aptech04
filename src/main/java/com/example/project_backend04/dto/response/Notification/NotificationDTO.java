@@ -37,7 +37,6 @@ public class NotificationDTO {
 
         if (notification.getActor() != null) {
             builder.actorId(notification.getActor().getId())
-                   .actorUsername(notification.getActor().getUsername())
                    .actorFullName(notification.getActor().getFullName())
                    .actorAvatar(notification.getActor().getAvatar());
         }

@@ -4,18 +4,19 @@ import com.example.project_backend04.dto.request.Chat.ChatMessageDto;
 import com.example.project_backend04.dto.request.Chat.ConversationDto;
 import com.example.project_backend04.dto.request.Chat.UserSearchResult;
 import com.example.project_backend04.entity.*;
-
 import com.example.project_backend04.repository.*;
 import com.example.project_backend04.service.IService.IChatService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
@@ -164,7 +165,7 @@ public class ChatService implements IChatService {
             List<UserSearchResult> members = roomMembers.stream()
                     .map(m -> {
                         User u = m.getUser();
-                        return new UserSearchResult(u.getId(), u.getUsername(), u.getFullName(), u.getAvatar());
+                        return new UserSearchResult(u.getId(), u.getEmail(), u.getFullName(), u.getAvatar());
                     })
                     .collect(Collectors.toList());
             cd.setMembers(members);
@@ -201,7 +202,7 @@ public class ChatService implements IChatService {
         return mutualUsers.stream()
                 .map(u -> new UserSearchResult(
                         u.getId(),
-                        u.getUsername(),
+                        u.getEmail(),
                         u.getFullName(),
                         u.getAvatar()
                 ))
@@ -227,7 +228,7 @@ public class ChatService implements IChatService {
         d.setId(m.getId());
         d.setRoomId(m.getRoom().getId());
         d.setSenderId(m.getSender().getId());
-        d.setSenderUsername(m.getSender().getUsername());
+        d.setSenderUsername(m.getSender().getEmail());
         d.setMessage(m.getMessage());
         d.setRead(m.isRead());
         d.setCreatedAt(m.getCreatedAt());

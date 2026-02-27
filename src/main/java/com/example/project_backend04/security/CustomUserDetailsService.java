@@ -3,7 +3,6 @@ package com.example.project_backend04.security;
 import com.example.project_backend04.repository.AuthRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,10 +17,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final AuthRepository authRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username)
+    public UserDetails loadUserByUsername(String email)
             throws UsernameNotFoundException {
 
-        return authRepository.findByUsername(username)
+        return authRepository.findByEmail(email)
                 .map(user -> new CustomUserDetails(
                         user,
                         List.of(new SimpleGrantedAuthority(
@@ -32,4 +31,5 @@ public class CustomUserDetailsService implements UserDetailsService {
                         new UsernameNotFoundException("User không tồn tại")
                 );
     }
+
 }

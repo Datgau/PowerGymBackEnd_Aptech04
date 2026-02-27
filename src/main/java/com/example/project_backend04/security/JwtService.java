@@ -1,7 +1,9 @@
 package com.example.project_backend04.security;
 
 import com.example.project_backend04.entity.User;
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
@@ -9,13 +11,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
 
 @Service
@@ -46,16 +48,17 @@ public class JwtService {
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(user.getUsername())
+                .setSubject(user.getEmail())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + validDuration * 1000))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public boolean isTokenValid(String token, String username) {
+    public boolean isTokenValid(String token, UserDetails userDetails) {
         final String extractedUsername = extractUsername(token);
-        return (extractedUsername.equals(username)) && !isTokenExpired(token);
+        return extractedUsername.equals(userDetails.getUsername())
+                && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
@@ -83,16 +86,9 @@ public class JwtService {
         return validDuration;
     }
 
-      public String generateRefreshToken() {
-        return UUID.randomUUID().toString();
-    }
-
-    /*
-        Lưu Refresh Token vào HttpOnly Cookie (an toàn nhất)
-    */
     public void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                .httpOnly(true)                         // Không đọc được bằng Js
+                .httpOnly(true)
                 .secure(false)                          // true nếu dùng HTTPS
                 .path("/")                              // Cookie gửi cho tất cả paths
                 .maxAge(refreshableDuration)            // Thời gian sống (seconds)
@@ -102,9 +98,6 @@ public class JwtService {
         response.addHeader("Set-Cookie", cookie.toString());
     }
 
-    /*
-        Xóa refreshToken cookie khi logout
-     */
     public void clearRefreshTokenCookie(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
@@ -117,9 +110,6 @@ public class JwtService {
         response.addHeader("Set-Cookie", cookie.toString());
     }
 
-    /*
-        Lấy refreshToken từ Cookie khi gọi /refresh-token API
-     */
     public String getRefreshTokenFromCookie(HttpServletRequest request) {
         if (request.getCookies() == null) return null;
 

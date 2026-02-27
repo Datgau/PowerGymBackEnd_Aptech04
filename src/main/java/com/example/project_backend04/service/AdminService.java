@@ -1,15 +1,16 @@
 package com.example.project_backend04.service;
+
 import com.example.project_backend04.dto.request.Role.RoleCreateDto;
 import com.example.project_backend04.dto.request.Role.RoleUpdateDto;
 import com.example.project_backend04.dto.request.User.CreateUserRequest;
 import com.example.project_backend04.dto.request.User.UpdateUserRequest;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.User.UserResponse;
+import com.example.project_backend04.entity.Role;
+import com.example.project_backend04.entity.User;
 import com.example.project_backend04.mapper.UserMapper;
 import com.example.project_backend04.repository.RoleRepository;
 import com.example.project_backend04.repository.UserRepository;
-import com.example.project_backend04.entity.Role;
-import com.example.project_backend04.entity.User;
 import com.example.project_backend04.service.IService.IAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;

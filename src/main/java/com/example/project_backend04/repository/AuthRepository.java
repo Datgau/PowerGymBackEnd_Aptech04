@@ -11,9 +11,8 @@ import java.util.Optional;
 @Repository
 public interface AuthRepository extends JpaRepository<User, Long> {
 
-    boolean existsByUsername(String username);
+
     boolean existsByEmail(String email);
-    Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
     Optional<User> findByRefreshToken(String refreshToken);
 

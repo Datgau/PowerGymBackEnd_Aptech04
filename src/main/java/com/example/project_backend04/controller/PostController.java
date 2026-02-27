@@ -8,7 +8,6 @@ import com.example.project_backend04.service.IService.IPostService;
 import com.example.project_backend04.service.IService.IUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,8 +38,8 @@ public class PostController {
             Authentication authentication
     ) {
         try {
-            String username = authentication.getName();
-            User user = userService.findByUsername(username)
+            String email = authentication.getName();
+            User user = userService.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Post post = postService.createPostWithUrls(user, request.getContent(), request.getImageUrls());
@@ -73,7 +72,7 @@ public class PostController {
     ) {
         try {
             String username = authentication.getName();
-            User currentUser = userService.findByUsername(username)
+            User currentUser = userService.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             List<Post> posts = postService.getFeedPosts(page, size);
@@ -105,7 +104,7 @@ public class PostController {
     ) {
         try {
             String username = authentication.getName();
-            User currentUser = userService.findByUsername(username)
+            User currentUser = userService.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Post post = postService.getPostById(id);
@@ -136,7 +135,7 @@ public class PostController {
     ) {
         try {
             String username = authentication.getName();
-            User currentUser = userService.findByUsername(username)
+            User currentUser = userService.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Post post = postService.getPostById(id);
@@ -178,7 +177,7 @@ public class PostController {
     ) {
         try {
             String username = authentication.getName();
-            User currentUser = userService.findByUsername(username)
+            User currentUser = userService.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Post post = postService.getPostById(id);
@@ -225,7 +224,7 @@ public class PostController {
     ) {
         try {
             String username = authentication.getName();
-            User currentUser = userService.findByUsername(username)
+            User currentUser = userService.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Post post = postService.getPostById(id);
@@ -266,7 +265,7 @@ public class PostController {
     ) {
         try {
             String username = authentication.getName();
-            User currentUser = userService.findByUsername(username)
+            User currentUser = userService.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Post post = postService.getPostById(id);
@@ -305,7 +304,7 @@ public class PostController {
     ) {
         try {
             String username = authentication.getName();
-            User currentUser = userService.findByUsername(username)
+            User currentUser = userService.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             User targetUser = userService.findById(userId)
