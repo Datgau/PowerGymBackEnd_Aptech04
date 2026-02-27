@@ -1,0 +1,21 @@
+# ---------- STAGE 1: BUILD ----------
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+
+# Copy toàn bộ backend vào container
+COPY . .
+
+# Build jar
+RUN ./mvnw clean package -DskipTests
+
+# ---------- STAGE 2: RUN ----------
+FROM eclipse-temurin:21-jre-alpine
+
+# Tạo thư mục app
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+
+# Lệnh chạy ứng dụng
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
