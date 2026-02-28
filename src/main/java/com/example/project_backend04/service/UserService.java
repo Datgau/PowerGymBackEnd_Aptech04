@@ -38,8 +38,6 @@ public class UserService implements IUserService {
 
             User user = optionalUser.get();
             String oldAvatarUrl = user.getAvatar();
-            
-            // Delete old avatar from Cloudinary
             if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
                 try {
                     cloudinaryService.deleteFile(oldAvatarUrl);
@@ -47,8 +45,6 @@ public class UserService implements IUserService {
                     System.err.println("[Warning] Không thể xóa avatar cũ: " + e.getMessage());
                 }
             }
-            
-            // Upload new avatar with optimization (600x600 for retina display)
             String newAvatarUrl = ((CloudinaryService) cloudinaryService).uploadAvatar(avatarFile);
             user.setAvatar(newAvatarUrl);
             userRepository.save(user);

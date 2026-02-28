@@ -54,7 +54,7 @@ public class AuthService implements IAuthService {
         if (authRepository.existsByEmail(request.getEmail())) {
             return new ApiResponse<>(
                     false,
-                    "Email đã tồn tại trong hệ thống, vui lòng đăng nhập hoặc quên mật khẩu",
+                    "Email already exists in the system. Please login or use the forgot password feature.",
                     null,
                     400
             );
@@ -69,13 +69,14 @@ public class AuthService implements IAuthService {
 
                 return new ApiResponse<>(
                         false,
-                        "Email này đã được gửi OTP. Vui lòng chờ " + secondsLeft + " giây",
+                        "An OTP has already been sent to this email. Please wait " + secondsLeft + " seconds.",
                         null,
                         400
                 );
             }
             pendingUserRepository.delete(existingPending);
         }
+
         PendingUser pendingUser = new PendingUser();
         pendingUser.setEmail(request.getEmail());
         pendingUser.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -92,12 +93,12 @@ public class AuthService implements IAuthService {
         } catch (Exception e) {
             e.printStackTrace();
             pendingUserRepository.delete(pendingUser);
-            return new ApiResponse<>(false, "Không thể gửi email OTP", null, 500);
+            return new ApiResponse<>(false, "Unable to send OTP email.", null, 500);
         }
 
         return new ApiResponse<>(
                 true,
-                "Đăng ký thành công, OTP đã được gửi tới email của bạn",
+                "Registration successful. The OTP has been sent to your email.",
                 null,
                 200
         );
@@ -110,12 +111,12 @@ public class AuthService implements IAuthService {
         if (authRepository.existsByEmail(email)) {
             pendingUserRepository.findByEmail(email)
                     .ifPresent(pendingUserRepository::delete);
-            return new ApiResponse<>(false, "Email đã được xác minh trước đó", null, 400);
+            return new ApiResponse<>(false, "Email has already been verified.", null, 400);
         }
 
         Optional<PendingUser> optionalPending = pendingUserRepository.findByEmail(email);
         if (optionalPending.isEmpty()) {
-            return new ApiResponse<>(false, "Email không tồn tại hoặc chưa đăng ký", null, 404);
+            return new ApiResponse<>(false, "Email does not exist or has not been registered.", null, 404);
         }
 
         PendingUser pendingUser = optionalPending.get();
@@ -123,11 +124,11 @@ public class AuthService implements IAuthService {
 
         if (pendingUser.getOtpExpiry().isBefore(now)) {
             pendingUserRepository.delete(pendingUser);
-            return new ApiResponse<>(false, "OTP đã hết hạn", null, 400);
+            return new ApiResponse<>(false, "OTP has expired.", null, 400);
         }
 
         if (!pendingUser.getOtp().equals(otp)) {
-            return new ApiResponse<>(false, "OTP không đúng", null, 400);
+            return new ApiResponse<>(false, "Invalid OTP.", null, 400);
         }
 
         User user = new User();
@@ -136,14 +137,19 @@ public class AuthService implements IAuthService {
         user.setPassword(pendingUser.getPassword());
 
         Role defaultRole = authRepository.findRoleByName("USER")
-                .orElseThrow(() -> new RuntimeException("Role USER chưa tồn tại"));
+                .orElseThrow(() -> new RuntimeException("Role USER does not exist."));
 
         user.setRole(defaultRole);
         authRepository.save(user);
-
         pendingUserRepository.delete(pendingUser);
 
-        return new ApiResponse<>(true, "Xác minh email thành công!", null, 200);
+        try {
+            emailService.sendSuccessRegisterEmail(user.getEmail(), user.getFullName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new ApiResponse<>(true, "Email verification successful!", null, 200);
     }
 
 
@@ -160,11 +166,16 @@ public class AuthService implements IAuthService {
                     )
             );
         } catch (BadCredentialsException e) {
-            return new ApiResponse<>(false, "Sai tài khoản hoặc mật khẩu", null, 401);
+            return new ApiResponse<>(
+                    false,
+                    "Invalid email or password.",
+                    null,
+                    401
+            );
         }
 
         User user = authRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại"));
+                .orElseThrow(() -> new RuntimeException("Authentication failed."));
 
         String accessToken = jwtService.generateToken(user);
         String refreshToken = UUID.randomUUID().toString();
@@ -172,6 +183,7 @@ public class AuthService implements IAuthService {
         user.setRefreshToken(refreshToken);
         user.setRefreshTokenExpiryTime(LocalDateTime.now().plusDays(7));
         authRepository.save(user);
+
         jwtService.addRefreshTokenCookie(response, refreshToken);
 
         JwtResponse jwtResponse = new JwtResponse(
@@ -188,18 +200,27 @@ public class AuthService implements IAuthService {
                 jwtResponse
         );
 
-        return new ApiResponse<>(true, "Đăng nhập thành công", loginResponse, 200);
+        return new ApiResponse<>(
+                true,
+                "Login successful.",
+                loginResponse,
+                200
+        );
     }
-
 
     @Override
     public ApiResponse<JwtResponse> refreshToken(String refreshToken, HttpServletResponse response) {
 
         User user = authRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Refresh token không hợp lệ"));
+                .orElseThrow(() -> new RuntimeException("Invalid refresh token."));
 
         if (user.getRefreshTokenExpiryTime().isBefore(LocalDateTime.now())) {
-            return new ApiResponse<>(false, "Refresh token đã hết hạn", null, 401);
+            return new ApiResponse<>(
+                    false,
+                    "Refresh token has expired. Please log in again.",
+                    null,
+                    401
+            );
         }
 
         String newAccessToken = jwtService.generateToken(user);
@@ -216,21 +237,32 @@ public class AuthService implements IAuthService {
                 jwtService.getValidDuration()
         );
 
-        return new ApiResponse<>(true, "Làm mới token thành công", jwtResponse, 200);
+        return new ApiResponse<>(
+                true,
+                "Token refreshed successfully.",
+                jwtResponse,
+                200
+        );
     }
 
 
     @Transactional
     @Override
     public ApiResponse<Void> logout(String refreshToken) {
+
         User user = authRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Refresh token không hợp lệ"));
+                .orElseThrow(() -> new RuntimeException("Invalid refresh token."));
 
         user.setRefreshToken(null);
         user.setRefreshTokenExpiryTime(null);
         authRepository.save(user);
 
-        return new ApiResponse<>(true, "Đăng xuất thành công", null, 200);
+        return new ApiResponse<>(
+                true,
+                "Logout successful.",
+                null,
+                200
+        );
     }
 
     private String generateOtp() {
@@ -249,33 +281,62 @@ public class AuthService implements IAuthService {
     @Override
     @Transactional
     public ApiResponse<LoginResponse> oauthLogin(OAuthLoginRequest request, HttpServletResponse response) {
+
         User user;
 
         switch (request.getProvider().toLowerCase()) {
+
             case "facebook":
                 FacebookUserData fbUser = facebookApiService.getUserInfo(request.getAccessToken());
+
                 if (fbUser == null || fbUser.getId() == null) {
-                    return new ApiResponse<>(false, "AccessToken Facebook không hợp lệ", null, 401);
+                    return new ApiResponse<>(
+                            false,
+                            "Invalid Facebook access token.",
+                            null,
+                            401
+                    );
                 }
-                user = getOrCreateOAuthUser("facebook", fbUser.getId(), fbUser.getEmail(), fbUser.getName(), fbUser.getPictureUrl(), request.getAccessToken());
+
+                user = getOrCreateOAuthUser(
+                        "facebook",
+                        fbUser.getId(),
+                        fbUser.getEmail(),
+                        fbUser.getName(),
+                        fbUser.getPictureUrl(),
+                        request.getAccessToken()
+                );
                 break;
 
             case "google":
                 GoogleUserData googleUser = googleApiService.getUserInfo(request.getAccessToken());
-                System.out.println("Google user data: " + (googleUser != null ? "Valid" : "NULL"));
-                if (googleUser != null) {
-                    System.out.println("Google user ID: " + googleUser.getId());
-                    System.out.println("Google user email: " + googleUser.getEmail());
-                }
+
                 if (googleUser == null || googleUser.getId() == null) {
-                    System.out.println("Google user data is null or invalid");
-                    return new ApiResponse<>(false, "AccessToken Google không hợp lệ", null, 401);
+                    return new ApiResponse<>(
+                            false,
+                            "Invalid Google access token.",
+                            null,
+                            401
+                    );
                 }
-                user = getOrCreateOAuthUser("google", googleUser.getId(), googleUser.getEmail(), googleUser.getFullName(), googleUser.getAvatar(), request.getAccessToken());
+
+                user = getOrCreateOAuthUser(
+                        "google",
+                        googleUser.getId(),
+                        googleUser.getEmail(),
+                        googleUser.getFullName(),
+                        googleUser.getAvatar(),
+                        request.getAccessToken()
+                );
                 break;
 
             default:
-                return new ApiResponse<>(false, "Provider không hợp lệ", null, 400);
+                return new ApiResponse<>(
+                        false,
+                        "Unsupported OAuth provider.",
+                        null,
+                        400
+                );
         }
 
         String jwtToken = jwtService.generateToken(user);
@@ -287,7 +348,11 @@ public class AuthService implements IAuthService {
 
         jwtService.addRefreshTokenCookie(response, refreshToken);
 
-        JwtResponse jwtResponse = new JwtResponse(jwtToken, jwtService.getValidDuration());
+        JwtResponse jwtResponse = new JwtResponse(
+                jwtToken,
+                jwtService.getValidDuration()
+        );
+
         LoginResponse loginResponse = new LoginResponse(
                 user.getId(),
                 user.getRole().getName(),
@@ -297,45 +362,58 @@ public class AuthService implements IAuthService {
                 jwtResponse
         );
 
-        return new ApiResponse<>(true, "Đăng nhập OAuth thành công", loginResponse, 200);
+        return new ApiResponse<>(
+                true,
+                "OAuth login successful.",
+                loginResponse,
+                200
+        );
     }
 
-    /**
-     * Tạo hoặc lấy user từ user_providers
-     */
+
     @Transactional
-    protected User getOrCreateOAuthUser(String provider, String providerUserId, String email, String fullName, String avatar, String accessToken) {
+    protected User getOrCreateOAuthUser(
+            String provider,
+            String providerUserId,
+            String email,
+            String fullName,
+            String avatar,
+            String accessToken
+    ) {
+
         Optional<UserProvider> optionalProvider =
                 userProviderRepository.findByProviderAndProviderUserId(provider, providerUserId);
-
         if (optionalProvider.isPresent()) {
             return optionalProvider.get().getUser();
         }
-
         Optional<User> existingUserByEmail = authRepository.findByEmail(email);
-
+        User user;
         if (existingUserByEmail.isPresent()) {
-            return existingUserByEmail.get();
+            user = existingUserByEmail.get();
         } else {
-            User user = new User();
-            user.setFullName(provider + "_" + providerUserId);
+            user = new User();
+            user.setFullName(fullName != null ? fullName : provider + "_" + providerUserId);
             user.setEmail(email);
             user.setAvatar(avatar);
 
-            user.setPassword(new BCryptPasswordEncoder().encode(UUID.randomUUID().toString()));
+            user.setPassword(
+                    new BCryptPasswordEncoder().encode(UUID.randomUUID().toString())
+            );
+
             Role defaultRole = authRepository.findRoleByName("USER")
-                    .orElseThrow(() -> new RuntimeException("Role USER chưa tồn tại"));
+                    .orElseThrow(() -> new RuntimeException("Default role USER not found."));
+
             user.setRole(defaultRole);
             authRepository.save(user);
-
-            UserProvider providerEntity = new UserProvider();
-            providerEntity.setProvider(provider);
-            providerEntity.setProviderUserId(providerUserId);
-            providerEntity.setAccessToken(accessToken);
-            providerEntity.setUser(user);
-            userProviderRepository.save(providerEntity);
-
-            return user;
         }
+        UserProvider providerEntity = new UserProvider();
+        providerEntity.setProvider(provider);
+        providerEntity.setProviderUserId(providerUserId);
+        providerEntity.setAccessToken(accessToken);
+        providerEntity.setUser(user);
+
+        userProviderRepository.save(providerEntity);
+
+        return user;
     }
 }

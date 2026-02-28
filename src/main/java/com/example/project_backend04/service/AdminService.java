@@ -83,8 +83,6 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
             }
 
             Role role = roleOpt.get();
-            
-            // Không cho phép xóa role ADMIN
             if ("ADMIN".equals(role.getName())) {
                 return new ApiResponse<>(false, "Không thể xóa role ADMIN", null, 403);
             }
