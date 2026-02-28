@@ -28,6 +28,7 @@ public class AdminService implements IAdminService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final EmailService emailService;
 
 
     //    RoleManager
@@ -82,6 +83,12 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
             }
 
             Role role = roleOpt.get();
+            
+            // Không cho phép xóa role ADMIN
+            if ("ADMIN".equals(role.getName())) {
+                return new ApiResponse<>(false, "Không thể xóa role ADMIN", null, 403);
+            }
+
             roleRepository.delete(role);
 
             return new ApiResponse<>(true, "Xóa role thành công", null, 200);
@@ -96,9 +103,12 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
             return new ApiResponse<>(false, "Email đã tồn tại", null, 400);
         }
 
+        // Tạo mật khẩu ngẫu nhiên
+        String randomPassword = generateRandomPassword();
+
         // Dùng mapper thay vì tạo thủ công
         User user = userMapper.toEntity(req);
-        user.setPassword(passwordEncoder.encode(req.getPassword()));
+        user.setPassword(passwordEncoder.encode(randomPassword));
 
         Role role = req.getRoleId() != null
                 ? roleRepository.findById(req.getRoleId()).orElse(null)
@@ -107,7 +117,49 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
         user.setRole(role);
 
         User saved = userRepository.save(user);
-        return new ApiResponse<>(true, "Tạo user thành công", userMapper.toResponse(saved), 201);
+
+        // Gửi email với mật khẩu
+        try {
+            emailService.sendPasswordEmail(req.getEmail(), req.getFullName(), randomPassword);
+        } catch (Exception e) {
+            // Log error nhưng vẫn trả về success vì user đã được tạo
+            System.err.println("Failed to send email: " + e.getMessage());
+        }
+
+        return new ApiResponse<>(true, "Tạo user thành công. Mật khẩu đã được gửi qua email.", userMapper.toResponse(saved), 201);
+    }
+
+    private String generateRandomPassword() {
+        String upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lowerCase = "abcdefghijklmnopqrstuvwxyz";
+        String digits = "0123456789";
+        String special = "!@#$%^&*";
+        String allChars = upperCase + lowerCase + digits + special;
+
+        StringBuilder password = new StringBuilder();
+        java.util.Random random = new java.util.Random();
+
+        // Đảm bảo có ít nhất 1 ký tự mỗi loại
+        password.append(upperCase.charAt(random.nextInt(upperCase.length())));
+        password.append(lowerCase.charAt(random.nextInt(lowerCase.length())));
+        password.append(digits.charAt(random.nextInt(digits.length())));
+        password.append(special.charAt(random.nextInt(special.length())));
+
+        // Thêm 8 ký tự ngẫu nhiên nữa (tổng 12 ký tự)
+        for (int i = 0; i < 8; i++) {
+            password.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+
+        // Shuffle để không có pattern cố định
+        char[] passwordArray = password.toString().toCharArray();
+        for (int i = passwordArray.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = passwordArray[i];
+            passwordArray[i] = passwordArray[j];
+            passwordArray[j] = temp;
+        }
+
+        return new String(passwordArray);
     }
 
     @Transactional

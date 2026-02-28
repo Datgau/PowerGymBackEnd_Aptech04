@@ -38,6 +38,24 @@ public class DataInitializer {
                         return roleRepository.save(role);
                     });
 
+            // Thêm role TRAINER
+            Role trainerRole = roleRepository.findRoleByName("TRAINER")
+                    .orElseGet(() -> {
+                        Role role = new Role();
+                        role.setName("TRAINER");
+                        role.setDescription("Trainer role for gym instructors");
+                        return roleRepository.save(role);
+                    });
+
+            // Thêm role STAFF
+            Role staffRole = roleRepository.findRoleByName("STAFF")
+                    .orElseGet(() -> {
+                        Role role = new Role();
+                        role.setName("STAFF");
+                        role.setDescription("Staff role for gym employees");
+                        return roleRepository.save(role);
+                    });
+
 
             if (authRepository.findByEmail("admin@gmail.com").isEmpty()) {
                 User admin = new User();
