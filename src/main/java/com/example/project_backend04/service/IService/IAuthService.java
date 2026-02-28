@@ -5,8 +5,8 @@ import com.example.project_backend04.dto.request.Auth.OAuthLoginRequest;
 import com.example.project_backend04.dto.request.Auth.RegisterRequest;
 import com.example.project_backend04.dto.response.Auth.*;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
-import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.messaging.MessagingException;
 import org.springframework.stereotype.Service;
 
 @Service

@@ -14,10 +14,11 @@ import com.example.project_backend04.repository.PendingUserRepository;
 import com.example.project_backend04.repository.UserProviderRepository;
 import com.example.project_backend04.security.JwtService;
 import com.example.project_backend04.service.IService.IAuthService;
-import jakarta.mail.MessagingException;
+
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.MessagingException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -26,6 +27,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,15 +48,16 @@ public class AuthService implements IAuthService {
 
     @Transactional
     @Override
-    public ApiResponse<RegisterResponse> register(RegisterRequest request) throws MessagingException {
+    public ApiResponse<RegisterResponse> register(RegisterRequest request) {
+
         LocalDateTime now = LocalDateTime.now();
         if (authRepository.existsByEmail(request.getEmail())) {
-            RegisterResponse data = new RegisterResponse(
-
-                    request.getEmail(),
-                    now
+            return new ApiResponse<>(
+                    false,
+                    "Email đã tồn tại trong hệ thống, vui lòng đăng nhập hoặc quên mật khẩu",
+                    null,
+                    400
             );
-            return new ApiResponse<>(false, "Email đã tồn tại trong hệ thống, vui lòng chọn quên mật khẩu để tiếp tục sử dụng phần mềm", data, 400);
         }
 
         Optional<PendingUser> pendingOptional = pendingUserRepository.findByEmail(request.getEmail());
@@ -62,38 +65,53 @@ public class AuthService implements IAuthService {
         if (pendingOptional.isPresent()) {
             PendingUser existingPending = pendingOptional.get();
             if (existingPending.getOtpExpiry().isAfter(now)) {
-                long secondsLeft = java.time.Duration.between(now, existingPending.getOtpExpiry()).getSeconds();
-                RegisterResponse data = new RegisterResponse(
-                        request.getEmail(),
-                        now
-                );
-                return new ApiResponse<>(false, "Email đã đăng ký, vui lòng thử lại sau " + secondsLeft + " giây", data, 400);
-            } else {
-                pendingUserRepository.delete(existingPending);
-            }
-        }
+                long secondsLeft = Duration.between(now, existingPending.getOtpExpiry()).getSeconds();
 
+                return new ApiResponse<>(
+                        false,
+                        "Email này đã được gửi OTP. Vui lòng chờ " + secondsLeft + " giây",
+                        null,
+                        400
+                );
+            }
+            pendingUserRepository.delete(existingPending);
+        }
         PendingUser pendingUser = new PendingUser();
         pendingUser.setEmail(request.getEmail());
         pendingUser.setPassword(passwordEncoder.encode(request.getPassword()));
         pendingUser.setFullName(request.getFullName());
+
         String otp = generateOtp();
         pendingUser.setOtp(otp);
         pendingUser.setOtpExpiry(now.plusMinutes(5));
 
         pendingUserRepository.save(pendingUser);
-        emailService.sendOtpEmail(request.getEmail(), otp);
 
-        RegisterResponse data = new RegisterResponse(
-                request.getEmail(),
-                now
+        try {
+            emailService.sendOtpEmail(request.getEmail(), otp);
+        } catch (Exception e) {
+            e.printStackTrace();
+            pendingUserRepository.delete(pendingUser);
+            return new ApiResponse<>(false, "Không thể gửi email OTP", null, 500);
+        }
+
+        return new ApiResponse<>(
+                true,
+                "Đăng ký thành công, OTP đã được gửi tới email của bạn",
+                null,
+                200
         );
-        return new ApiResponse<>(true, "Đăng ký thành công, OTP đã được gửi tới email của bạn để xác minh tài khoản", data, 200);
     }
 
     @Transactional
     @Override
     public ApiResponse<VerifyOtpResponse> verifyOtp(String email, String otp) {
+
+        if (authRepository.existsByEmail(email)) {
+            pendingUserRepository.findByEmail(email)
+                    .ifPresent(pendingUserRepository::delete);
+            return new ApiResponse<>(false, "Email đã được xác minh trước đó", null, 400);
+        }
 
         Optional<PendingUser> optionalPending = pendingUserRepository.findByEmail(email);
         if (optionalPending.isEmpty()) {
@@ -103,18 +121,15 @@ public class AuthService implements IAuthService {
         PendingUser pendingUser = optionalPending.get();
         LocalDateTime now = LocalDateTime.now();
 
-        // OTP hết hạn
         if (pendingUser.getOtpExpiry().isBefore(now)) {
             pendingUserRepository.delete(pendingUser);
             return new ApiResponse<>(false, "OTP đã hết hạn", null, 400);
         }
 
-        // OTP sai
         if (!pendingUser.getOtp().equals(otp)) {
             return new ApiResponse<>(false, "OTP không đúng", null, 400);
         }
 
-        // Tạo user chính thức
         User user = new User();
         user.setEmail(pendingUser.getEmail());
         user.setFullName(pendingUser.getFullName());
@@ -122,23 +137,13 @@ public class AuthService implements IAuthService {
 
         Role defaultRole = authRepository.findRoleByName("USER")
                 .orElseThrow(() -> new RuntimeException("Role USER chưa tồn tại"));
+
         user.setRole(defaultRole);
         authRepository.save(user);
+
         pendingUserRepository.delete(pendingUser);
 
-        try {
-            emailService.sendSuccessRegisterEmail(user.getEmail(), user.getFullName());
-        } catch (MessagingException e) {
-            System.err.println("Không thể gửi email xác nhận: " + e.getMessage());
-        }
-
-        VerifyOtpResponse data = new VerifyOtpResponse(
-                user.getEmail(),
-                true,
-                now
-        );
-
-        return new ApiResponse<>(true, "Xác minh email thành công!", data, 200);
+        return new ApiResponse<>(true, "Xác minh email thành công!", null, 200);
     }
 
 

@@ -95,11 +95,13 @@
             <scope>runtime</scope>
         </dependency>
         <!--mail-->
+
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-            <version>3.1.5</version>
+            <groupId>com.sendgrid</groupId>
+            <artifactId>sendgrid-java</artifactId>
+            <version>4.10.2</version>
         </dependency>
+
 
         <!--Mapper-->
         <dependency>
