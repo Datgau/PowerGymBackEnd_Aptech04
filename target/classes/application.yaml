@@ -24,8 +24,8 @@ spring:
 
 jwt:
   signerKey: ${JWT_SIGNER_KEY}
-  valid-duration: 3600
-  refreshable-duration: 36000
+  valid-duration: 1800
+  refreshable-duration: 604800
 
 # Cloudinary Configuration
 cloudinary:

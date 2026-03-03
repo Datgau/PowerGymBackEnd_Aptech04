@@ -8,11 +8,17 @@ import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.User.UserResponse;
 import com.example.project_backend04.entity.Role;
 import com.example.project_backend04.entity.User;
+import com.example.project_backend04.event.EntityChangedEvent;
 import com.example.project_backend04.mapper.UserMapper;
 import com.example.project_backend04.repository.RoleRepository;
 import com.example.project_backend04.repository.UserRepository;
 import com.example.project_backend04.service.IService.IAdminService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +35,7 @@ public class AdminService implements IAdminService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     //    RoleManager
@@ -48,14 +55,21 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
 
 
     @Override
-        public ApiResponse<List<Role>> getAllRoles() {
-            List<Role> roles = roleRepository.findAll();
-            if (roles.isEmpty()) {
-                return new ApiResponse<>(false, "Không có role nào trong hệ thống", null, 404);
-            }
-
-            return new ApiResponse<>(true, "Lấy danh sách role thành công", roles, 200);
+    public ApiResponse<List<Role>> getAllRoles() {
+        List<Role> roles = roleRepository.findAll();
+        if (roles.isEmpty()) {
+            return new ApiResponse<>(false, "Không có role nào trong hệ thống", null, 404);
         }
+
+        return new ApiResponse<>(true, "Lấy danh sách role thành công", roles, 200);
+    }
+
+    @Override
+    public ApiResponse<Page<Role>> getAllRoles(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        Page<Role> rolePage = roleRepository.findAll(pageable);
+        return new ApiResponse<>(true, "Lấy danh sách role thành công", rolePage, 200);
+    }
 
         @Override
         public ApiResponse<Role> updateRole(RoleUpdateDto dto) {
@@ -124,6 +138,11 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
             System.err.println("Failed to send email: " + e.getMessage());
         }
 
+        // Publish event
+        eventPublisher.publishEvent(
+            new EntityChangedEvent(this, "USER", "CREATED", userMapper.toResponse(saved), saved.getId())
+        );
+
         return new ApiResponse<>(true, "Tạo user thành công. Mật khẩu đã được gửi qua email.", userMapper.toResponse(saved), 201);
     }
 
@@ -179,6 +198,12 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
         }
 
         User saved = userRepository.save(existing);
+        
+        // Publish event
+        eventPublisher.publishEvent(
+            new EntityChangedEvent(this, "USER", "UPDATED", userMapper.toResponse(saved), saved.getId())
+        );
+        
         return new ApiResponse<>(true, "Cập nhật user thành công", userMapper.toResponse(saved), 200);
     }
 
@@ -187,19 +212,26 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
         if (!userRepository.existsById(id)) {
             return new ApiResponse<>(false, "User không tồn tại", null, 404);
         }
+        
+        // Publish event before delete
+        eventPublisher.publishEvent(
+            new EntityChangedEvent(this, "USER", "DELETED", null, id)
+        );
+        
         userRepository.deleteById(id);
         return new ApiResponse<>(true, "Xóa user thành công", null, 200);
     }
 
     @Override
-    public ApiResponse<List<UserResponse>> getAllUsers() {
-        List<User> users = userRepository.findAll();
+    public ApiResponse<Page<UserResponse>> getAllUsers(int page, int size) {
 
-        List<UserResponse> userResponses = users.stream()
-                .map(userMapper::toResponse)
-                .toList();
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createDate").descending());
 
-        return new ApiResponse<>(true, "Danh sách user", userResponses, 200);
+        Page<User> userPage = userRepository.findAll(pageable);
+
+        Page<UserResponse> responsePage = userPage.map(userMapper::toResponse);
+
+        return new ApiResponse<>(true, "User list retrieved successfully", responsePage, 200);
     }
 
 }

@@ -61,7 +61,7 @@ public class Story {
     @PrePersist
     void onCreate() {
         this.createdAt = LocalDateTime.now();
-        // Story tự động hết hạn sau 24 giờ
-        this.expiresAt = this.createdAt.plusHours(24);
+        //Story tự động hết hạn sau 7 ngày
+        this.expiresAt = this.createdAt.plusHours(168);
     }
 }

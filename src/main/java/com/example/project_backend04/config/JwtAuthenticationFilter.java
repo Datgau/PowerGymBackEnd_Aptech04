@@ -26,8 +26,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         String method = request.getMethod();
-
-        // Skip filter for public endpoints only
         return path.startsWith("/api/auth")
                 || (path.startsWith("/api/gym") && method.equals("GET"))
                 || (path.startsWith("/api/stories") && method.equals("GET") && !path.startsWith("/api/stories/admin"))
@@ -41,6 +39,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        String path = request.getServletPath();
+        
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -56,9 +56,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 UserDetails userDetails =
                         userDetailsService.loadUserByUsername(username);
-
+                
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
@@ -70,14 +69,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             new WebAuthenticationDetailsSource()
                                     .buildDetails(request)
                     );
-
                     SecurityContextHolder.getContext()
                             .setAuthentication(authToken);
                 }
             }
 
         } catch (Exception e) {
-            System.out.println("JWT error: " + e.getMessage());
+            // Log error but don't block request
+            System.err.println("JWT authentication error: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);

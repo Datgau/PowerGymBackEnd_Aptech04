@@ -3,6 +3,8 @@ package com.example.project_backend04.repository;
 import com.example.project_backend04.entity.Story;
 import com.example.project_backend04.entity.User;
 import com.example.project_backend04.enums.StoryStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,10 +23,22 @@ public interface StoryRepository extends JpaRepository<Story, Long> {
     List<Story> findActiveStoriesWithUser(@Param("now") LocalDateTime now);
 
     /**
+     * Lấy tất cả stories đã được approve với pagination (hiển thị cho public)
+     */
+    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = 'APPROVED' AND s.expiresAt > :now AND s.isActive = true ORDER BY s.createdAt DESC")
+    Page<Story> findActiveStoriesWithUserPaginated(@Param("now") LocalDateTime now, Pageable pageable);
+
+    /**
      * Lấy stories của user cụ thể (đã approve)
      */
     @Query("SELECT s FROM Story s WHERE s.user = :user AND s.status = 'APPROVED' AND s.expiresAt > :now AND s.isActive = true ORDER BY s.createdAt DESC")
     List<Story> findActiveStoriesByUser(@Param("user") User user, @Param("now") LocalDateTime now);
+
+    /**
+     * Lấy stories của user cụ thể với pagination (đã approve)
+     */
+    @Query("SELECT s FROM Story s WHERE s.user = :user AND s.status = 'APPROVED' AND s.expiresAt > :now AND s.isActive = true ORDER BY s.createdAt DESC")
+    Page<Story> findActiveStoriesByUserPaginated(@Param("user") User user, @Param("now") LocalDateTime now, Pageable pageable);
 
     /**
      * Lấy stories theo tag (đã approve)
@@ -48,6 +62,12 @@ public interface StoryRepository extends JpaRepository<Story, Long> {
      */
     @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = 'PENDING' ORDER BY s.createdAt DESC")
     List<Story> findPendingStories();
+
+    /**
+     * Lấy tất cả stories đang chờ duyệt với pagination (PENDING) - Admin only
+     */
+    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = 'PENDING' ORDER BY s.createdAt DESC")
+    Page<Story> findPendingStoriesPaginated(Pageable pageable);
 
     /**
      * Lấy stories theo status

@@ -17,4 +17,5 @@ public class GymServiceResponse {
     private Integer duration;
     private Integer maxParticipants;
     private Boolean isActive;
+    private Long registrationCount; // Số lượng người đăng ký
 }

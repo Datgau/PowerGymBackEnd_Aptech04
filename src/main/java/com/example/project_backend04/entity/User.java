@@ -85,6 +85,9 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CheckIn> checkIns;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ServiceRegistration> serviceRegistrations;
+
     @PrePersist
     protected void onCreate() {
         this.createDate = LocalDateTime.now();

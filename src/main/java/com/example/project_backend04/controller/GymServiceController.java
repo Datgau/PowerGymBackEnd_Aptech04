@@ -5,8 +5,10 @@ import com.example.project_backend04.dto.response.Service.GymServiceResponse;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.service.IService.IGymService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,6 +45,20 @@ public class GymServiceController {
         }
     }
 
+    @GetMapping("/paginated")
+    public ResponseEntity<ApiResponse<Page<GymServiceResponse>>> getAllServicesPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            Page<GymServiceResponse> services = gymService.getAllServices(page, size);
+            return ResponseEntity.ok(ApiResponse.success(services));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch services: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<GymServiceResponse>> getServiceById(@PathVariable Long id) {
         try {
@@ -64,6 +80,7 @@ public class GymServiceController {
     // ===================== CREATE =====================
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<GymServiceResponse>> createService(
             @ModelAttribute GymServiceRequest request
     ) {
@@ -80,9 +97,8 @@ public class GymServiceController {
         }
     }
 
-    // ===================== UPDATE =====================
-
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<GymServiceResponse>> updateService(
             @PathVariable Long id,
             @ModelAttribute UpdateGymServiceDto request
@@ -93,10 +109,8 @@ public class GymServiceController {
         );
     }
 
-
-    // ===================== DELETE =====================
-
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteService(
             @PathVariable Long id
     ) {
@@ -106,6 +120,10 @@ public class GymServiceController {
         } catch (RuntimeException e) {
             if (e.getMessage().contains("not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(e.getMessage()));
+            }
+            if (e.getMessage().contains("đang có") && e.getMessage().contains("người đăng ký")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(ApiResponse.error(e.getMessage()));
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

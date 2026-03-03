@@ -75,17 +75,14 @@ public class SecurityConfig {
                             // ADMIN ONLY (Must be before public GET rules)
                             .requestMatchers("/api/admin/**").hasRole("ADMIN")
                             .requestMatchers("/api/stories/admin/**").hasRole("ADMIN")
-                            // =====================
                             // PUBLIC GET ENDPOINTS
-                            // =====================
                             .requestMatchers(HttpMethod.GET, "/api/gym/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/stories/**").permitAll()
-                            .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
 
+                            .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
                             .requestMatchers(HttpMethod.POST, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
                             .requestMatchers(HttpMethod.PUT, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
                             .requestMatchers(HttpMethod.DELETE, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
-                            // AUTHENTICATED USERS
                             .anyRequest().authenticated();
                 })
                 .authenticationProvider(authenticationProvider())

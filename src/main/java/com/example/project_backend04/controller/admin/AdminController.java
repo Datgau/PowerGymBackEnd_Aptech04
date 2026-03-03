@@ -10,6 +10,7 @@ import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.service.IService.IAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,6 +37,17 @@ public class AdminController {
     @GetMapping("/roles")
     public ResponseEntity<ApiResponse<List<Role>>> getAllRoles() {
         ApiResponse<List<Role>> response = adminService.getAllRoles();
+        return ResponseEntity
+                .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+    @GetMapping("/roles/paginated")
+    public ResponseEntity<ApiResponse<Page<Role>>> getAllRolesPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        ApiResponse<Page<Role>> response = adminService.getAllRoles(page, size);
         return ResponseEntity
                 .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
                 .body(response);
@@ -86,8 +98,12 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
-        ApiResponse<List<UserResponse>> response = adminService.getAllUsers();
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        ApiResponse<Page<UserResponse>> response =
+                adminService.getAllUsers(page, size);
         return ResponseEntity
                 .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
                 .body(response);

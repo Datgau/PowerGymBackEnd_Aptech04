@@ -14,18 +14,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 //
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // enable simple broker for demo. In prod dùng rabbit or redis-backed broker
         config.enableSimpleBroker("/topic", "/queue");
         config.setApplicationDestinationPrefixes("/app");
-        // config.setUserDestinationPrefix("/user"); // default "/user"
     }
-
-//
-//    @Override
-//    public void configureMessageBroker(MessageBrokerRegistry registry) {
-//        registry.setApplicationDestinationPrefixes("/app");
-//        registry.enableSimpleBroker("/topic");
-//    }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {

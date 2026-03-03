@@ -8,6 +8,7 @@ import com.example.project_backend04.repository.UserRepository;
 import com.example.project_backend04.security.CustomUserDetails;
 import com.example.project_backend04.service.IService.IStoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +59,20 @@ public class StoryController {
         }
     }
 
+    @GetMapping("/paginated")
+    public ResponseEntity<ApiResponse<Page<StoryResponseDto>>> getAllActiveStoriesPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            Page<StoryResponseDto> stories = storyService.getActiveStories(page, size);
+            return ResponseEntity.ok(ApiResponse.success(stories));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to get stories: " + e.getMessage()));
+        }
+    }
+
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<ApiResponse<List<StoryResponseDto>>> getStoriesByUser(
@@ -82,6 +97,22 @@ public class StoryController {
         try {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             List<StoryResponseDto> stories = storyService.getStoriesByUser(userDetails.getId());
+            return ResponseEntity.ok(ApiResponse.success(stories));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to get stories: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/my-stories/paginated")
+    public ResponseEntity<ApiResponse<Page<StoryResponseDto>>> getMyStoriesPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication
+    ) {
+        try {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            Page<StoryResponseDto> stories = storyService.getStoriesByUser(userDetails.getId(), page, size);
             return ResponseEntity.ok(ApiResponse.success(stories));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -168,6 +199,21 @@ public class StoryController {
     ) {
         try {
             List<StoryResponseDto> stories = storyService.getPendingStories();
+            return ResponseEntity.ok(ApiResponse.success(stories));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to get pending stories: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin/pending/paginated")
+    public ResponseEntity<ApiResponse<Page<StoryResponseDto>>> getPendingStoriesPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication
+    ) {
+        try {
+            Page<StoryResponseDto> stories = storyService.getPendingStories(page, size);
             return ResponseEntity.ok(ApiResponse.success(stories));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

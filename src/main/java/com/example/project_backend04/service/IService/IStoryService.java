@@ -3,6 +3,7 @@ package com.example.project_backend04.service.IService;
 import com.example.project_backend04.dto.request.Story.CreateStoryRequest;
 import com.example.project_backend04.dto.response.Story.StoryResponseDto;
 import com.example.project_backend04.entity.User;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -19,9 +20,19 @@ public interface IStoryService {
     List<StoryResponseDto> getActiveStories();
     
     /**
+     * Lấy tất cả stories đã được approve với pagination (public)
+     */
+    Page<StoryResponseDto> getActiveStories(int page, int size);
+    
+    /**
      * Lấy stories của user cụ thể (đã approve)
      */
     List<StoryResponseDto> getStoriesByUser(Long userId);
+    
+    /**
+     * Lấy stories của user cụ thể với pagination (đã approve)
+     */
+    Page<StoryResponseDto> getStoriesByUser(Long userId, int page, int size);
     
     /**
      * Lấy stories theo tag (đã approve)
@@ -54,6 +65,11 @@ public interface IStoryService {
      * Lấy tất cả stories đang chờ duyệt (PENDING) - Admin only
      */
     List<StoryResponseDto> getPendingStories();
+    
+    /**
+     * Lấy tất cả stories đang chờ duyệt với pagination (PENDING) - Admin only
+     */
+    Page<StoryResponseDto> getPendingStories(int page, int size);
     
     /**
      * Approve story - Admin only

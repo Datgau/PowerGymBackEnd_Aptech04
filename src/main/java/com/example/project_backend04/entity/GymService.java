@@ -61,6 +61,9 @@ public class GymService {
     @OneToMany(mappedBy = "gymService", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ClassSchedule> schedules;
 
+    @OneToMany(mappedBy = "gymService", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ServiceRegistration> registrations;
+
 
 
     @PrePersist

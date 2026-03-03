@@ -10,6 +10,10 @@ import com.example.project_backend04.repository.StoryRepository;
 import com.example.project_backend04.repository.UserRepository;
 import com.example.project_backend04.service.IService.IStoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +66,14 @@ public class StoryService implements IStoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<StoryResponseDto> getActiveStories(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Story> storyPage = storyRepository.findActiveStoriesWithUserPaginated(LocalDateTime.now(), pageable);
+        return storyPage.map(storiesMapper::toDto);
+    }
+
+    @Override
     public List<StoryResponseDto> getStoriesByUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -70,6 +82,17 @@ public class StoryService implements IStoryService {
         return stories.stream()
                 .map(storiesMapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoryResponseDto> getStoriesByUser(Long userId, int page, int size) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Story> storyPage = storyRepository.findActiveStoriesByUserPaginated(user, LocalDateTime.now(), pageable);
+        return storyPage.map(storiesMapper::toDto);
     }
 
     @Override
@@ -145,6 +168,14 @@ public class StoryService implements IStoryService {
         return stories.stream()
                 .map(storiesMapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoryResponseDto> getPendingStories(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Story> storyPage = storyRepository.findPendingStoriesPaginated(pageable);
+        return storyPage.map(storiesMapper::toDto);
     }
 
     @Override

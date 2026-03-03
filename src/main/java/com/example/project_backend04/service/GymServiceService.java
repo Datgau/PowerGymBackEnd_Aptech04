@@ -6,10 +6,16 @@ import com.example.project_backend04.dto.response.Service.GymServiceResponse;
 import com.example.project_backend04.entity.GymService;
 import com.example.project_backend04.entity.GymServiceImage;
 import com.example.project_backend04.repository.GymServiceRepository;
+import com.example.project_backend04.repository.ServiceRegistrationRepository;
 import com.example.project_backend04.service.IService.ICloudinaryService;
 import com.example.project_backend04.service.IService.IGymService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -21,6 +27,7 @@ public class GymServiceService implements IGymService {
 
     private final GymServiceRepository gymServiceRepository;
     private final ICloudinaryService cloudStorageService;
+    private final ServiceRegistrationRepository serviceRegistrationRepository;
 
     private static final String SERVICE_FOLDER = "services";
 
@@ -47,6 +54,15 @@ public class GymServiceService implements IGymService {
                 .toList();
     }
 
+    // ===================== GET ALL SERVICES WITH PAGINATION =====================
+    @Override
+    @Transactional(readOnly = true)
+    public Page<GymServiceResponse> getAllServices(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Page<GymService> servicePage = gymServiceRepository.findAllWithImagesPaginated(pageable);
+        return servicePage.map(this::mapToDto);
+    }
+
     // ===================== CREATE =====================
     public GymServiceResponse createService(GymServiceRequest request) {
         validateServiceRequest(request);
@@ -68,7 +84,6 @@ public class GymServiceService implements IGymService {
             
             for (int i = 0; i < request.getImages().size(); i++) {
                 try {
-                    // Upload với optimization (1600x900 cho service images)
                     String imageUrl = cloudinaryServiceImpl.uploadServiceImage(request.getImages().get(i));
                     
                     GymServiceImage serviceImage = new GymServiceImage();
@@ -86,7 +101,6 @@ public class GymServiceService implements IGymService {
             savedService.setImages(serviceImages);
             savedService = gymServiceRepository.save(savedService);
         }
-
         return mapToDto(savedService);
     }
 
@@ -120,21 +134,42 @@ public class GymServiceService implements IGymService {
         return mapToDto(gymServiceRepository.save(service));
     }
 
+    @Transactional
     public void deleteService(Long id) {
-        GymService service = gymServiceRepository.findById(id)
+        System.out.println("=== Deleting service ===");
+        System.out.println("Service ID: " + id);
+        
+        // Fetch service with images to avoid lazy loading issue
+        GymService service = gymServiceRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
 
+        System.out.println("Service found: " + service.getName());
+        
+        // Kiểm tra xem service có người đăng ký không
+        Long activeRegistrations = serviceRegistrationRepository.countActiveRegistrations(service);
+        System.out.println("Active registrations count: " + activeRegistrations);
+        
+        if (activeRegistrations > 0) {
+            throw new RuntimeException("Không thể xóa service này vì đang có " + activeRegistrations + " người đăng ký");
+        }
+
+        System.out.println("No active registrations, proceeding to delete");
+
+        // Delete images from cloud storage
         if (service.getImages() != null && !service.getImages().isEmpty()) {
+            System.out.println("Deleting " + service.getImages().size() + " images from cloud");
             service.getImages().forEach(serviceImage -> {
                 try {
                     cloudStorageService.deleteFile(serviceImage.getImageUrl());
                 } catch (Exception e) {
                     System.err.println("Failed to delete image: " + serviceImage.getImageUrl());
+                    e.printStackTrace();
                 }
             });
         }
 
         gymServiceRepository.delete(service);
+        System.out.println("Service deleted successfully");
     }
 
     private void validateServiceRequest(GymServiceRequest request) {
@@ -176,6 +211,11 @@ public class GymServiceService implements IGymService {
         dto.setDuration(service.getDuration());
         dto.setMaxParticipants(service.getMaxParticipants());
         dto.setIsActive(service.getIsActive());
+        
+        // Đếm số lượng người đăng ký active
+        Long registrationCount = serviceRegistrationRepository.countActiveRegistrations(service);
+        dto.setRegistrationCount(registrationCount);
+        
         return dto;
     }
 }
