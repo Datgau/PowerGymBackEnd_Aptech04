@@ -4,6 +4,7 @@ public enum ServiceCategory {
     PERSONAL_TRAINER,
     BOXING,
     YOGA,
+    CARDIO,
     GYM,
     OTHER
 }

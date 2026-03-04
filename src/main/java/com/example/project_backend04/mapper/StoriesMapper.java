@@ -31,6 +31,10 @@ public class StoriesMapper {
                 .username(user.getEmail()) // bạn đang dùng email làm username
                 .userAvatar(user.getAvatar())
                 .userFullName(user.getFullName())
+                .likeCount(story.getLikeCount() != null ? story.getLikeCount() : 0L)
+                .commentCount(story.getCommentCount() != null ? story.getCommentCount() : 0L)
+                .shareCount(0L) // Mock share count for now - can be implemented later
+                .isLikedByCurrentUser(false) // Will be set by service if user is authenticated
                 .isExpired(story.getExpiresAt().isBefore(now))
                 .timeAgo(getTimeAgo(story.getCreatedAt()))
                 .build();

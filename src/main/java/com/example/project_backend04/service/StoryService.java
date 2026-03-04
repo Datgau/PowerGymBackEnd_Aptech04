@@ -29,6 +29,8 @@ public class StoryService implements IStoryService {
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
     private final StoriesMapper storiesMapper;
+    private final StoryLikeService storyLikeService;
+    private final StoryCommentService storyCommentService;
 
     @Override
     @Transactional
@@ -57,6 +59,7 @@ public class StoryService implements IStoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoryResponseDto> getActiveStories() {
         // Only return APPROVED stories
         List<Story> stories = storyRepository.findActiveStoriesWithUser(LocalDateTime.now());
@@ -74,10 +77,11 @@ public class StoryService implements IStoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoryResponseDto> getStoriesByUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         List<Story> stories = storyRepository.findActiveStoriesByUser(user, LocalDateTime.now());
         return stories.stream()
                 .map(storiesMapper::toDto)
@@ -89,13 +93,14 @@ public class StoryService implements IStoryService {
     public Page<StoryResponseDto> getStoriesByUser(Long userId, int page, int size) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Story> storyPage = storyRepository.findActiveStoriesByUserPaginated(user, LocalDateTime.now(), pageable);
         return storyPage.map(storiesMapper::toDto);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoryResponseDto> getStoriesByTag(String tag) {
         List<Story> stories = storyRepository.findActiveStoriesByTag(tag, LocalDateTime.now());
         return stories.stream()
@@ -104,21 +109,63 @@ public class StoryService implements IStoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public StoryResponseDto getStoryById(Long storyId) {
-        Story story = storyRepository.findById(storyId)
-                .orElseThrow(() -> new RuntimeException("Story not found"));
+        Story story = storyRepository.findByIdWithUser(storyId);
+        if (story == null) {
+            throw new RuntimeException("Story not found");
+        }
+
+        // Check if story is approved and active
+        if (!story.getIsActive() || story.getStatus() != StoryStatus.APPROVED) {
+            throw new RuntimeException("Story not available");
+        }
+
         if (story.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Story has expired");
         }
-        
+
         return storiesMapper.toDto(story);
+    }
+
+    /**
+     * Get story by ID with user-specific information (like status)
+     */
+    @Transactional(readOnly = true)
+    public StoryResponseDto getStoryByIdWithUserInfo(Long storyId, Long currentUserId) {
+        Story story = storyRepository.findByIdWithUser(storyId);
+        if (story == null) {
+            throw new RuntimeException("Story not found");
+        }
+
+        // Check if story is approved and active
+        if (!story.getIsActive() || story.getStatus() != StoryStatus.APPROVED) {
+            throw new RuntimeException("Story not available");
+        }
+
+        if (story.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Story has expired");
+        }
+
+        StoryResponseDto dto = storiesMapper.toDto(story);
+
+        // Add user-specific information if user is logged in
+        if (currentUserId != null) {
+            boolean isLiked = storyLikeService.isStoryLikedByUser(storyId, currentUserId);
+            dto.setIsLikedByCurrentUser(isLiked);
+        }
+
+        return dto;
     }
 
     @Override
     @Transactional
     public void deleteStory(Long storyId, User user) {
-        Story story = storyRepository.findById(storyId)
-                .orElseThrow(() -> new RuntimeException("Story not found"));
+        Story story = storyRepository.findByIdWithUser(storyId);
+        if (story == null) {
+            throw new RuntimeException("Story not found");
+        }
+
         boolean isOwner = story.getUser().getId().equals(user.getId());
         boolean isAdmin = user.getRole() != null &&
                 user.getRole().getName().equals("ROLE_ADMIN");
@@ -138,8 +185,9 @@ public class StoryService implements IStoryService {
     @Override
     @Transactional
     public void deleteExpiredStories() {
+        // Delete stories that have expired (both naturally expired and rejected stories)
         List<Story> expiredStories = storyRepository.findByExpiresAtBefore(LocalDateTime.now());
-        
+
         for (Story story : expiredStories) {
             try {
                 cloudinaryService.deleteFile(story.getImageUrl());
@@ -149,20 +197,22 @@ public class StoryService implements IStoryService {
         }
 
         storyRepository.deleteAll(expiredStories);
-        System.out.println("[Info] Deleted " + expiredStories.size() + " expired stories");
+        System.out.println("[Info] Deleted " + expiredStories.size() + " expired stories (including rejected stories)");
     }
 
     @Override
+    @Transactional(readOnly = true)
     public long countUserStories(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         return storyRepository.countActiveStoriesByUser(user, LocalDateTime.now());
     }
 
     // ==================== ADMIN METHODS ====================
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoryResponseDto> getPendingStories() {
         List<Story> stories = storyRepository.findPendingStories();
         return stories.stream()
@@ -181,8 +231,10 @@ public class StoryService implements IStoryService {
     @Override
     @Transactional
     public StoryResponseDto approveStory(Long storyId, User admin) {
-        Story story = storyRepository.findById(storyId)
-                .orElseThrow(() -> new RuntimeException("Story not found"));
+        Story story = storyRepository.findByIdWithUser(storyId);
+        if (story == null) {
+            throw new RuntimeException("Story not found");
+        }
 
         if (story.getStatus() != StoryStatus.PENDING) {
             throw new RuntimeException("Story is not in pending status");
@@ -199,8 +251,10 @@ public class StoryService implements IStoryService {
     @Override
     @Transactional
     public void rejectStory(Long storyId, User admin) {
-        Story story = storyRepository.findById(storyId)
-                .orElseThrow(() -> new RuntimeException("Story not found"));
+        Story story = storyRepository.findByIdWithUser(storyId);
+        if (story == null) {
+            throw new RuntimeException("Story not found");
+        }
 
         if (story.getStatus() != StoryStatus.PENDING) {
             throw new RuntimeException("Story is not in pending status");
@@ -219,10 +273,85 @@ public class StoryService implements IStoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public long countPendingStories() {
         return storyRepository.countPendingStories();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public long countApprovedStories() {
+        return storyRepository.countApprovedStories();
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public long countRejectedStories() {
+        return storyRepository.countRejectedStories();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StoryResponseDto> getAllStoriesForAdmin() {
+        List<Story> stories = storyRepository.findAllStoriesWithUser();
+        return stories.stream()
+                .map(storiesMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoryResponseDto> getAllStoriesForAdmin(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Story> storyPage = storyRepository.findAllStoriesWithUserPaginated(pageable);
+        return storyPage.map(storiesMapper::toDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StoryResponseDto> getStoriesByStatus(StoryStatus status) {
+        List<Story> stories = storyRepository.findStoriesByStatus(status);
+        return stories.stream()
+                .map(storiesMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<StoryResponseDto> getStoriesByStatus(StoryStatus status, int page, int size) {
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public StoryResponseDto updateStoryStatus(Long storyId, StoryStatus newStatus, User admin) {
+        Story story = storyRepository.findByIdWithUser(storyId);
+        if (story == null) {
+            throw new RuntimeException("Story not found");
+        }
+
+        // Check if story is rejected - rejected stories cannot be updated
+        if (story.getStatus() == StoryStatus.REJECTED) {
+            throw new RuntimeException("Cannot update status of rejected stories");
+        }
+
+        // Validate status transition
+        if (newStatus == story.getStatus()) {
+            throw new RuntimeException("Story is already in " + newStatus.name().toLowerCase() + " status");
+        }
+
+        // Update status
+        story.setStatus(newStatus);
+        story.setApprovedBy(admin);
+        story.setApprovedAt(LocalDateTime.now());
+
+        // If rejecting, the story will be automatically deleted by scheduled task when expired
+        if (newStatus == StoryStatus.REJECTED) {
+            // Set expiry to current time so it gets deleted in next cleanup
+            story.setExpiresAt(LocalDateTime.now());
+        }
+
+        Story savedStory = storyRepository.save(story);
+        return storiesMapper.toDto(savedStory);
+    }
 }
 

@@ -39,6 +39,12 @@ public class StoryResponseDto {
     private String userAvatar;
     private String userFullName;
     
+    // Interaction counts
+    private Long likeCount;
+    private Long commentCount;
+    private Long shareCount; // New field for share count
+    private Boolean isLikedByCurrentUser;
+    
     // Additional info
     private Long viewCount;
     private Boolean isExpired;

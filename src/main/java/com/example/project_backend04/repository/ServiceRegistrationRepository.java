@@ -16,22 +16,38 @@ import java.util.Optional;
 @Repository
 public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegistration, Long> {
     
-    List<ServiceRegistration> findByUserOrderByRegistrationDateDesc(User user);
-    
-    List<ServiceRegistration> findByGymServiceOrderByRegistrationDateDesc(GymService gymService);
+
+    /**
+     * Lấy registrations theo user với JOIN FETCH để tránh lazy loading
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.gymService WHERE sr.user = :user ORDER BY sr.registrationDate DESC")
+    List<ServiceRegistration> findByUserWithGymServiceOrderByRegistrationDateDesc(@Param("user") User user);
     
     /**
-     * Lấy registrations theo service với pagination
+     * Lấy registrations theo service với JOIN FETCH để tránh lazy loading
      */
-    Page<ServiceRegistration> findByGymService(GymService gymService, Pageable pageable);
+    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user WHERE sr.gymService = :gymService ORDER BY sr.registrationDate DESC")
+    List<ServiceRegistration> findByGymServiceWithUserOrderByRegistrationDateDesc(@Param("gymService") GymService gymService);
     
-    List<ServiceRegistration> findByUserAndStatus(User user, ServiceRegistration.RegistrationStatus status);
+    /**
+     * Lấy registrations theo service với pagination và JOIN FETCH
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user WHERE sr.gymService = :gymService ORDER BY sr.registrationDate DESC")
+    Page<ServiceRegistration> findByGymServiceWithUser(@Param("gymService") GymService gymService, Pageable pageable);
     
-    List<ServiceRegistration> findByGymServiceAndStatus(GymService gymService, ServiceRegistration.RegistrationStatus status);
+    /**
+     * Lấy tất cả registrations với JOIN FETCH
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user JOIN FETCH sr.gymService ORDER BY sr.registrationDate DESC")
+    List<ServiceRegistration> findAllWithUserAndGymService();
     
-    @Query("SELECT sr FROM ServiceRegistration sr WHERE sr.user = :user AND sr.gymService = :service AND sr.status = 'ACTIVE'")
-    Optional<ServiceRegistration> findActiveRegistration(@Param("user") User user, @Param("service") GymService service);
+    /**
+     * Lấy tất cả registrations với pagination và JOIN FETCH
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user JOIN FETCH sr.gymService ORDER BY sr.registrationDate DESC")
+    Page<ServiceRegistration> findAllWithUserAndGymService(Pageable pageable);
     
+
     @Query("SELECT COUNT(sr) FROM ServiceRegistration sr WHERE sr.gymService = :service AND sr.status = 'ACTIVE'")
     Long countActiveRegistrations(@Param("service") GymService service);
     

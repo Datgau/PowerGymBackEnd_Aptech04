@@ -35,11 +35,9 @@ public class GlobalNotificationListener {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        // Send to global topic
         messagingTemplate.convertAndSend("/topic/global", notification);
         log.info("Notification sent to /topic/global");
         
-        // Send to specific entity topic
         String entityTopic = "/topic/" + event.getEntityName().toLowerCase();
         messagingTemplate.convertAndSend(entityTopic, notification);
         log.info("Notification sent to {}", entityTopic);

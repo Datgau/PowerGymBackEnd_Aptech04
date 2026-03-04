@@ -88,19 +88,21 @@ public class ServiceRegistrationService {
         registrationRepository.save(registration);
     }
 
+    @Transactional(readOnly = true)
     public List<ServiceRegistrationResponse> getMyRegistrations() {
         User currentUser = getCurrentUser();
-        return registrationRepository.findByUserOrderByRegistrationDateDesc(currentUser)
+        return registrationRepository.findByUserWithGymServiceOrderByRegistrationDateDesc(currentUser)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ServiceRegistrationResponse> getServiceRegistrations(Long serviceId) {
         GymService gymService = gymServiceRepository.findById(serviceId)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
         
-        return registrationRepository.findByGymServiceOrderByRegistrationDateDesc(gymService)
+        return registrationRepository.findByGymServiceWithUserOrderByRegistrationDateDesc(gymService)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -112,12 +114,13 @@ public class ServiceRegistrationService {
                 .orElseThrow(() -> new RuntimeException("Service not found"));
         
         Pageable pageable = PageRequest.of(page, size, Sort.by("registrationDate").descending());
-        Page<ServiceRegistration> registrationPage = registrationRepository.findByGymService(gymService, pageable);
+        Page<ServiceRegistration> registrationPage = registrationRepository.findByGymServiceWithUser(gymService, pageable);
         return registrationPage.map(this::mapToResponse);
     }
 
+    @Transactional(readOnly = true)
     public List<ServiceRegistrationResponse> getAllRegistrations() {
-        return registrationRepository.findAll()
+        return registrationRepository.findAllWithUserAndGymService()
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -126,7 +129,7 @@ public class ServiceRegistrationService {
     @Transactional(readOnly = true)
     public Page<ServiceRegistrationResponse> getAllRegistrations(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("registrationDate").descending());
-        Page<ServiceRegistration> registrationPage = registrationRepository.findAll(pageable);
+        Page<ServiceRegistration> registrationPage = registrationRepository.findAllWithUserAndGymService(pageable);
         return registrationPage.map(this::mapToResponse);
     }
 
