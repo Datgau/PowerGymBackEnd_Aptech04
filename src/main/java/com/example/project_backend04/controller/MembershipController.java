@@ -15,10 +15,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class MembershipController {
 
-    /**
-     * Get current user's membership information
-     * GET /api/membership/current
-     */
     @GetMapping("/current")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCurrentMembership(Authentication authentication) {
         try {
@@ -39,10 +35,7 @@ public class MembershipController {
         }
     }
 
-    /**
-     * Get all available membership packages
-     * GET /api/membership/packages
-     */
+
     @GetMapping("/packages")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPackages() {
         try {
@@ -73,10 +66,6 @@ public class MembershipController {
         }
     }
 
-    /**
-     * Register for a new membership package
-     * POST /api/membership/register
-     */
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Map<String, String>>> registerPackage(
             @RequestBody Map<String, Object> registrationRequest,
@@ -105,10 +94,6 @@ public class MembershipController {
         }
     }
 
-    /**
-     * Extend current membership
-     * POST /api/membership/extend
-     */
     @PostMapping("/extend")
     public ResponseEntity<ApiResponse<Map<String, Object>>> extendMembership(
             @RequestBody Map<String, String> extendRequest,
@@ -116,8 +101,6 @@ public class MembershipController {
     ) {
         try {
             String packageId = extendRequest.get("packageId");
-            
-            // Mock extended membership
             Map<String, Object> membership = createMembershipInfo(
                 1L, "PREMIUM", "2024-01-01", "2025-01-31", "ACTIVE"
             );
@@ -134,10 +117,7 @@ public class MembershipController {
         }
     }
 
-    /**
-     * Get membership history
-     * GET /api/membership/history
-     */
+
     @GetMapping("/history")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMembershipHistory(Authentication authentication) {
         try {

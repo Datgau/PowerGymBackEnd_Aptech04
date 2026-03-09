@@ -1,5 +1,6 @@
 package com.example.project_backend04.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,7 +31,7 @@ public class MembershipPackage {
     private String description;
 
     @Column(nullable = false)
-    private Integer duration; // in days
+    private Integer duration;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
@@ -39,9 +40,9 @@ public class MembershipPackage {
     private BigDecimal originalPrice;
 
     @Column
-    private Integer discount; // percentage
+    private Integer discount;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "package_features", joinColumns = @JoinColumn(name = "package_id"))
     @Column(name = "feature")
     private List<String> features;
@@ -53,7 +54,7 @@ public class MembershipPackage {
     private Boolean isActive = true;
 
     @Column
-    private String color; // hex color for UI
+    private String color;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createDate;
@@ -62,6 +63,7 @@ public class MembershipPackage {
     private LocalDateTime updateDate;
 
     @OneToMany(mappedBy = "membershipPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<Membership> memberships;
 
     @PrePersist

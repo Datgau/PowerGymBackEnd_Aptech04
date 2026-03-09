@@ -6,6 +6,7 @@ import com.example.project_backend04.enums.StoryStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -41,38 +42,50 @@ public interface StoryRepository extends JpaRepository<Story, Long> {
     long countActiveStoriesByUser(@Param("user") User user, @Param("now") LocalDateTime now);
 
 
-    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = 'PENDING' ORDER BY s.createdAt DESC")
-    List<Story> findPendingStories();
+    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = 'PENDING' AND s.isActive = true AND s.expiresAt > :now ORDER BY s.createdAt DESC")
+    List<Story> findPendingStories(@Param("now") LocalDateTime now);
 
-    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = 'PENDING' ORDER BY s.createdAt DESC")
-    Page<Story> findPendingStoriesPaginated(Pageable pageable);
+    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = 'PENDING' AND s.isActive = true AND s.expiresAt > :now ORDER BY s.createdAt DESC")
+    Page<Story> findPendingStoriesPaginated(@Param("now") LocalDateTime now, Pageable pageable);
 
 
-    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = :status ORDER BY s.createdAt DESC")
-    List<Story> findStoriesByStatus(@Param("status") StoryStatus status);
+    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = :status AND s.isActive = true AND s.expiresAt > :now ORDER BY s.createdAt DESC")
+    List<Story> findStoriesByStatus(@Param("status") StoryStatus status, @Param("now") LocalDateTime now);
 
-    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = :status ORDER BY s.createdAt DESC")
-    Page<Story> findStoriesByStatusPaginated(@Param("status") StoryStatus status, Pageable pageable);
+    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.status = :status AND s.isActive = true AND s.expiresAt > :now ORDER BY s.createdAt DESC")
+    Page<Story> findStoriesByStatusPaginated(@Param("status") StoryStatus status, @Param("now") LocalDateTime now, Pageable pageable);
 
-    @Query("SELECT COUNT(s) FROM Story s WHERE s.status = 'PENDING'")
-    long countPendingStories();
+    @Query("SELECT COUNT(s) FROM Story s WHERE s.status = 'PENDING' AND s.expiresAt > :now")
+    long countPendingStories(@Param("now") LocalDateTime now);
 
-    @Query("SELECT COUNT(s) FROM Story s WHERE s.status = 'APPROVED'")
-    long countApprovedStories();
+    @Query("SELECT COUNT(s) FROM Story s WHERE s.status = 'APPROVED' AND s.expiresAt > :now")
+    long countApprovedStories(@Param("now") LocalDateTime now);
 
-    @Query("SELECT COUNT(s) FROM Story s WHERE s.status = 'REJECTED'")
-    long countRejectedStories();
+    @Query("SELECT COUNT(s) FROM Story s WHERE s.status = 'REJECTED' AND s.expiresAt > :now")
+    long countRejectedStories(@Param("now") LocalDateTime now);
 
-    @Query("SELECT s FROM Story s JOIN FETCH s.user ORDER BY s.createdAt DESC")
-    List<Story> findAllStoriesWithUser();
+    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.isActive = true AND s.expiresAt > :now ORDER BY s.createdAt DESC")
+    List<Story> findAllStoriesWithUser(@Param("now") LocalDateTime now);
 
-    @Query("SELECT s FROM Story s JOIN FETCH s.user ORDER BY s.createdAt DESC")
-    Page<Story> findAllStoriesWithUserPaginated(Pageable pageable);
+    @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.isActive = true AND s.expiresAt > :now ORDER BY s.createdAt DESC")
+    Page<Story> findAllStoriesWithUserPaginated(@Param("now") LocalDateTime now, Pageable pageable);
 
     /**
      * Find story by ID with user eagerly loaded
      */
     @Query("SELECT s FROM Story s JOIN FETCH s.user WHERE s.id = :id")
     Story findByIdWithUser(@Param("id") Long id);
+
+    /**
+     * Fix data inconsistencies - update stories that have approvedAt but wrong status
+     */
+    @Query("UPDATE Story s SET s.status = 'APPROVED' WHERE s.approvedAt IS NOT NULL AND s.status = 'PENDING'")
+    int fixApprovedStoriesStatus();
+
+    /**
+     * Fix data inconsistencies - update stories that have approvedAt but wrong status for rejected
+     */
+    @Query("UPDATE Story s SET s.status = 'REJECTED' WHERE s.approvedAt IS NOT NULL AND s.status = 'PENDING' AND s.expiresAt <= :now")
+    int fixRejectedStoriesStatus(@Param("now") LocalDateTime now);
 }
 

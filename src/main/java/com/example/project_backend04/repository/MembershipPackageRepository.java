@@ -16,4 +16,5 @@ public interface MembershipPackageRepository extends JpaRepository<MembershipPac
     @Query("SELECT mp FROM MembershipPackage mp WHERE mp.isActive = true ORDER BY mp.price ASC")
     List<MembershipPackage> findAllActiveOrderByPrice();
 
+    boolean existsByPackageId(String packageId);
 }

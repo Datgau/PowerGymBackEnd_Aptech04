@@ -61,14 +61,12 @@ public class Story {
     @JoinColumn(name = "approved_by")
     private User approvedBy;
 
-    // Like and Comment counts (calculated fields) - Made nullable for backward compatibility
     @Column(name = "like_count", nullable = true)
     private Long likeCount = 0L;
 
     @Column(name = "comment_count", nullable = true)
     private Long commentCount = 0L;
 
-    // Relationships for likes and comments
     @OneToMany(mappedBy = "story", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<StoryLike> likes = new ArrayList<>();
 
@@ -78,11 +76,8 @@ public class Story {
     @PrePersist
     void onCreate() {
         this.createdAt = LocalDateTime.now();
-        //Story tự động hết hạn sau 7 ngày
         this.expiresAt = this.createdAt.plusHours(168);
     }
-
-    // Helper methods to update counts
     public void incrementLikeCount() {
         this.likeCount = (this.likeCount != null ? this.likeCount : 0L) + 1;
     }

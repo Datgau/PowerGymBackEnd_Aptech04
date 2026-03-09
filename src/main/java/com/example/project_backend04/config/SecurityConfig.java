@@ -78,6 +78,14 @@ public class SecurityConfig {
                             // PUBLIC GET ENDPOINTS
                             .requestMatchers(HttpMethod.GET, "/api/gym/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/stories/**").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/membership-packages/active").permitAll()
+
+                            // MEMBERSHIP PACKAGES - ADMIN ONLY FOR WRITE OPERATIONS
+                            .requestMatchers(HttpMethod.GET, "/api/membership-packages/**").hasAnyRole("ADMIN","STAFF")
+                            .requestMatchers(HttpMethod.POST, "/api/membership-packages/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.PUT, "/api/membership-packages/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.DELETE, "/api/membership-packages/**").hasRole("ADMIN")
+                            // AUTHENTICATED ENDPOINTS
 
                             .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
                             .requestMatchers(HttpMethod.POST, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")

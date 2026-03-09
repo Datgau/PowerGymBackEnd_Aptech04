@@ -304,6 +304,36 @@ public class StoryController {
         }
     }
 
+    @PutMapping(value = "/{storyId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<StoryResponseDto>> updateStory(
+            @PathVariable Long storyId,
+            @ModelAttribute CreateStoryRequest request,
+            Authentication authentication
+    ) {
+        try {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            User user = userRepository.findById(userDetails.getId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            StoryResponseDto story = storyService.updateStory(storyId, request, user);
+
+            return ResponseEntity.ok(ApiResponse.success(story, "Story updated successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("permission")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error(e.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to update story: " + e.getMessage()));
+        }
+    }
+
 
     @GetMapping("/count/user/{userId}")
     public ResponseEntity<ApiResponse<Long>> countUserStories(
@@ -462,6 +492,27 @@ public class StoryController {
             com.example.project_backend04.enums.StoryStatus storyStatus =
                     com.example.project_backend04.enums.StoryStatus.valueOf(status.toUpperCase());
             List<StoryResponseDto> stories = storyService.getStoriesByStatus(storyStatus);
+            return ResponseEntity.ok(ApiResponse.success(stories));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Invalid status: " + status));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to get stories by status: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin/status/{status}/paginated")
+    public ResponseEntity<ApiResponse<Page<StoryResponseDto>>> getStoriesByStatusPaginated(
+            @PathVariable String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication
+    ) {
+        try {
+            com.example.project_backend04.enums.StoryStatus storyStatus =
+                    com.example.project_backend04.enums.StoryStatus.valueOf(status.toUpperCase());
+            Page<StoryResponseDto> stories = storyService.getStoriesByStatus(storyStatus, page, size);
             return ResponseEntity.ok(ApiResponse.success(stories));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
