@@ -58,6 +58,40 @@ public class AuthController {
                 .body(response);
     }
 
+    @PostMapping("/resend-otp")
+    public ResponseEntity<ApiResponse<RegisterResponse>> resendOtp(@RequestBody ResendOtpRequest request) {
+        try {
+            ApiResponse<RegisterResponse> response = authService.resendOtp(request.getEmail());
+            return ResponseEntity
+                    .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
+                    .body(response);
+        } catch (MessagingException e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Lỗi khi gửi email OTP", null, 500));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Gửi lại OTP thất bại: " + e.getMessage(), null, 500));
+        }
+    }
+
+    @PostMapping("/otp-status")
+    public ResponseEntity<ApiResponse<com.example.project_backend04.dto.response.Auth.OtpStatusResponse>> getOtpStatus(@RequestBody OtpStatusRequest request) {
+        try {
+            ApiResponse<com.example.project_backend04.dto.response.Auth.OtpStatusResponse> response = authService.getOtpStatus(request.getEmail());
+            return ResponseEntity
+                    .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
+                    .body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Lỗi khi lấy trạng thái OTP: " + e.getMessage(), null, 500));
+        }
+    }
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request,

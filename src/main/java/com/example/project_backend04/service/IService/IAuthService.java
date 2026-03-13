@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 public interface IAuthService {
     ApiResponse<RegisterResponse> register(RegisterRequest request) throws MessagingException;
     ApiResponse<VerifyOtpResponse> verifyOtp(String email, String otp);
+    ApiResponse<RegisterResponse> resendOtp(String email) throws MessagingException;
+    ApiResponse<OtpStatusResponse> getOtpStatus(String email);
     ApiResponse<LoginResponse> login(LoginRequest request, HttpServletResponse response);
     ApiResponse<JwtResponse> refreshToken(String refreshToken, HttpServletResponse response);
     ApiResponse<Void> logout(String username);

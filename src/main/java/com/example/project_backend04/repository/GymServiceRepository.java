@@ -18,13 +18,19 @@ public interface GymServiceRepository extends JpaRepository<GymService, Long> {
     @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images WHERE gs.isActive = true")
     List<GymService> findByIsActiveTrueWithImages();
 
+    @Query("SELECT gs FROM GymService gs WHERE gs.isActive = true")
+    Page<GymService> findByIsActiveTrueWithImagesPaginated(Pageable pageable);
+    
+    @Query("SELECT DISTINCT gs FROM GymService gs LEFT JOIN FETCH gs.images WHERE gs.id IN :ids")
+    List<GymService> findByIdsWithImages(@Param("ids") List<Long> ids);
+
     @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images WHERE gs.id = :id")
     Optional<GymService> findByIdWithImages(@Param("id") Long id);
 
     @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images")
     List<GymService> findAllWithImages();
 
-    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images")
+    @Query("SELECT gs FROM GymService gs")
     Page<GymService> findAllWithImagesPaginated(Pageable pageable);
 
     // Original methods (giữ lại để backward compatibility)

@@ -38,7 +38,6 @@ public class DataInitializer {
                         return roleRepository.save(role);
                     });
 
-            // Thêm role TRAINER
             Role trainerRole = roleRepository.findRoleByName("TRAINER")
                     .orElseGet(() -> {
                         Role role = new Role();
@@ -47,7 +46,6 @@ public class DataInitializer {
                         return roleRepository.save(role);
                     });
 
-            // Thêm role STAFF
             Role staffRole = roleRepository.findRoleByName("STAFF")
                     .orElseGet(() -> {
                         Role role = new Role();

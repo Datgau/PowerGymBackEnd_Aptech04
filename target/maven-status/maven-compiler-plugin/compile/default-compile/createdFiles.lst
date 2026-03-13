@@ -16,15 +16,15 @@ com\example\project_backend04\entity\Story.class
 com\example\project_backend04\dto\request\Chat\UserSearchResult.class
 com\example\project_backend04\entity\Comment.class
 com\example\project_backend04\dto\request\Auth\RefreshTokenRequest.class
+com\example\project_backend04\dto\response\Auth\OtpStatusResponse$OtpStatusResponseBuilder.class
 com\example\project_backend04\dto\request\Chat\ChatMessageDto.class
 com\example\project_backend04\dto\response\Post\PostResponse.class
 com\example\project_backend04\dto\response\Auth\FacebookUserData.class
 com\example\project_backend04\dto\request\Role\RoleUpdateDto.class
 com\example\project_backend04\dto\response\Notification\NotificationDTO.class
-com\example\project_backend04\controller\UploadController.class
 com\example\project_backend04\entity\Post.class
+com\example\project_backend04\dto\request\Auth\ResendOtpRequest.class
 com\example\project_backend04\dto\request\Auth\LoginRequest.class
-com\example\project_backend04\entity\ChatMessage.class
 com\example\project_backend04\entity\Tag.class
 com\example\project_backend04\dto\request\Chat\ConversationDto.class
 com\example\project_backend04\dto\response\Auth\RegisterResponse.class
@@ -46,7 +46,9 @@ com\example\project_backend04\dto\request\Role\RoleCreateDto.class
 com\example\project_backend04\controller\admin\AdminController.class
 com\example\project_backend04\service\UserService.class
 com\example\project_backend04\dto\request\Post\CreatePostRequest.class
+com\example\project_backend04\dto\response\Auth\OtpStatusResponse.class
 com\example\project_backend04\controller\AuthController.class
+com\example\project_backend04\dto\request\Auth\OtpStatusRequest.class
 com\example\project_backend04\entity\Follow.class
 com\example\project_backend04\config\WebConfig.class
 com\example\project_backend04\service\IService\IAuthService.class

@@ -18,6 +18,7 @@ import com.example.project_backend04.service.IService.IAuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.MessagingException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -32,6 +33,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService implements IAuthService {
@@ -51,6 +53,7 @@ public class AuthService implements IAuthService {
     public ApiResponse<RegisterResponse> register(RegisterRequest request) {
 
         LocalDateTime now = LocalDateTime.now();
+        
         if (authRepository.existsByEmail(request.getEmail())) {
             return new ApiResponse<>(
                     false,
@@ -62,38 +65,94 @@ public class AuthService implements IAuthService {
 
         Optional<PendingUser> pendingOptional = pendingUserRepository.findByEmail(request.getEmail());
 
+        String otp = generateOtp();
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        LocalDateTime otpExpiry = now.plusMinutes(1);
+
         if (pendingOptional.isPresent()) {
             PendingUser existingPending = pendingOptional.get();
-            if (existingPending.getOtpExpiry().isAfter(now)) {
-                long secondsLeft = Duration.between(now, existingPending.getOtpExpiry()).getSeconds();
-
-                return new ApiResponse<>(
-                        false,
-                        "An OTP has already been sent to this email. Please wait " + secondsLeft + " seconds.",
-                        null,
-                        400
+            LocalDateTime tenMinutesAfterCreation = existingPending.getCreatedAt().plusMinutes(10);
+            
+            if (now.isAfter(tenMinutesAfterCreation)) {
+                // Delete expired PendingUser and create new one immediately
+                pendingUserRepository.delete(existingPending);
+                
+                PendingUser newPendingUser = new PendingUser();
+                newPendingUser.setEmail(request.getEmail());
+                newPendingUser.setPassword(encodedPassword);
+                newPendingUser.setFullName(request.getFullName());
+                newPendingUser.setOtp(otp);
+                newPendingUser.setOtpExpiry(otpExpiry);
+                
+                try {
+                    pendingUserRepository.save(newPendingUser);
+                } catch (Exception e) {
+                    return new ApiResponse<>(
+                            false,
+                            "Failed to process registration. Please try again.",
+                            null,
+                            500
+                    );
+                }
+            } else {
+                // Session not expired - check OTP validity
+                if (existingPending.getOtpExpiry().isAfter(now)) {
+                    long secondsLeft = Duration.between(now, existingPending.getOtpExpiry()).getSeconds();
+                    return new ApiResponse<>(
+                            false,
+                            "An OTP has already been sent to this email. Please wait " + secondsLeft + " seconds or use resend OTP.",
+                            null,
+                            400
+                    );
+                }
+                
+                // OTP expired but session valid - update with new OTP
+                int updatedRows = pendingUserRepository.updatePendingUserByEmail(
+                    request.getEmail(), 
+                    encodedPassword, 
+                    request.getFullName(), 
+                    otp, 
+                    otpExpiry
                 );
+                
+                if (updatedRows == 0) {
+                    return new ApiResponse<>(
+                            false,
+                            "Failed to update registration. Please try again.",
+                            null,
+                            500
+                    );
+                }
             }
-            pendingUserRepository.delete(existingPending);
+        } else {
+            // Create new PendingUser
+            PendingUser pendingUser = new PendingUser();
+            pendingUser.setEmail(request.getEmail());
+            pendingUser.setPassword(encodedPassword);
+            pendingUser.setFullName(request.getFullName());
+            pendingUser.setOtp(otp);
+            pendingUser.setOtpExpiry(otpExpiry);
+
+            try {
+                pendingUserRepository.save(pendingUser);
+            } catch (Exception e) {
+                if (e.getMessage().contains("duplicate key") || e.getMessage().contains("unique constraint")) {
+                    return new ApiResponse<>(
+                            false,
+                            "Registration is already in progress for this email. Please try again in a few moments.",
+                            null,
+                            409
+                    );
+                }
+                throw e;
+            }
         }
 
-        PendingUser pendingUser = new PendingUser();
-        pendingUser.setEmail(request.getEmail());
-        pendingUser.setPassword(passwordEncoder.encode(request.getPassword()));
-        pendingUser.setFullName(request.getFullName());
-
-        String otp = generateOtp();
-        pendingUser.setOtp(otp);
-        pendingUser.setOtpExpiry(now.plusMinutes(5));
-
-        pendingUserRepository.save(pendingUser);
-
+        // Send email asynchronously
         try {
-            emailService.sendOtpEmail(request.getEmail(), otp);
+            emailService.sendOtpEmailAsync(request.getEmail(), otp);
         } catch (Exception e) {
-            e.printStackTrace();
-            pendingUserRepository.delete(pendingUser);
-            return new ApiResponse<>(false, "Unable to send OTP email.", null, 500);
+            log.warn("Email service may be temporarily unavailable, but OTP has been created: {}", e.getMessage());
         }
 
         return new ApiResponse<>(
@@ -122,15 +181,19 @@ public class AuthService implements IAuthService {
         PendingUser pendingUser = optionalPending.get();
         LocalDateTime now = LocalDateTime.now();
 
-        if (pendingUser.getOtpExpiry().isBefore(now)) {
+        LocalDateTime tenMinutesAfterCreation = pendingUser.getCreatedAt().plusMinutes(10);
+        if (now.isAfter(tenMinutesAfterCreation)) {
             pendingUserRepository.delete(pendingUser);
-            return new ApiResponse<>(false, "OTP has expired.", null, 400);
+            return new ApiResponse<>(false, "Registration session has expired. Please register again.", null, 400);
+        }
+
+        if (pendingUser.getOtpExpiry().isBefore(now)) {
+            return new ApiResponse<>(false, "OTP has expired. Please use resend OTP.", null, 400);
         }
 
         if (!pendingUser.getOtp().equals(otp)) {
             return new ApiResponse<>(false, "Invalid OTP.", null, 400);
         }
-
         User user = new User();
         user.setEmail(pendingUser.getEmail());
         user.setFullName(pendingUser.getFullName());
@@ -140,16 +203,172 @@ public class AuthService implements IAuthService {
                 .orElseThrow(() -> new RuntimeException("Role USER does not exist."));
 
         user.setRole(defaultRole);
+        user.setIsActive(true);
         authRepository.save(user);
         pendingUserRepository.delete(pendingUser);
 
         try {
-            emailService.sendSuccessRegisterEmail(user.getEmail(), user.getFullName());
+            emailService.sendSuccessRegisterEmailAsync(user.getEmail(), user.getFullName());
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warn("Welcome email may not be sent: {}", e.getMessage());
         }
 
         return new ApiResponse<>(true, "Email verification successful!", null, 200);
+    }
+
+    @Transactional
+    @Override
+    public ApiResponse<RegisterResponse> resendOtp(String email) throws MessagingException {
+        
+        if (authRepository.existsByEmail(email)) {
+            return new ApiResponse<>(
+                    false,
+                    "Email has already been verified and registered.",
+                    null,
+                    400
+            );
+        }
+
+        Optional<PendingUser> optionalPending = pendingUserRepository.findByEmail(email);
+        if (optionalPending.isEmpty()) {
+            return new ApiResponse<>(
+                    false,
+                    "Email does not exist. Please register first.",
+                    null,
+                    404
+            );
+        }
+
+        PendingUser pendingUser = optionalPending.get();
+        LocalDateTime now = LocalDateTime.now();
+
+        LocalDateTime tenMinutesAfterCreation = pendingUser.getCreatedAt().plusMinutes(10);
+        if (now.isAfter(tenMinutesAfterCreation)) {
+            pendingUserRepository.delete(pendingUser);
+            return new ApiResponse<>(
+                    false,
+                    "Registration session has expired. Please register again.",
+                    null,
+                    400
+            );
+        }
+
+        if (pendingUser.getOtpExpiry().isAfter(now)) {
+            long secondsLeft = Duration.between(now, pendingUser.getOtpExpiry()).getSeconds();
+            return new ApiResponse<>(
+                    false,
+                    "Please wait " + secondsLeft + " seconds before requesting a new OTP.",
+                    null,
+                    400
+            );
+        }
+        String newOtp = generateOtp();
+        LocalDateTime newOtpExpiry = now.plusMinutes(1);
+
+        int updatedRows = pendingUserRepository.updatePendingUserByEmail(
+                email,
+                pendingUser.getPassword(),
+                pendingUser.getFullName(),
+                newOtp,
+                newOtpExpiry
+        );
+
+        if (updatedRows == 0) {
+            return new ApiResponse<>(
+                    false,
+                    "Failed to resend OTP. Please try again.",
+                    null,
+                    500
+            );
+        }
+        try {
+            emailService.sendOtpEmailAsync(email, newOtp);
+        } catch (Exception e) {
+            log.warn("Email service may be temporarily unavailable for resend: {}", e.getMessage());
+        }
+
+        return new ApiResponse<>(
+                true,
+                "A new OTP has been sent to your email. Please verify within 10 minutes.",
+                null,
+                200
+        );
+    }
+
+    @Override
+    public ApiResponse<OtpStatusResponse> getOtpStatus(String email) {
+        
+        if (authRepository.existsByEmail(email)) {
+            return new ApiResponse<>(
+                    false,
+                    "Email has already been verified and registered.",
+                    OtpStatusResponse.builder()
+                            .canResend(false)
+                            .secondsUntilResend(0)
+                            .sessionRemainingSeconds(0)
+                            .sessionExpired(true)
+                            .message("Email already registered")
+                            .build(),
+                    400
+            );
+        }
+
+        Optional<PendingUser> optionalPending = pendingUserRepository.findByEmail(email);
+        if (optionalPending.isEmpty()) {
+            return new ApiResponse<>(
+                    false,
+                    "Email does not exist. Please register first.",
+                    OtpStatusResponse.builder()
+                            .canResend(false)
+                            .secondsUntilResend(0)
+                            .sessionRemainingSeconds(0)
+                            .sessionExpired(true)
+                            .message("Email not found")
+                            .build(),
+                    404
+            );
+        }
+
+        PendingUser pendingUser = optionalPending.get();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime tenMinutesAfterCreation = pendingUser.getCreatedAt().plusMinutes(10);
+        long sessionRemainingSeconds = Duration.between(now, tenMinutesAfterCreation).getSeconds();
+        
+        if (now.isAfter(tenMinutesAfterCreation)) {
+            return new ApiResponse<>(
+                    false,
+                    "Registration session has expired.",
+                    OtpStatusResponse.builder()
+                            .canResend(false)
+                            .secondsUntilResend(0)
+                            .sessionRemainingSeconds(0)
+                            .sessionExpired(true)
+                            .message("Session expired")
+                            .build(),
+                    400
+            );
+        }
+
+        // Check OTP expiry (1 minute)
+        boolean canResend = pendingUser.getOtpExpiry().isBefore(now);
+        long secondsUntilResend = 0;
+        
+        if (!canResend) {
+            secondsUntilResend = Duration.between(now, pendingUser.getOtpExpiry()).getSeconds();
+        }
+
+        return new ApiResponse<>(
+                true,
+                "OTP status retrieved successfully.",
+                OtpStatusResponse.builder()
+                        .canResend(canResend)
+                        .secondsUntilResend(Math.max(0, secondsUntilResend))
+                        .sessionRemainingSeconds(Math.max(0, sessionRemainingSeconds))
+                        .sessionExpired(false)
+                        .message(canResend ? "Can resend OTP" : "Please wait before resending")
+                        .build(),
+                200
+        );
     }
 
 
@@ -273,7 +492,9 @@ public class AuthService implements IAuthService {
     @Scheduled(fixedRate = 60000)
     public void cleanExpiredPendingUsers() {
         LocalDateTime now = LocalDateTime.now();
-        pendingUserRepository.deleteAllByOtpExpiryBefore(now);
+        LocalDateTime tenMinutesAgo = now.minusMinutes(10);
+        
+        pendingUserRepository.deleteAllByCreatedAtBefore(tenMinutesAgo);
     }
 
 //    ------------------------
@@ -369,8 +590,6 @@ public class AuthService implements IAuthService {
                 200
         );
     }
-
-
     @Transactional
     protected User getOrCreateOAuthUser(
             String provider,

@@ -19,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -39,11 +41,57 @@ public class GymServiceService implements IGymService {
                 .toList();
     }
 
+    // ===================== GET PUBLIC SERVICES WITH PAGINATION =====================
+    @Override
+    @Transactional(readOnly = true)
+    public Page<GymServiceResponse> getPublicServices(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Page<GymService> servicePage = gymServiceRepository.findByIsActiveTrueWithImagesPaginated(pageable);
+        
+        // Fetch images separately to avoid pagination count issue
+        List<Long> ids = servicePage.getContent().stream()
+                .map(GymService::getId)
+                .toList();
+        
+        if (!ids.isEmpty()) {
+            List<GymService> servicesWithImages = gymServiceRepository.findByIdsWithImages(ids);
+            // Map back to maintain order
+            return servicePage.map(service -> {
+                GymService withImages = servicesWithImages.stream()
+                        .filter(s -> s.getId().equals(service.getId()))
+                        .findFirst()
+                        .orElse(service);
+                return mapToDto(withImages);
+            });
+        }
+        
+        return servicePage.map(this::mapToDto);
+    }
+
     // ===================== GET SERVICE BY ID =====================
     public GymServiceResponse getServiceById(Long id) {
         GymService service = gymServiceRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
         return mapToDto(service);
+    }
+
+    // ===================== GET SERVICE REGISTRATION STATS =====================
+    @Transactional(readOnly = true)
+    public Map<String, Object> getServiceRegistrationStats(Long id) {
+        GymService service = gymServiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
+        
+        Long registrationCount = serviceRegistrationRepository.countActiveRegistrations(service);
+        
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("serviceId", id);
+        stats.put("serviceName", service.getName());
+        stats.put("registrationCount", registrationCount);
+        stats.put("maxParticipants", service.getMaxParticipants());
+        stats.put("availableSlots", service.getMaxParticipants() - registrationCount);
+        stats.put("isFullyBooked", registrationCount >= service.getMaxParticipants());
+        
+        return stats;
     }
 
     // ===================== GET ALL SERVICES =====================
@@ -60,6 +108,24 @@ public class GymServiceService implements IGymService {
     public Page<GymServiceResponse> getAllServices(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<GymService> servicePage = gymServiceRepository.findAllWithImagesPaginated(pageable);
+        
+        // Fetch images separately to avoid pagination count issue
+        List<Long> ids = servicePage.getContent().stream()
+                .map(GymService::getId)
+                .toList();
+        
+        if (!ids.isEmpty()) {
+            List<GymService> servicesWithImages = gymServiceRepository.findByIdsWithImages(ids);
+            // Map back to maintain order
+            return servicePage.map(service -> {
+                GymService withImages = servicesWithImages.stream()
+                        .filter(s -> s.getId().equals(service.getId()))
+                        .findFirst()
+                        .orElse(service);
+                return mapToDto(withImages);
+            });
+        }
+        
         return servicePage.map(this::mapToDto);
     }
 

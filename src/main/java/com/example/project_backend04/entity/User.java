@@ -1,5 +1,6 @@
 package com.example.project_backend04.entity;
 
+import com.example.project_backend04.enums.ServiceCategory;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -42,6 +43,9 @@ public class User {
 
     @Column(length = 512)
     private String refreshToken;
+
+    @Column(nullable = false)
+    private Boolean isActive = true;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createDate;
@@ -88,8 +92,35 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ServiceRegistration> serviceRegistrations;
 
+    // Trainer specialties (only for users with TRAINER role)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TrainerSpecialty> trainerSpecialties;
+
     @PrePersist
     protected void onCreate() {
         this.createDate = LocalDateTime.now();
+    }
+
+    // Helper methods
+    public boolean isTrainer() {
+        return this.role != null && "TRAINER".equals(this.role.getName());
+    }
+
+    public boolean isAdmin() {
+        return this.role != null && "ADMIN".equals(this.role.getName());
+    }
+
+    public boolean isUser() {
+        return this.role != null && "USER".equals(this.role.getName());
+    }
+
+    public boolean hasTrainerSpecialties() {
+        return this.trainerSpecialties != null && !this.trainerSpecialties.isEmpty();
+    }
+
+    public boolean canTeachCategory(ServiceCategory category) {
+        if (!isTrainer()) return false;
+        return this.trainerSpecialties != null && this.trainerSpecialties.stream()
+                .anyMatch(specialty -> specialty.getSpecialty() == category && specialty.getIsActive());
     }
 }

@@ -27,4 +27,14 @@ public class PendingUser {
     private String otp;
 
     private LocalDateTime otpExpiry;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
 }

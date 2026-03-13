@@ -45,12 +45,12 @@ public class GlobalNotificationListener {
 
     private String buildMessage(String entityName, String action) {
         return switch (action) {
-            case "CREATED" -> entityName + " mới đã được tạo";
-            case "UPDATED" -> entityName + " đã được cập nhật";
-            case "DELETED" -> entityName + " đã được xóa";
-            case "REGISTERED" -> "Đăng ký " + entityName + " thành công";
-            case "PAYMENT_SUCCESS" -> "Thanh toán thành công";
-            case "PAYMENT_FAILED" -> "Thanh toán thất bại";
+            case "CREATED" -> "New " + entityName + " has been created";
+            case "UPDATED" -> entityName + " has been updated";
+            case "DELETED" -> entityName + " has been deleted";
+            case "REGISTERED" -> entityName + " registration successful";
+            case "PAYMENT_SUCCESS" -> "Payment successful";
+            case "PAYMENT_FAILED" -> "Payment failed";
             default -> entityName + " " + action;
         };
     }

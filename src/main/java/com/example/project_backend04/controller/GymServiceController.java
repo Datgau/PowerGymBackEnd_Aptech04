@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/gym/services")
@@ -26,6 +27,20 @@ public class GymServiceController {
     public ResponseEntity<ApiResponse<List<GymServiceResponse>>> getActiveServices() {
         try {
             List<GymServiceResponse> services = gymService.getPublicServices();
+            return ResponseEntity.ok(ApiResponse.success(services));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch services: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/active/paginated")
+    public ResponseEntity<ApiResponse<Page<GymServiceResponse>>> getActiveServicesPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size
+    ) {
+        try {
+            Page<GymServiceResponse> services = gymService.getPublicServices(page, size);
             return ResponseEntity.ok(ApiResponse.success(services));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -74,6 +89,24 @@ public class GymServiceController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to fetch service: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/registration-stats")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getServiceRegistrationStats(@PathVariable Long id) {
+        try {
+            Map<String, Object> stats = gymService.getServiceRegistrationStats(id);
+            return ResponseEntity.ok(ApiResponse.success(stats));
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(e.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch registration stats: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch registration stats: " + e.getMessage()));
         }
     }
 

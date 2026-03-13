@@ -79,12 +79,24 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.GET, "/api/gym/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/stories/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/membership-packages/active").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/equipments/**").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/equipment-categories/**").permitAll()
 
                             // MEMBERSHIP PACKAGES - ADMIN ONLY FOR WRITE OPERATIONS
                             .requestMatchers(HttpMethod.GET, "/api/membership-packages/**").hasAnyRole("ADMIN","STAFF")
                             .requestMatchers(HttpMethod.POST, "/api/membership-packages/**").hasRole("ADMIN")
                             .requestMatchers(HttpMethod.PUT, "/api/membership-packages/**").hasRole("ADMIN")
                             .requestMatchers(HttpMethod.DELETE, "/api/membership-packages/**").hasRole("ADMIN")
+
+                            // EQUIPMENTS - ADMIN ONLY FOR WRITE OPERATIONS
+                            .requestMatchers(HttpMethod.POST, "/api/equipments/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.PUT, "/api/equipments/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.DELETE, "/api/equipments/**").hasRole("ADMIN")
+
+                            // EQUIPMENT CATEGORIES - ADMIN ONLY FOR WRITE OPERATIONS
+                            .requestMatchers(HttpMethod.POST, "/api/equipment-categories/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.PUT, "/api/equipment-categories/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.DELETE, "/api/equipment-categories/**").hasRole("ADMIN")
                             // AUTHENTICATED ENDPOINTS
 
                             .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
