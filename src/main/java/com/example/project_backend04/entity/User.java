@@ -68,14 +68,6 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments;
 
-    // Người theo dõi tôi
-    @OneToMany(mappedBy = "following", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Follow> followers;
-
-    // Tôi theo dõi ai
-    @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Follow> following;
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Notification> notifications;
 
@@ -95,6 +87,10 @@ public class User {
     // Trainer specialties (only for users with TRAINER role)
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrainerSpecialty> trainerSpecialties;
+
+    // Trainer documents (only for users with TRAINER role)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TrainerDocument> trainerDocuments;
 
     @PrePersist
     protected void onCreate() {

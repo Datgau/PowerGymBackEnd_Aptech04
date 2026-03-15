@@ -1,0 +1,429 @@
+package com.example.project_backend04.service;
+
+import com.example.project_backend04.dto.request.Trainer.CreateTrainerRequest;
+import com.example.project_backend04.dto.request.Trainer.UploadTrainerDocumentRequest;
+import com.example.project_backend04.dto.response.Shared.ApiResponse;
+import com.example.project_backend04.dto.response.Trainer.TrainerResponse;
+import com.example.project_backend04.entity.*;
+import com.example.project_backend04.enums.ServiceCategory;
+import com.example.project_backend04.repository.*;
+import com.example.project_backend04.service.IService.ICloudinaryService;
+import com.example.project_backend04.service.IService.ITrainerService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class TrainerService implements ITrainerService {
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final TrainerSpecialtyRepository trainerSpecialtyRepository;
+    private final TrainerDocumentRepository trainerDocumentRepository;
+    private final ICloudinaryService cloudinaryService;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public ApiResponse<TrainerResponse> createTrainer(CreateTrainerRequest request) {
+        try {
+            // Kiểm tra email đã tồn tại
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                return new ApiResponse<>(false, "Email đã tồn tại trong hệ thống", null, 400);
+            }
+
+            // Lấy role TRAINER
+            Role trainerRole = roleRepository.findRoleByName("TRAINER")
+                    .orElseThrow(() -> new RuntimeException("Role TRAINER không tồn tại"));
+
+            // Tạo mật khẩu ngẫu nhiên
+            String randomPassword = generateRandomPassword();
+
+            // Tạo User entity
+            User trainer = new User();
+            trainer.setEmail(request.getEmail());
+            trainer.setFullName(request.getFullName());
+            trainer.setPhoneNumber(request.getPhoneNumber());
+            trainer.setBio(request.getBio());
+            trainer.setPassword(passwordEncoder.encode(randomPassword));
+            trainer.setRole(trainerRole);
+            trainer.setIsActive(true);
+
+            // Lưu trainer
+            User savedTrainer = userRepository.save(trainer);
+
+            // Tạo specialties
+            List<TrainerSpecialty> specialties = request.getSpecialties().stream()
+                    .map(spec -> {
+                        TrainerSpecialty specialty = new TrainerSpecialty();
+                        specialty.setUser(savedTrainer);
+                        specialty.setSpecialty(spec.getSpecialty());
+                        specialty.setDescription(spec.getDescription());
+                        specialty.setExperienceYears(spec.getExperienceYears());
+                        specialty.setCertifications(spec.getCertifications());
+                        specialty.setLevel(spec.getLevel());
+                        specialty.setIsActive(true);
+                        return specialty;
+                    })
+                    .collect(Collectors.toList());
+
+            trainerSpecialtyRepository.saveAll(specialties);
+
+            // Gửi email thông báo
+            try {
+                emailService.sendPasswordEmail(request.getEmail(), request.getFullName(), randomPassword);
+            } catch (Exception e) {
+                System.err.println("Failed to send email: " + e.getMessage());
+            }
+
+            // Trả về response
+            TrainerResponse response = mapToTrainerResponse(savedTrainer);
+            return new ApiResponse<>(true, "Tạo trainer thành công. Mật khẩu đã được gửi qua email.", response, 201);
+
+        } catch (Exception e) {
+            return new ApiResponse<>(false, "Lỗi khi tạo trainer: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public ApiResponse<String> uploadTrainerAvatar(Long trainerId, MultipartFile file) {
+        try {
+            User trainer = findTrainerById(trainerId);
+            if (trainer == null) {
+                return new ApiResponse<>(false, "Không tìm thấy trainer", null, 404);
+            }
+
+            String avatarUrl = cloudinaryService.uploadSingleFile(file, "trainer-avatars");
+            trainer.setAvatar(avatarUrl);
+            userRepository.save(trainer);
+
+            return new ApiResponse<>(true, "Upload avatar thành công", avatarUrl, 200);
+        } catch (IOException e) {
+            return new ApiResponse<>(false, "Lỗi upload avatar: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public ApiResponse<String> uploadTrainerCoverPhoto(Long trainerId, MultipartFile file) {
+        try {
+            User trainer = findTrainerById(trainerId);
+            if (trainer == null) {
+                return new ApiResponse<>(false, "Không tìm thấy trainer", null, 404);
+            }
+
+            String coverUrl = cloudinaryService.uploadSingleFile(file, "trainer-covers");
+            trainer.setCoverPhoto(coverUrl);
+            userRepository.save(trainer);
+
+            return new ApiResponse<>(true, "Upload cover photo thành công", coverUrl, 200);
+        } catch (IOException e) {
+            return new ApiResponse<>(false, "Lỗi upload cover photo: " + e.getMessage(), null, 500);
+        }
+    }
+    @Override
+    public ApiResponse<TrainerResponse.TrainerDocumentResponse> uploadTrainerDocument(
+            Long trainerId, MultipartFile file, UploadTrainerDocumentRequest request) {
+        try {
+            User trainer = findTrainerById(trainerId);
+            if (trainer == null) {
+                return new ApiResponse<>(false, "Không tìm thấy trainer", null, 404);
+            }
+
+            // Upload file lên Cloudinary
+            String fileUrl = cloudinaryService.uploadSingleFile(file, "trainer-documents");
+
+            // Tạo TrainerDocument
+            TrainerDocument document = new TrainerDocument();
+            document.setUser(trainer);
+            document.setDocumentType(request.getDocumentType());
+            document.setFileName(file.getOriginalFilename());
+            document.setFileUrl(fileUrl);
+            document.setDescription(request.getDescription());
+            document.setExpiryDate(request.getExpiryDate());
+            document.setIsVerified(false);
+            document.setIsActive(true);
+
+            TrainerDocument savedDocument = trainerDocumentRepository.save(document);
+
+            // Map to response
+            TrainerResponse.TrainerDocumentResponse response = mapToDocumentResponse(savedDocument);
+            return new ApiResponse<>(true, "Upload document thành công", response, 201);
+
+        } catch (IOException e) {
+            return new ApiResponse<>(false, "Lỗi upload document: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public ApiResponse<TrainerResponse> getTrainerById(Long trainerId) {
+        User trainer = findTrainerById(trainerId);
+        if (trainer == null) {
+            return new ApiResponse<>(false, "Không tìm thấy trainer", null, 404);
+        }
+
+        TrainerResponse response = mapToTrainerResponse(trainer);
+        return new ApiResponse<>(true, "Lấy thông tin trainer thành công", response, 200);
+    }
+
+    @Override
+    public ApiResponse<Page<TrainerResponse>> getAllTrainers(int page, int size) {
+        try {
+            Role trainerRole = roleRepository.findRoleByName("TRAINER")
+                    .orElseThrow(() -> new RuntimeException("Role TRAINER không tồn tại"));
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createDate").descending());
+            Page<User> trainers = userRepository.findByRoleAndIsActiveTrue(trainerRole, pageable);
+
+            Page<TrainerResponse> response = trainers.map(this::mapToTrainerResponse);
+            return new ApiResponse<>(true, "Lấy danh sách trainers thành công", response, 200);
+
+        } catch (Exception e) {
+            return new ApiResponse<>(false, "Lỗi khi lấy danh sách trainers: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public ApiResponse<List<TrainerResponse>> getTrainersBySpecialty(String specialty) {
+        try {
+            ServiceCategory serviceCategory = ServiceCategory.valueOf(specialty.toUpperCase());
+            List<User> trainers = trainerSpecialtyRepository.findTrainersByCategory(serviceCategory);
+
+            List<TrainerResponse> response = trainers.stream()
+                    .map(this::mapToTrainerResponse)
+                    .collect(Collectors.toList());
+
+            return new ApiResponse<>(true, "Lấy trainers theo specialty thành công", response, 200);
+
+        } catch (IllegalArgumentException e) {
+            return new ApiResponse<>(false, "Specialty không hợp lệ", null, 400);
+        } catch (Exception e) {
+            return new ApiResponse<>(false, "Lỗi khi lấy trainers: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public ApiResponse<String> verifyTrainerDocument(Long documentId, Boolean isVerified) {
+        try {
+            TrainerDocument document = trainerDocumentRepository.findById(documentId)
+                    .orElse(null);
+
+            if (document == null) {
+                return new ApiResponse<>(false, "Không tìm thấy document", null, 404);
+            }
+
+            document.setIsVerified(isVerified);
+            trainerDocumentRepository.save(document);
+
+            String message = isVerified ? "Xác minh document thành công" : "Hủy xác minh document thành công";
+            return new ApiResponse<>(true, message, null, 200);
+
+        } catch (Exception e) {
+            return new ApiResponse<>(false, "Lỗi khi verify document: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public ApiResponse<String> deleteTrainerDocument(Long trainerId, Long documentId) {
+        try {
+            User trainer = findTrainerById(trainerId);
+            if (trainer == null) {
+                return new ApiResponse<>(false, "Không tìm thấy trainer", null, 404);
+            }
+
+            TrainerDocument document = trainerDocumentRepository
+                    .findByIdAndUserAndIsActiveTrue(documentId, trainer)
+                    .orElse(null);
+
+            if (document == null) {
+                return new ApiResponse<>(false, "Không tìm thấy document", null, 404);
+            }
+
+            // Soft delete
+            document.setIsActive(false);
+            trainerDocumentRepository.save(document);
+
+            return new ApiResponse<>(true, "Xóa document thành công", null, 200);
+
+        } catch (Exception e) {
+            return new ApiResponse<>(false, "Lỗi khi xóa document: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public ApiResponse<TrainerResponse> updateTrainer(Long trainerId, CreateTrainerRequest request) {
+        try {
+            User trainer = findTrainerById(trainerId);
+            if (trainer == null) {
+                return new ApiResponse<>(false, "Không tìm thấy trainer", null, 404);
+            }
+
+            // Cập nhật thông tin cơ bản
+            trainer.setFullName(request.getFullName());
+            trainer.setPhoneNumber(request.getPhoneNumber());
+            trainer.setBio(request.getBio());
+
+            User updatedTrainer = userRepository.save(trainer);
+
+            // Cập nhật specialties (xóa cũ, thêm mới)
+            List<TrainerSpecialty> oldSpecialties = trainerSpecialtyRepository
+                    .findByUserAndIsActiveTrueOrderBySpecialtyAsc(trainer);
+            
+            // Deactivate old specialties
+            oldSpecialties.forEach(spec -> spec.setIsActive(false));
+            trainerSpecialtyRepository.saveAll(oldSpecialties);
+
+            // Add new specialties
+            List<TrainerSpecialty> newSpecialties = request.getSpecialties().stream()
+                    .map(spec -> {
+                        TrainerSpecialty specialty = new TrainerSpecialty();
+                        specialty.setUser(updatedTrainer);
+                        specialty.setSpecialty(spec.getSpecialty());
+                        specialty.setDescription(spec.getDescription());
+                        specialty.setExperienceYears(spec.getExperienceYears());
+                        specialty.setCertifications(spec.getCertifications());
+                        specialty.setLevel(spec.getLevel());
+                        specialty.setIsActive(true);
+                        return specialty;
+                    })
+                    .collect(Collectors.toList());
+
+            trainerSpecialtyRepository.saveAll(newSpecialties);
+
+            TrainerResponse response = mapToTrainerResponse(updatedTrainer);
+            return new ApiResponse<>(true, "Cập nhật trainer thành công", response, 200);
+
+        } catch (Exception e) {
+            return new ApiResponse<>(false, "Lỗi khi cập nhật trainer: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public ApiResponse<String> deactivateTrainer(Long trainerId) {
+        try {
+            User trainer = findTrainerById(trainerId);
+            if (trainer == null) {
+                return new ApiResponse<>(false, "Không tìm thấy trainer", null, 404);
+            }
+
+            trainer.setIsActive(false);
+            userRepository.save(trainer);
+
+            return new ApiResponse<>(true, "Deactivate trainer thành công", null, 200);
+
+        } catch (Exception e) {
+            return new ApiResponse<>(false, "Lỗi khi deactivate trainer: " + e.getMessage(), null, 500);
+        }
+    }
+
+    // Helper methods
+    private User findTrainerById(Long trainerId) {
+        return userRepository.findById(trainerId)
+                .filter(user -> user.getRole() != null && "TRAINER".equals(user.getRole().getName()))
+                .orElse(null);
+    }
+
+    private TrainerResponse mapToTrainerResponse(User trainer) {
+        TrainerResponse response = new TrainerResponse();
+        response.setId(trainer.getId());
+        response.setEmail(trainer.getEmail());
+        response.setFullName(trainer.getFullName());
+        response.setPhoneNumber(trainer.getPhoneNumber());
+        response.setAvatar(trainer.getAvatar());
+        response.setBio(trainer.getBio());
+        response.setCoverPhoto(trainer.getCoverPhoto());
+        response.setIsActive(trainer.getIsActive());
+        response.setCreateDate(trainer.getCreateDate());
+
+        // Map specialties
+        List<TrainerSpecialty> specialties = trainerSpecialtyRepository
+                .findByUserAndIsActiveTrueOrderBySpecialtyAsc(trainer);
+        
+        List<TrainerResponse.TrainerSpecialtyResponse> specialtyResponses = specialties.stream()
+                .map(this::mapToSpecialtyResponse)
+                .collect(Collectors.toList());
+        response.setSpecialties(specialtyResponses);
+
+        // Map documents
+        List<TrainerDocument> documents = trainerDocumentRepository
+                .findByUserAndIsActiveTrueOrderByCreatedAtDesc(trainer);
+        
+        List<TrainerResponse.TrainerDocumentResponse> documentResponses = documents.stream()
+                .map(this::mapToDocumentResponse)
+                .collect(Collectors.toList());
+        response.setDocuments(documentResponses);
+
+        return response;
+    }
+
+    private TrainerResponse.TrainerSpecialtyResponse mapToSpecialtyResponse(TrainerSpecialty specialty) {
+        TrainerResponse.TrainerSpecialtyResponse response = new TrainerResponse.TrainerSpecialtyResponse();
+        response.setId(specialty.getId());
+        response.setSpecialty(specialty.getSpecialty());
+        response.setDescription(specialty.getDescription());
+        response.setExperienceYears(specialty.getExperienceYears());
+        response.setCertifications(specialty.getCertifications());
+        response.setLevel(specialty.getLevel());
+        response.setIsActive(specialty.getIsActive());
+        response.setCreatedAt(specialty.getCreatedAt());
+        return response;
+    }
+
+    private TrainerResponse.TrainerDocumentResponse mapToDocumentResponse(TrainerDocument document) {
+        TrainerResponse.TrainerDocumentResponse response = new TrainerResponse.TrainerDocumentResponse();
+        response.setId(document.getId());
+        response.setDocumentType(document.getDocumentType().name());
+        response.setFileName(document.getFileName());
+        response.setFileUrl(document.getFileUrl());
+        response.setDescription(document.getDescription());
+        response.setExpiryDate(document.getExpiryDate());
+        response.setIsVerified(document.getIsVerified());
+        response.setIsActive(document.getIsActive());
+        response.setCreatedAt(document.getCreatedAt());
+        return response;
+    }
+
+    private String generateRandomPassword() {
+        String upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lowerCase = "abcdefghijklmnopqrstuvwxyz";
+        String digits = "0123456789";
+        String special = "!@#$%^&*";
+        String allChars = upperCase + lowerCase + digits + special;
+
+        StringBuilder password = new StringBuilder();
+        java.util.Random random = new java.util.Random();
+
+        // Đảm bảo có ít nhất 1 ký tự mỗi loại
+        password.append(upperCase.charAt(random.nextInt(upperCase.length())));
+        password.append(lowerCase.charAt(random.nextInt(lowerCase.length())));
+        password.append(digits.charAt(random.nextInt(digits.length())));
+        password.append(special.charAt(random.nextInt(special.length())));
+
+        // Thêm 8 ký tự ngẫu nhiên nữa (tổng 12 ký tự)
+        for (int i = 0; i < 8; i++) {
+            password.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+
+        // Shuffle để không có pattern cố định
+        char[] passwordArray = password.toString().toCharArray();
+        for (int i = passwordArray.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = passwordArray[i];
+            passwordArray[i] = passwordArray[j];
+            passwordArray[j] = temp;
+        }
+
+        return new String(passwordArray);
+    }
+}
