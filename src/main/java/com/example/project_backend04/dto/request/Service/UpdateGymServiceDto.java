@@ -1,6 +1,6 @@
 package com.example.project_backend04.dto.request.Service;
 
-import com.example.project_backend04.enums.ServiceCategory;
+import com.example.project_backend04.entity.ServiceCategory;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 

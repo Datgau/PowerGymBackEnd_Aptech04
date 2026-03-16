@@ -5,7 +5,7 @@ import com.example.project_backend04.dto.request.Trainer.UploadTrainerDocumentRe
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.Trainer.TrainerResponse;
 import com.example.project_backend04.entity.*;
-import com.example.project_backend04.enums.ServiceCategory;
+import com.example.project_backend04.entity.ServiceCategory;
 import com.example.project_backend04.repository.*;
 import com.example.project_backend04.service.IService.ICloudinaryService;
 import com.example.project_backend04.service.IService.ITrainerService;
@@ -32,6 +32,7 @@ public class TrainerService implements ITrainerService {
     private final RoleRepository roleRepository;
     private final TrainerSpecialtyRepository trainerSpecialtyRepository;
     private final TrainerDocumentRepository trainerDocumentRepository;
+    private final ServiceCategoryRepository serviceCategoryRepository;
     private final ICloudinaryService cloudinaryService;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
@@ -39,32 +40,25 @@ public class TrainerService implements ITrainerService {
     @Override
     public ApiResponse<TrainerResponse> createTrainer(CreateTrainerRequest request) {
         try {
-            // Kiểm tra email đã tồn tại
             if (userRepository.findByEmail(request.getEmail()).isPresent()) {
                 return new ApiResponse<>(false, "Email đã tồn tại trong hệ thống", null, 400);
             }
-
-            // Lấy role TRAINER
             Role trainerRole = roleRepository.findRoleByName("TRAINER")
                     .orElseThrow(() -> new RuntimeException("Role TRAINER không tồn tại"));
-
-            // Tạo mật khẩu ngẫu nhiên
             String randomPassword = generateRandomPassword();
-
-            // Tạo User entity
             User trainer = new User();
             trainer.setEmail(request.getEmail());
             trainer.setFullName(request.getFullName());
             trainer.setPhoneNumber(request.getPhoneNumber());
             trainer.setBio(request.getBio());
+            trainer.setTotalExperienceYears(request.getTotalExperienceYears());
+            trainer.setEducation(request.getEducation());
+            trainer.setEmergencyContact(request.getEmergencyContact());
+            trainer.setEmergencyPhone(request.getEmergencyPhone());
             trainer.setPassword(passwordEncoder.encode(randomPassword));
             trainer.setRole(trainerRole);
             trainer.setIsActive(true);
-
-            // Lưu trainer
             User savedTrainer = userRepository.save(trainer);
-
-            // Tạo specialties
             List<TrainerSpecialty> specialties = request.getSpecialties().stream()
                     .map(spec -> {
                         TrainerSpecialty specialty = new TrainerSpecialty();
@@ -80,15 +74,11 @@ public class TrainerService implements ITrainerService {
                     .collect(Collectors.toList());
 
             trainerSpecialtyRepository.saveAll(specialties);
-
-            // Gửi email thông báo
             try {
                 emailService.sendPasswordEmail(request.getEmail(), request.getFullName(), randomPassword);
             } catch (Exception e) {
                 System.err.println("Failed to send email: " + e.getMessage());
             }
-
-            // Trả về response
             TrainerResponse response = mapToTrainerResponse(savedTrainer);
             return new ApiResponse<>(true, "Tạo trainer thành công. Mật khẩu đã được gửi qua email.", response, 201);
 
@@ -197,7 +187,11 @@ public class TrainerService implements ITrainerService {
     @Override
     public ApiResponse<List<TrainerResponse>> getTrainersBySpecialty(String specialty) {
         try {
-            ServiceCategory serviceCategory = ServiceCategory.valueOf(specialty.toUpperCase());
+
+            ServiceCategory serviceCategory = serviceCategoryRepository
+                    .findByNameIgnoreCase(specialty)
+                    .orElseThrow(() -> new IllegalArgumentException("Specialty không tồn tại"));
+
             List<User> trainers = trainerSpecialtyRepository.findTrainersByCategory(serviceCategory);
 
             List<TrainerResponse> response = trainers.stream()
@@ -207,7 +201,7 @@ public class TrainerService implements ITrainerService {
             return new ApiResponse<>(true, "Lấy trainers theo specialty thành công", response, 200);
 
         } catch (IllegalArgumentException e) {
-            return new ApiResponse<>(false, "Specialty không hợp lệ", null, 400);
+            return new ApiResponse<>(false, e.getMessage(), null, 400);
         } catch (Exception e) {
             return new ApiResponse<>(false, "Lỗi khi lấy trainers: " + e.getMessage(), null, 500);
         }
@@ -273,6 +267,10 @@ public class TrainerService implements ITrainerService {
             trainer.setFullName(request.getFullName());
             trainer.setPhoneNumber(request.getPhoneNumber());
             trainer.setBio(request.getBio());
+            trainer.setTotalExperienceYears(request.getTotalExperienceYears());
+            trainer.setEducation(request.getEducation());
+            trainer.setEmergencyContact(request.getEmergencyContact());
+            trainer.setEmergencyPhone(request.getEmergencyPhone());
 
             User updatedTrainer = userRepository.save(trainer);
 
@@ -345,6 +343,12 @@ public class TrainerService implements ITrainerService {
         response.setCoverPhoto(trainer.getCoverPhoto());
         response.setIsActive(trainer.getIsActive());
         response.setCreateDate(trainer.getCreateDate());
+        
+        // Map trainer-specific fields
+        response.setTotalExperienceYears(trainer.getTotalExperienceYears());
+        response.setEducation(trainer.getEducation());
+        response.setEmergencyContact(trainer.getEmergencyContact());
+        response.setEmergencyPhone(trainer.getEmergencyPhone());
 
         // Map specialties
         List<TrainerSpecialty> specialties = trainerSpecialtyRepository
@@ -370,7 +374,20 @@ public class TrainerService implements ITrainerService {
     private TrainerResponse.TrainerSpecialtyResponse mapToSpecialtyResponse(TrainerSpecialty specialty) {
         TrainerResponse.TrainerSpecialtyResponse response = new TrainerResponse.TrainerSpecialtyResponse();
         response.setId(specialty.getId());
-        response.setSpecialty(specialty.getSpecialty());
+        
+        // Map ServiceCategory entity to DTO to avoid lazy loading issues
+        TrainerResponse.ServiceCategoryResponse categoryResponse = new TrainerResponse.ServiceCategoryResponse();
+        ServiceCategory category = specialty.getSpecialty();
+        categoryResponse.setId(category.getId());
+        categoryResponse.setName(category.getName());
+        categoryResponse.setDisplayName(category.getDisplayName());
+        categoryResponse.setDescription(category.getDescription());
+        categoryResponse.setIcon(category.getIcon());
+        categoryResponse.setColor(category.getColor());
+        categoryResponse.setIsActive(category.getIsActive());
+        categoryResponse.setSortOrder(category.getSortOrder());
+        response.setSpecialty(categoryResponse);
+        
         response.setDescription(specialty.getDescription());
         response.setExperienceYears(specialty.getExperienceYears());
         response.setCertifications(specialty.getCertifications());

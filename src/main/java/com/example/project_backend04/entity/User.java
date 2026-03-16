@@ -1,6 +1,5 @@
 package com.example.project_backend04.entity;
 
-import com.example.project_backend04.enums.ServiceCategory;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -40,6 +39,19 @@ public class User {
 
     @Column
     private String coverPhoto;
+    
+    // Trainer-specific fields
+    @Column
+    private Integer totalExperienceYears;
+    
+    @Column
+    private String education;
+    
+    @Column
+    private String emergencyContact;
+    
+    @Column
+    private String emergencyPhone;
 
     @Column(length = 512)
     private String refreshToken;
@@ -112,11 +124,5 @@ public class User {
 
     public boolean hasTrainerSpecialties() {
         return this.trainerSpecialties != null && !this.trainerSpecialties.isEmpty();
-    }
-
-    public boolean canTeachCategory(ServiceCategory category) {
-        if (!isTrainer()) return false;
-        return this.trainerSpecialties != null && this.trainerSpecialties.stream()
-                .anyMatch(specialty -> specialty.getSpecialty() == category && specialty.getIsActive());
     }
 }

@@ -1,6 +1,5 @@
 package com.example.project_backend04.entity;
 
-import com.example.project_backend04.enums.ServiceCategory;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -28,10 +27,9 @@ public class GymService {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
     private ServiceCategory category;
-
     @OneToMany(
             mappedBy = "gymService",
             cascade = CascadeType.ALL,

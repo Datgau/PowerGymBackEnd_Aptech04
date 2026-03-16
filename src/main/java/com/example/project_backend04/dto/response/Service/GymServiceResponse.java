@@ -1,6 +1,6 @@
 package com.example.project_backend04.dto.response.Service;
 
-import com.example.project_backend04.enums.ServiceCategory;
+import com.example.project_backend04.entity.ServiceCategory;
 import lombok.Data;
 
 import java.math.BigDecimal;

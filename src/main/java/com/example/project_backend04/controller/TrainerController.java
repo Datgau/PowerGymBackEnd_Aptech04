@@ -1,4 +1,4 @@
-package com.example.project_backend04.controller.public_api;
+package com.example.project_backend04.controller;
 
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.Trainer.TrainerResponse;
@@ -14,13 +14,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/public/trainers")
 @RequiredArgsConstructor
-public class PublicTrainerController {
+public class TrainerController {
 
     private final ITrainerService trainerService;
-
-    /**
-     * Lấy thông tin trainer theo ID (public)
-     */
     @GetMapping("/{trainerId}")
     public ResponseEntity<ApiResponse<TrainerResponse>> getTrainerById(@PathVariable Long trainerId) {
         ApiResponse<TrainerResponse> response = trainerService.getTrainerById(trainerId);
@@ -28,10 +24,6 @@ public class PublicTrainerController {
                 .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.NOT_FOUND)
                 .body(response);
     }
-
-    /**
-     * Lấy danh sách tất cả trainers với phân trang (public)
-     */
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TrainerResponse>>> getAllTrainers(
             @RequestParam(defaultValue = "0") int page,
@@ -42,10 +34,6 @@ public class PublicTrainerController {
                 .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
                 .body(response);
     }
-
-    /**
-     * Lấy trainers theo specialty (public)
-     */
     @GetMapping("/specialty/{specialty}")
     public ResponseEntity<ApiResponse<List<TrainerResponse>>> getTrainersBySpecialty(
             @PathVariable String specialty) {
@@ -55,10 +43,6 @@ public class PublicTrainerController {
                 .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
                 .body(response);
     }
-
-    /**
-     * Lấy danh sách specialties có sẵn
-     */
     @GetMapping("/specialties")
     public ResponseEntity<ApiResponse<List<String>>> getAvailableSpecialties() {
         try {

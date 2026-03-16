@@ -1,6 +1,6 @@
 package com.example.project_backend04.dto.response.Trainer;
 
-import com.example.project_backend04.enums.ServiceCategory;
+import com.example.project_backend04.entity.ServiceCategory;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -33,13 +33,25 @@ public class TrainerResponse {
     @Data
     public static class TrainerSpecialtyResponse {
         private Long id;
-        private ServiceCategory specialty;
+        private ServiceCategoryResponse specialty;
         private String description;
         private Integer experienceYears;
         private String certifications;
         private String level;
         private Boolean isActive;
         private LocalDateTime createdAt;
+    }
+    
+    @Data
+    public static class ServiceCategoryResponse {
+        private Long id;
+        private String name;
+        private String displayName;
+        private String description;
+        private String icon;
+        private String color;
+        private Boolean isActive;
+        private Integer sortOrder;
     }
     
     @Data

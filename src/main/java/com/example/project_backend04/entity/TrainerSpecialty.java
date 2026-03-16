@@ -1,6 +1,5 @@
 package com.example.project_backend04.entity;
 
-import com.example.project_backend04.enums.ServiceCategory;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,7 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "trainer_specialties", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "specialty"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "specialty_id"}))
 public class TrainerSpecialty {
 
     @Id
@@ -24,8 +23,8 @@ public class TrainerSpecialty {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "specialty_id", nullable = false)
     private ServiceCategory specialty;
 
     @Column(columnDefinition = "TEXT")

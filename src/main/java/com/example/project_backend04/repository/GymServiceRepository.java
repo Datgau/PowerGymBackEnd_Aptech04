@@ -1,7 +1,7 @@
 package com.example.project_backend04.repository;
 
 import com.example.project_backend04.entity.GymService;
-import com.example.project_backend04.enums.ServiceCategory;
+import com.example.project_backend04.entity.ServiceCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -33,6 +33,8 @@ public interface GymServiceRepository extends JpaRepository<GymService, Long> {
     @Query("SELECT gs FROM GymService gs")
     Page<GymService> findAllWithImagesPaginated(Pageable pageable);
 
+    @Query
+    long countByCategoryAndIsActiveTrue(ServiceCategory category);
     // Original methods (giữ lại để backward compatibility)
     List<GymService> findByIsActiveTrue();
 

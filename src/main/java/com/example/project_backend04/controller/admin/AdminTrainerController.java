@@ -21,13 +21,10 @@ import java.util.List;
 @RequestMapping("/api/admin/trainers")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
-public class TrainerController {
+public class AdminTrainerController {
 
     private final ITrainerService trainerService;
 
-    /**
-     * Tạo trainer mới với đầy đủ thông tin
-     */
     @PostMapping
     public ResponseEntity<ApiResponse<TrainerResponse>> createTrainer(
             @Valid @RequestBody CreateTrainerRequest request) {

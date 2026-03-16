@@ -21,7 +21,7 @@ public class TrainerDocument {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user; // Trainer user
+    private User user; 
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

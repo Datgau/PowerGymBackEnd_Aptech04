@@ -4,7 +4,6 @@ import com.example.project_backend04.dto.request.Equipment.CreateEquipmentDto;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.entity.Equipment;
 import com.example.project_backend04.service.IService.IEquipmentService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("api/equipments")
 @RequiredArgsConstructor
-public class EquipmentController {
+public class AdminEquipmentController {
     
     private final IEquipmentService equipmentService;
 
