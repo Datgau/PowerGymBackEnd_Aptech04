@@ -15,26 +15,26 @@ import java.util.Optional;
 @Repository
 public interface GymServiceRepository extends JpaRepository<GymService, Long> {
 
-    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images WHERE gs.isActive = true")
+    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images LEFT JOIN FETCH gs.category WHERE gs.isActive = true AND gs.category IS NOT NULL")
     List<GymService> findByIsActiveTrueWithImages();
 
-    @Query("SELECT gs FROM GymService gs WHERE gs.isActive = true")
+    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.category WHERE gs.isActive = true AND gs.category IS NOT NULL")
     Page<GymService> findByIsActiveTrueWithImagesPaginated(Pageable pageable);
     
-    @Query("SELECT DISTINCT gs FROM GymService gs LEFT JOIN FETCH gs.images WHERE gs.id IN :ids")
+    @Query("SELECT DISTINCT gs FROM GymService gs LEFT JOIN FETCH gs.images LEFT JOIN FETCH gs.category WHERE gs.id IN :ids")
     List<GymService> findByIdsWithImages(@Param("ids") List<Long> ids);
 
-    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images WHERE gs.id = :id")
+    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images LEFT JOIN FETCH gs.category WHERE gs.id = :id")
     Optional<GymService> findByIdWithImages(@Param("id") Long id);
 
-    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images")
+    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.images LEFT JOIN FETCH gs.category")
     List<GymService> findAllWithImages();
 
-    @Query("SELECT gs FROM GymService gs")
+    @Query("SELECT gs FROM GymService gs LEFT JOIN FETCH gs.category")
     Page<GymService> findAllWithImagesPaginated(Pageable pageable);
 
-    @Query
-    long countByCategoryAndIsActiveTrue(ServiceCategory category);
+    @Query("SELECT COUNT(gs) FROM GymService gs WHERE gs.category = :category AND gs.isActive = true")
+    long countByCategoryAndIsActiveTrue(@Param("category") ServiceCategory category);
     // Original methods (giữ lại để backward compatibility)
     List<GymService> findByIsActiveTrue();
 

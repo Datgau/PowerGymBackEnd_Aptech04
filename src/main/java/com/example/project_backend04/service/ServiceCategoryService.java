@@ -44,7 +44,6 @@ public class ServiceCategoryService implements IServiceCategoryService {
             category.setDescription(request.getDescription());
             category.setIcon(request.getIcon());
             category.setColor(request.getColor());
-            category.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : getNextSortOrder());
             category.setIsActive(true);
 
             ServiceCategory savedCategory = serviceCategoryRepository.save(category);
@@ -72,7 +71,6 @@ public class ServiceCategoryService implements IServiceCategoryService {
             category.setDescription(request.getDescription());
             category.setIcon(request.getIcon());
             category.setColor(request.getColor());
-            category.setSortOrder(request.getSortOrder());
             category.setIsActive(request.getIsActive());
 
             ServiceCategory updatedCategory = serviceCategoryRepository.save(category);
@@ -144,7 +142,7 @@ public class ServiceCategoryService implements IServiceCategoryService {
     @Override
     public ApiResponse<List<ServiceCategoryResponse>> getAllServiceCategories() {
         try {
-            List<ServiceCategory> categories = serviceCategoryRepository.findAll(Sort.by("sortOrder", "displayName"));
+            List<ServiceCategory> categories = serviceCategoryRepository.findAll(Sort.by("displayName"));
             List<ServiceCategoryResponse> response = categories.stream()
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
@@ -159,7 +157,11 @@ public class ServiceCategoryService implements IServiceCategoryService {
     @Override
     public ApiResponse<List<ServiceCategoryResponse>> getAllActiveServiceCategories() {
         try {
-            List<ServiceCategory> categories = serviceCategoryRepository.findAllActiveOrderBySortOrder();
+            List<ServiceCategory> categories = serviceCategoryRepository.findAll(Sort.by("displayName"))
+                    .stream()
+                    .filter(ServiceCategory::getIsActive)
+                    .collect(Collectors.toList());
+            
             List<ServiceCategoryResponse> response = categories.stream()
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
@@ -174,7 +176,7 @@ public class ServiceCategoryService implements IServiceCategoryService {
     @Override
     public ApiResponse<Page<ServiceCategoryResponse>> getAllServiceCategories(int page, int size) {
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("sortOrder", "displayName"));
+            Pageable pageable = PageRequest.of(page, size, Sort.by("displayName"));
             Page<ServiceCategory> categories = serviceCategoryRepository.findAll(pageable);
             
             Page<ServiceCategoryResponse> response = categories.map(this::mapToResponse);
@@ -233,25 +235,6 @@ public class ServiceCategoryService implements IServiceCategoryService {
     }
 
     @Override
-    public ApiResponse<String> reorderServiceCategories(List<Long> categoryIds) {
-        try {
-            for (int i = 0; i < categoryIds.size(); i++) {
-                Long categoryId = categoryIds.get(i);
-                ServiceCategory category = serviceCategoryRepository.findById(categoryId).orElse(null);
-                if (category != null) {
-                    category.setSortOrder(i);
-                    serviceCategoryRepository.save(category);
-                }
-            }
-
-            return new ApiResponse<>(true, "Sắp xếp lại service categories thành công", null, 200);
-
-        } catch (Exception e) {
-            return new ApiResponse<>(false, "Lỗi khi sắp xếp lại service categories: " + e.getMessage(), null, 500);
-        }
-    }
-
-    @Override
     public ApiResponse<String> toggleServiceCategoryStatus(Long id) {
         try {
             ServiceCategory category = serviceCategoryRepository.findById(id).orElse(null);
@@ -280,7 +263,6 @@ public class ServiceCategoryService implements IServiceCategoryService {
         response.setIcon(category.getIcon());
         response.setColor(category.getColor());
         response.setIsActive(category.getIsActive());
-        response.setSortOrder(category.getSortOrder());
         response.setCreatedAt(category.getCreatedAt());
         response.setUpdatedAt(category.getUpdatedAt());
 
@@ -291,8 +273,4 @@ public class ServiceCategoryService implements IServiceCategoryService {
         return response;
     }
 
-    private Integer getNextSortOrder() {
-        Integer maxOrder = serviceCategoryRepository.findMaxSortOrder();
-        return maxOrder != null ? maxOrder + 1 : 0;
-    }
 }

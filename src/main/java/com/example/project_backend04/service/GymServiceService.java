@@ -5,7 +5,10 @@ import com.example.project_backend04.dto.request.Service.UpdateGymServiceDto;
 import com.example.project_backend04.dto.response.Service.GymServiceResponse;
 import com.example.project_backend04.entity.GymService;
 import com.example.project_backend04.entity.GymServiceImage;
+import com.example.project_backend04.entity.ServiceCategory;
+import com.example.project_backend04.mapper.GymServiceMapper;
 import com.example.project_backend04.repository.GymServiceRepository;
+import com.example.project_backend04.repository.ServiceCategoryRepository;
 import com.example.project_backend04.repository.ServiceRegistrationRepository;
 import com.example.project_backend04.service.IService.ICloudinaryService;
 import com.example.project_backend04.service.IService.IGymService;
@@ -28,17 +31,18 @@ import java.util.Map;
 public class GymServiceService implements IGymService {
 
     private final GymServiceRepository gymServiceRepository;
+    private final ServiceCategoryRepository serviceCategoryRepository;
     private final ICloudinaryService cloudStorageService;
     private final ServiceRegistrationRepository serviceRegistrationRepository;
+    private final GymServiceMapper gymServiceMapper;
 
     private static final String SERVICE_FOLDER = "services";
 
     // ===================== GET PUBLIC SERVICES =====================
+    @Transactional(readOnly = true)
     public List<GymServiceResponse> getPublicServices() {
-        return gymServiceRepository.findByIsActiveTrueWithImages()
-                .stream()
-                .map(this::mapToDto)
-                .toList();
+        List<GymService> services = gymServiceRepository.findByIsActiveTrueWithImages();
+        return gymServiceMapper.toResponseList(services);
     }
 
     // ===================== GET PUBLIC SERVICES WITH PAGINATION =====================
@@ -61,24 +65,25 @@ public class GymServiceService implements IGymService {
                         .filter(s -> s.getId().equals(service.getId()))
                         .findFirst()
                         .orElse(service);
-                return mapToDto(withImages);
+                return gymServiceMapper.toResponse(withImages);
             });
         }
         
-        return servicePage.map(this::mapToDto);
+        return servicePage.map(gymServiceMapper::toResponse);
     }
 
     // ===================== GET SERVICE BY ID =====================
+    @Transactional(readOnly = true)
     public GymServiceResponse getServiceById(Long id) {
         GymService service = gymServiceRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
-        return mapToDto(service);
+        return gymServiceMapper.toResponse(service);
     }
 
     // ===================== GET SERVICE REGISTRATION STATS =====================
     @Transactional(readOnly = true)
     public Map<String, Object> getServiceRegistrationStats(Long id) {
-        GymService service = gymServiceRepository.findById(id)
+        GymService service = gymServiceRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
         
         Long registrationCount = serviceRegistrationRepository.countActiveRegistrations(service);
@@ -95,11 +100,10 @@ public class GymServiceService implements IGymService {
     }
 
     // ===================== GET ALL SERVICES =====================
+    @Transactional(readOnly = true)
     public List<GymServiceResponse> getAllServices() {
-        return gymServiceRepository.findAllWithImages()
-                .stream()
-                .map(this::mapToDto)
-                .toList();
+        List<GymService> services = gymServiceRepository.findAllWithImages();
+        return gymServiceMapper.toResponseList(services);
     }
 
     // ===================== GET ALL SERVICES WITH PAGINATION =====================
@@ -122,21 +126,26 @@ public class GymServiceService implements IGymService {
                         .filter(s -> s.getId().equals(service.getId()))
                         .findFirst()
                         .orElse(service);
-                return mapToDto(withImages);
+                return gymServiceMapper.toResponse(withImages);
             });
         }
         
-        return servicePage.map(this::mapToDto);
+        return servicePage.map(gymServiceMapper::toResponse);
     }
 
     // ===================== CREATE =====================
+    @Transactional
     public GymServiceResponse createService(GymServiceRequest request) {
         validateServiceRequest(request);
+
+        // Fetch ServiceCategory by ID
+        ServiceCategory category = serviceCategoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("ServiceCategory not found with id: " + request.getCategoryId()));
 
         GymService service = new GymService();
         service.setName(request.getName());
         service.setDescription(request.getDescription());
-        service.setCategory(request.getCategory());
+        service.setCategory(category);
         service.setPrice(request.getPrice());
         service.setDuration(request.getDuration());
         service.setMaxParticipants(request.getMaxParticipants());
@@ -167,13 +176,19 @@ public class GymServiceService implements IGymService {
             savedService.setImages(serviceImages);
             savedService = gymServiceRepository.save(savedService);
         }
-        return mapToDto(savedService);
+        
+        // Reload the service with all relationships to ensure proper mapping
+        GymService reloadedService = gymServiceRepository.findByIdWithImages(savedService.getId())
+                .orElseThrow(() -> new RuntimeException("Failed to reload created service"));
+        
+        return gymServiceMapper.toResponse(reloadedService);
     }
 
     // ===================== UPDATE =====================
+    @Transactional
     public GymServiceResponse updateService(Long id, UpdateGymServiceDto request) {
 
-        GymService service = gymServiceRepository.findById(id)
+        GymService service = gymServiceRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
 
         if (request.getName() != null)
@@ -182,8 +197,11 @@ public class GymServiceService implements IGymService {
         if (request.getDescription() != null)
             service.setDescription(request.getDescription());
 
-        if (request.getCategory() != null)
-            service.setCategory(request.getCategory());
+        if (request.getCategoryId() != null) {
+            ServiceCategory category = serviceCategoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("ServiceCategory not found with id: " + request.getCategoryId()));
+            service.setCategory(category);
+        }
 
         if (request.getPrice() != null)
             service.setPrice(request.getPrice());
@@ -197,7 +215,48 @@ public class GymServiceService implements IGymService {
         if (request.getIsActive() != null)
             service.setIsActive(request.getIsActive());
 
-        return mapToDto(gymServiceRepository.save(service));
+        // Handle image updates
+        if (request.getDeletedImages() != null && !request.getDeletedImages().isEmpty()) {
+            // Remove deleted images
+            List<GymServiceImage> imagesToDelete = service.getImages().stream()
+                    .filter(img -> request.getDeletedImages().contains(img.getImageUrl()))
+                    .toList();
+            
+            for (GymServiceImage imageToDelete : imagesToDelete) {
+                try {
+                    // Delete from cloud storage
+                    cloudStorageService.deleteFile(imageToDelete.getImageUrl());
+                } catch (Exception e) {
+                    System.err.println("Failed to delete image from cloud storage: " + e.getMessage());
+                }
+                service.getImages().remove(imageToDelete);
+            }
+        }
+
+        // Add new images
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            int currentMaxOrder = service.getImages().stream()
+                    .mapToInt(GymServiceImage::getSortOrder)
+                    .max()
+                    .orElse(0);
+
+            for (int i = 0; i < request.getImages().size(); i++) {
+                try {
+                    String imageUrl = cloudStorageService.uploadSingleFile(request.getImages().get(i), SERVICE_FOLDER);
+                    
+                    GymServiceImage serviceImage = new GymServiceImage();
+                    serviceImage.setGymService(service);
+                    serviceImage.setImageUrl(imageUrl);
+                    serviceImage.setSortOrder(currentMaxOrder + i + 1);
+                    
+                    service.getImages().add(serviceImage);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to upload image: " + e.getMessage());
+                }
+            }
+        }
+
+        return gymServiceMapper.toResponse(gymServiceRepository.save(service));
     }
 
     @Transactional
@@ -242,8 +301,8 @@ public class GymServiceService implements IGymService {
         if (request.getName() == null || request.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Service name is required");
         }
-        if (request.getCategory() == null) {
-            throw new IllegalArgumentException("Service category is required");
+        if (request.getCategoryId() == null) {
+            throw new IllegalArgumentException("Service category ID is required");
         }
         if (request.getPrice() != null && request.getPrice().compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Price cannot be negative");
@@ -254,34 +313,5 @@ public class GymServiceService implements IGymService {
         if (request.getMaxParticipants() != null && request.getMaxParticipants() <= 0) {
             throw new IllegalArgumentException("Max participants must be positive");
         }
-    }
-
-    private GymServiceResponse mapToDto(GymService service) {
-        GymServiceResponse dto = new GymServiceResponse();
-        dto.setId(service.getId());
-        dto.setName(service.getName());
-        dto.setDescription(service.getDescription());
-        dto.setCategory(service.getCategory());
-        if (service.getImages() != null && !service.getImages().isEmpty()) {
-            List<String> imageUrls = service.getImages()
-                    .stream()
-                    .sorted((img1, img2) -> img1.getSortOrder().compareTo(img2.getSortOrder()))
-                    .map(GymServiceImage::getImageUrl)
-                    .toList();
-            dto.setImages(imageUrls);
-        } else {
-            dto.setImages(new ArrayList<>());
-        }
-        
-        dto.setPrice(service.getPrice());
-        dto.setDuration(service.getDuration());
-        dto.setMaxParticipants(service.getMaxParticipants());
-        dto.setIsActive(service.getIsActive());
-        
-        // Đếm số lượng người đăng ký active
-        Long registrationCount = serviceRegistrationRepository.countActiveRegistrations(service);
-        dto.setRegistrationCount(registrationCount);
-        
-        return dto;
     }
 }

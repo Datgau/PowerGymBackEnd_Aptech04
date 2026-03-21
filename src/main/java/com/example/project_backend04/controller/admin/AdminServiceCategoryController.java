@@ -45,9 +45,6 @@ public class AdminServiceCategoryController {
                 .body(response);
     }
 
-    /**
-     * Xóa service category
-     */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteServiceCategory(@PathVariable Long id) {
         ApiResponse<String> response = serviceCategoryService.deleteServiceCategory(id);
@@ -56,9 +53,6 @@ public class AdminServiceCategoryController {
                 .body(response);
     }
 
-    /**
-     * Lấy service category theo ID
-     */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ServiceCategoryResponse>> getServiceCategoryById(@PathVariable Long id) {
         ApiResponse<ServiceCategoryResponse> response = serviceCategoryService.getServiceCategoryById(id);
@@ -67,9 +61,6 @@ public class AdminServiceCategoryController {
                 .body(response);
     }
 
-    /**
-     * Lấy tất cả service categories với phân trang
-     */
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ServiceCategoryResponse>>> getAllServiceCategories(
             @RequestParam(defaultValue = "0") int page,
@@ -81,9 +72,6 @@ public class AdminServiceCategoryController {
                 .body(response);
     }
 
-    /**
-     * Lấy tất cả service categories (không phân trang)
-     */
     @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<ServiceCategoryResponse>>> getAllServiceCategoriesList() {
         ApiResponse<List<ServiceCategoryResponse>> response = serviceCategoryService.getAllServiceCategories();
@@ -92,9 +80,7 @@ public class AdminServiceCategoryController {
                 .body(response);
     }
 
-    /**
-     * Tìm kiếm service categories
-     */
+
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<ServiceCategoryResponse>>> searchServiceCategories(
             @RequestParam String keyword) {
@@ -105,40 +91,18 @@ public class AdminServiceCategoryController {
                 .body(response);
     }
 
-    /**
-     * Lấy categories được sử dụng bởi trainers
-     */
     @GetMapping("/used-by-trainers")
     public ResponseEntity<ApiResponse<List<ServiceCategoryResponse>>> getCategoriesUsedByTrainers() {
         ApiResponse<List<ServiceCategoryResponse>> response = serviceCategoryService.getCategoriesUsedByTrainers();
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Lấy categories được sử dụng bởi gym services
-     */
     @GetMapping("/used-by-services")
     public ResponseEntity<ApiResponse<List<ServiceCategoryResponse>>> getCategoriesUsedByGymServices() {
         ApiResponse<List<ServiceCategoryResponse>> response = serviceCategoryService.getCategoriesUsedByGymServices();
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Sắp xếp lại service categories
-     */
-    @PutMapping("/reorder")
-    public ResponseEntity<ApiResponse<String>> reorderServiceCategories(
-            @RequestBody List<Long> categoryIds) {
-        
-        ApiResponse<String> response = serviceCategoryService.reorderServiceCategories(categoryIds);
-        return ResponseEntity
-                .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
-                .body(response);
-    }
-
-    /**
-     * Toggle trạng thái active/inactive
-     */
     @PutMapping("/{id}/toggle-status")
     public ResponseEntity<ApiResponse<String>> toggleServiceCategoryStatus(@PathVariable Long id) {
         ApiResponse<String> response = serviceCategoryService.toggleServiceCategoryStatus(id);

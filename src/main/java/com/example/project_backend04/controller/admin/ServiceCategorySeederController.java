@@ -116,7 +116,6 @@ public class ServiceCategorySeederController {
         category.setDescription(description);
         category.setIcon(icon);
         category.setColor(color);
-        category.setSortOrder(sortOrder);
         category.setIsActive(true);
         return category;
     }

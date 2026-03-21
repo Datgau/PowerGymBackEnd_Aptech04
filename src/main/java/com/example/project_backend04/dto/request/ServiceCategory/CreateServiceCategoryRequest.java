@@ -24,5 +24,5 @@ public class CreateServiceCategoryRequest {
     @Size(max = 7, message = "Color phải là mã hex hợp lệ")
     private String color; // #FF5722
 
-    private Integer sortOrder = 0;
+
 }

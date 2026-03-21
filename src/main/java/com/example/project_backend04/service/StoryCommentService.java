@@ -10,13 +10,12 @@ import com.example.project_backend04.mapper.UserMapper;
 import com.example.project_backend04.repository.StoryCommentRepository;
 import com.example.project_backend04.repository.StoryRepository;
 import com.example.project_backend04.repository.UserRepository;
+import com.example.project_backend04.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -119,10 +118,7 @@ public class StoryCommentService {
     }
 
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        return SecurityUtils.getCurrentUser();
     }
 
     private StoryCommentResponse mapToResponse(StoryComment comment) {

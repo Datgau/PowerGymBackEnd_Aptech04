@@ -1,6 +1,7 @@
 package com.example.project_backend04.mapper;
 
 import com.example.project_backend04.dto.request.MembershipPackage.CreateMembershipPackageDto;
+import com.example.project_backend04.dto.request.MembershipPackage.UpdateMembershipPackageDto;
 import com.example.project_backend04.entity.MembershipPackage;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-03-13T12:46:22+0700",
+    date = "2026-03-21T19:20:31+0700",
     comments = "version: 1.6.2, compiler: javac, environment: Java 21.0.1 (Oracle Corporation)"
 )
 @Component
@@ -23,7 +24,6 @@ public class MembershipPackageMapperImpl implements MembershipPackageMapper {
 
         MembershipPackage membershipPackage = new MembershipPackage();
 
-        membershipPackage.setPackageId( dto.getPackageId() );
         membershipPackage.setName( dto.getName() );
         membershipPackage.setDescription( dto.getDescription() );
         membershipPackage.setDuration( dto.getDuration() );
@@ -42,7 +42,7 @@ public class MembershipPackageMapperImpl implements MembershipPackageMapper {
     }
 
     @Override
-    public void updateEntityFromDto(CreateMembershipPackageDto dto, MembershipPackage entity) {
+    public void updateEntityFromDto(UpdateMembershipPackageDto dto, MembershipPackage entity) {
         if ( dto == null ) {
             return;
         }

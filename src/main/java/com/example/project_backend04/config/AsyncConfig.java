@@ -13,9 +13,9 @@ public class AsyncConfig {
     @Bean(name = "emailTaskExecutor")
     public TaskExecutor emailTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);        // Core thread pool size
-        executor.setMaxPoolSize(10);        // Maximum thread pool size
-        executor.setQueueCapacity(100);     // Maximum queue capacity
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("email-async-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);

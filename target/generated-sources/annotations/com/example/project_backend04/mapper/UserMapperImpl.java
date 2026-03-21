@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-03-15T17:20:55+0700",
-    comments = "version: 1.6.2, compiler: javac, environment: Java 23.0.2 (Oracle Corporation)"
+    date = "2026-03-21T19:20:31+0700",
+    comments = "version: 1.6.2, compiler: javac, environment: Java 21.0.1 (Oracle Corporation)"
 )
 @Component
 public class UserMapperImpl implements UserMapper {
@@ -26,6 +26,7 @@ public class UserMapperImpl implements UserMapper {
         user.setEmail( request.getEmail() );
         user.setFullName( request.getFullName() );
         user.setPhoneNumber( request.getPhoneNumber() );
+        user.setDateOfBirth( request.getDateOfBirth() );
 
         return user;
     }
@@ -38,6 +39,7 @@ public class UserMapperImpl implements UserMapper {
 
         UserResponse.UserResponseBuilder userResponse = UserResponse.builder();
 
+        userResponse.username( user.getEmail() );
         userResponse.id( user.getId() );
         userResponse.email( user.getEmail() );
         userResponse.fullName( user.getFullName() );
@@ -47,6 +49,7 @@ public class UserMapperImpl implements UserMapper {
         userResponse.coverPhoto( user.getCoverPhoto() );
         userResponse.createDate( user.getCreateDate() );
         userResponse.role( user.getRole() );
+        userResponse.dateOfBirth( user.getDateOfBirth() );
 
         return userResponse.build();
     }
@@ -66,8 +69,8 @@ public class UserMapperImpl implements UserMapper {
         if ( request.getPhoneNumber() != null ) {
             user.setPhoneNumber( request.getPhoneNumber() );
         }
-        if ( request.getAvatar() != null ) {
-            user.setAvatar( request.getAvatar() );
+        if ( request.getDateOfBirth() != null ) {
+            user.setDateOfBirth( request.getDateOfBirth() );
         }
     }
 }

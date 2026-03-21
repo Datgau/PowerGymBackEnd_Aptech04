@@ -22,8 +22,6 @@ import java.util.Optional;
 public class UserService implements IUserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
     private final ICloudinaryService cloudinaryService;
     private final UserMapper userMapper;
 
@@ -42,7 +40,7 @@ public class UserService implements IUserService {
                 try {
                     cloudinaryService.deleteFile(oldAvatarUrl);
                 } catch (Exception e) {
-                    System.err.println("[Warning] Không thể xóa avatar cũ: " + e.getMessage());
+                    System.err.println("Không thể xóa avatar cũ: " + e.getMessage());
                 }
             }
             String newAvatarUrl = ((CloudinaryService) cloudinaryService).uploadAvatar(avatarFile);

@@ -30,6 +30,5 @@ public interface IServiceCategoryService {
     ApiResponse<List<ServiceCategoryResponse>> getCategoriesUsedByGymServices();
     
     // Utility operations
-    ApiResponse<String> reorderServiceCategories(List<Long> categoryIds);
     ApiResponse<String> toggleServiceCategoryStatus(Long id);
 }

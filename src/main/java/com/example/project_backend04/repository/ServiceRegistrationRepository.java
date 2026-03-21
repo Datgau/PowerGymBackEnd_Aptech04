@@ -2,6 +2,7 @@ package com.example.project_backend04.repository;
 
 import com.example.project_backend04.entity.GymService;
 import com.example.project_backend04.entity.ServiceRegistration;
+import com.example.project_backend04.entity.TrainerBooking;
 import com.example.project_backend04.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -52,4 +53,78 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
     Long countActiveRegistrations(@Param("service") GymService service);
     
     boolean existsByUserAndGymServiceAndStatus(User user, GymService gymService, ServiceRegistration.RegistrationStatus status);
+    
+    // NEW METHODS for trainer integration
+    
+    /**
+     * Find registrations by user that have a trainer assigned
+     */
+    List<ServiceRegistration> findByUserIdAndTrainerIsNotNull(Long userId);
+    
+    /**
+     * Find registrations by trainer and status
+     */
+    List<ServiceRegistration> findByTrainerIdAndStatus(Long trainerId, ServiceRegistration.RegistrationStatus status);
+    
+    /**
+     * Find registrations by user and status with trainer and service info
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "LEFT JOIN FETCH sr.trainer t " +
+           "JOIN FETCH sr.gymService gs " +
+           "WHERE sr.user.id = :userId AND sr.status = :status")
+    List<ServiceRegistration> findByUserIdAndStatusWithTrainerAndService(
+        @Param("userId") Long userId, 
+        @Param("status") ServiceRegistration.RegistrationStatus status);
+    
+    /**
+     * Find registration with its trainer bookings
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "LEFT JOIN FETCH sr.trainerBookings tb " +
+           "WHERE sr.id = :registrationId AND (tb.status IN :statuses OR tb IS NULL)")
+    Optional<ServiceRegistration> findByIdWithBookings(
+        @Param("registrationId") Long registrationId,
+        @Param("statuses") List<TrainerBooking.BookingStatus> statuses);
+    
+    /**
+     * Count active registrations by trainer
+     */
+    @Query("SELECT COUNT(sr) FROM ServiceRegistration sr " +
+           "WHERE sr.trainer.id = :trainerId AND sr.status = 'ACTIVE'")
+    Long countActiveRegistrationsByTrainer(@Param("trainerId") Long trainerId);
+    
+    /**
+     * Find registrations with trainer and service details
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "JOIN FETCH sr.user u " +
+           "JOIN FETCH sr.gymService gs " +
+           "LEFT JOIN FETCH sr.trainer t " +
+           "WHERE sr.id = :registrationId")
+    Optional<ServiceRegistration> findByIdWithFullDetails(@Param("registrationId") Long registrationId);
+    
+    /**
+     * Find registrations by service category that have trainers
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "JOIN FETCH sr.trainer t " +
+           "JOIN FETCH sr.gymService gs " +
+           "WHERE gs.category.id = :categoryId AND sr.trainer IS NOT NULL " +
+           "AND sr.status = 'ACTIVE'")
+    List<ServiceRegistration> findByServiceCategoryWithTrainer(@Param("categoryId") Long categoryId);
+    
+    /**
+     * Find registrations that need trainer assignment
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "JOIN FETCH sr.gymService gs " +
+           "WHERE sr.trainer IS NULL AND sr.status = 'ACTIVE' " +
+           "ORDER BY sr.registrationDate ASC")
+    List<ServiceRegistration> findRegistrationsNeedingTrainer();
+    
+    /**
+     * Find registrations by user and status
+     */
+    List<ServiceRegistration> findByUserAndStatusOrderByRegistrationDateDesc(User user, ServiceRegistration.RegistrationStatus status);
 }

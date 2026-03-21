@@ -2,8 +2,11 @@ package com.example.project_backend04.service;
 
 import com.example.project_backend04.dto.request.Trainer.CreateTrainerRequest;
 import com.example.project_backend04.dto.request.Trainer.UploadTrainerDocumentRequest;
+import com.example.project_backend04.dto.response.ServiceCategory.ServiceCategoryResponse;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
+import com.example.project_backend04.dto.response.Trainer.TrainerDocumentResponse;
 import com.example.project_backend04.dto.response.Trainer.TrainerResponse;
+import com.example.project_backend04.dto.response.Trainer.TrainerSpecialtyResponse;
 import com.example.project_backend04.entity.*;
 import com.example.project_backend04.entity.ServiceCategory;
 import com.example.project_backend04.repository.*;
@@ -40,12 +43,25 @@ public class TrainerService implements ITrainerService {
     @Override
     public ApiResponse<TrainerResponse> createTrainer(CreateTrainerRequest request) {
         try {
+            // Validate email uniqueness
             if (userRepository.findByEmail(request.getEmail()).isPresent()) {
                 return new ApiResponse<>(false, "Email đã tồn tại trong hệ thống", null, 400);
             }
+            
+            // Validate trainer role exists
             Role trainerRole = roleRepository.findRoleByName("TRAINER")
                     .orElseThrow(() -> new RuntimeException("Role TRAINER không tồn tại"));
+            
+            // Validate all specialties exist
+            for (CreateTrainerRequest.TrainerSpecialtyRequest spec : request.getSpecialties()) {
+                if (!serviceCategoryRepository.existsById(spec.getSpecialtyId())) {
+                    return new ApiResponse<>(false, "Specialty không tồn tại với ID: " + spec.getSpecialtyId(), null, 400);
+                }
+            }
+            
             String randomPassword = generateRandomPassword();
+            
+            // Create trainer user
             User trainer = new User();
             trainer.setEmail(request.getEmail());
             trainer.setFullName(request.getFullName());
@@ -58,12 +74,19 @@ public class TrainerService implements ITrainerService {
             trainer.setPassword(passwordEncoder.encode(randomPassword));
             trainer.setRole(trainerRole);
             trainer.setIsActive(true);
+            
             User savedTrainer = userRepository.save(trainer);
+            
+            // Create trainer specialties
             List<TrainerSpecialty> specialties = request.getSpecialties().stream()
                     .map(spec -> {
+                        // Tìm ServiceCategory theo specialtyId
+                        ServiceCategory serviceCategory = serviceCategoryRepository.findById(spec.getSpecialtyId())
+                                .orElseThrow(() -> new RuntimeException("Specialty không tồn tại với ID: " + spec.getSpecialtyId()));
+                        
                         TrainerSpecialty specialty = new TrainerSpecialty();
                         specialty.setUser(savedTrainer);
-                        specialty.setSpecialty(spec.getSpecialty());
+                        specialty.setSpecialty(serviceCategory); // Set ServiceCategory
                         specialty.setDescription(spec.getDescription());
                         specialty.setExperienceYears(spec.getExperienceYears());
                         specialty.setCertifications(spec.getCertifications());
@@ -74,15 +97,20 @@ public class TrainerService implements ITrainerService {
                     .collect(Collectors.toList());
 
             trainerSpecialtyRepository.saveAll(specialties);
+            
+            // Send password email (non-blocking)
             try {
                 emailService.sendPasswordEmail(request.getEmail(), request.getFullName(), randomPassword);
             } catch (Exception e) {
                 System.err.println("Failed to send email: " + e.getMessage());
             }
+            
             TrainerResponse response = mapToTrainerResponse(savedTrainer);
             return new ApiResponse<>(true, "Tạo trainer thành công. Mật khẩu đã được gửi qua email.", response, 201);
 
         } catch (Exception e) {
+            System.err.println("Error creating trainer: " + e.getMessage());
+            e.printStackTrace();
             return new ApiResponse<>(false, "Lỗi khi tạo trainer: " + e.getMessage(), null, 500);
         }
     }
@@ -123,7 +151,7 @@ public class TrainerService implements ITrainerService {
         }
     }
     @Override
-    public ApiResponse<TrainerResponse.TrainerDocumentResponse> uploadTrainerDocument(
+    public ApiResponse<TrainerDocumentResponse> uploadTrainerDocument(
             Long trainerId, MultipartFile file, UploadTrainerDocumentRequest request) {
         try {
             User trainer = findTrainerById(trainerId);
@@ -148,7 +176,7 @@ public class TrainerService implements ITrainerService {
             TrainerDocument savedDocument = trainerDocumentRepository.save(document);
 
             // Map to response
-            TrainerResponse.TrainerDocumentResponse response = mapToDocumentResponse(savedDocument);
+            TrainerDocumentResponse response = mapToDocumentResponse(savedDocument);
             return new ApiResponse<>(true, "Upload document thành công", response, 201);
 
         } catch (IOException e) {
@@ -181,6 +209,23 @@ public class TrainerService implements ITrainerService {
 
         } catch (Exception e) {
             return new ApiResponse<>(false, "Lỗi khi lấy danh sách trainers: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
+    public List<TrainerResponse> getAllActiveTrainers() {
+        try {
+            Role trainerRole = roleRepository.findRoleByName("TRAINER")
+                    .orElseThrow(() -> new RuntimeException("Role TRAINER không tồn tại"));
+
+            List<User> trainers = userRepository.findByRoleAndIsActiveTrueOrderByCreateDateDesc(trainerRole);
+            
+            return trainers.stream()
+                    .map(this::mapToTrainerResponse)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi lấy danh sách trainers: " + e.getMessage());
         }
     }
 
@@ -277,7 +322,7 @@ public class TrainerService implements ITrainerService {
             // Cập nhật specialties (xóa cũ, thêm mới)
             List<TrainerSpecialty> oldSpecialties = trainerSpecialtyRepository
                     .findByUserAndIsActiveTrueOrderBySpecialtyAsc(trainer);
-            
+
             // Deactivate old specialties
             oldSpecialties.forEach(spec -> spec.setIsActive(false));
             trainerSpecialtyRepository.saveAll(oldSpecialties);
@@ -285,9 +330,13 @@ public class TrainerService implements ITrainerService {
             // Add new specialties
             List<TrainerSpecialty> newSpecialties = request.getSpecialties().stream()
                     .map(spec -> {
+                        // Tìm ServiceCategory theo specialtyId
+                        ServiceCategory serviceCategory = serviceCategoryRepository.findById(spec.getSpecialtyId())
+                                .orElseThrow(() -> new RuntimeException("Specialty không tồn tại với ID: " + spec.getSpecialtyId()));
+                        
                         TrainerSpecialty specialty = new TrainerSpecialty();
                         specialty.setUser(updatedTrainer);
-                        specialty.setSpecialty(spec.getSpecialty());
+                        specialty.setSpecialty(serviceCategory); // Set ServiceCategory
                         specialty.setDescription(spec.getDescription());
                         specialty.setExperienceYears(spec.getExperienceYears());
                         specialty.setCertifications(spec.getCertifications());
@@ -343,7 +392,7 @@ public class TrainerService implements ITrainerService {
         response.setCoverPhoto(trainer.getCoverPhoto());
         response.setIsActive(trainer.getIsActive());
         response.setCreateDate(trainer.getCreateDate());
-        
+
         // Map trainer-specific fields
         response.setTotalExperienceYears(trainer.getTotalExperienceYears());
         response.setEducation(trainer.getEducation());
@@ -353,8 +402,8 @@ public class TrainerService implements ITrainerService {
         // Map specialties
         List<TrainerSpecialty> specialties = trainerSpecialtyRepository
                 .findByUserAndIsActiveTrueOrderBySpecialtyAsc(trainer);
-        
-        List<TrainerResponse.TrainerSpecialtyResponse> specialtyResponses = specialties.stream()
+
+        List<TrainerSpecialtyResponse> specialtyResponses = specialties.stream()
                 .map(this::mapToSpecialtyResponse)
                 .collect(Collectors.toList());
         response.setSpecialties(specialtyResponses);
@@ -362,8 +411,8 @@ public class TrainerService implements ITrainerService {
         // Map documents
         List<TrainerDocument> documents = trainerDocumentRepository
                 .findByUserAndIsActiveTrueOrderByCreatedAtDesc(trainer);
-        
-        List<TrainerResponse.TrainerDocumentResponse> documentResponses = documents.stream()
+
+        List<TrainerDocumentResponse> documentResponses = documents.stream()
                 .map(this::mapToDocumentResponse)
                 .collect(Collectors.toList());
         response.setDocuments(documentResponses);
@@ -371,13 +420,13 @@ public class TrainerService implements ITrainerService {
         return response;
     }
 
-    private TrainerResponse.TrainerSpecialtyResponse mapToSpecialtyResponse(TrainerSpecialty specialty) {
-        TrainerResponse.TrainerSpecialtyResponse response = new TrainerResponse.TrainerSpecialtyResponse();
+    private TrainerSpecialtyResponse mapToSpecialtyResponse(TrainerSpecialty specialty) {
+        TrainerSpecialtyResponse response = new TrainerSpecialtyResponse();
         response.setId(specialty.getId());
-        
+
         // Map ServiceCategory entity to DTO to avoid lazy loading issues
-        TrainerResponse.ServiceCategoryResponse categoryResponse = new TrainerResponse.ServiceCategoryResponse();
         ServiceCategory category = specialty.getSpecialty();
+        ServiceCategoryResponse categoryResponse = new ServiceCategoryResponse();
         categoryResponse.setId(category.getId());
         categoryResponse.setName(category.getName());
         categoryResponse.setDisplayName(category.getDisplayName());
@@ -385,20 +434,20 @@ public class TrainerService implements ITrainerService {
         categoryResponse.setIcon(category.getIcon());
         categoryResponse.setColor(category.getColor());
         categoryResponse.setIsActive(category.getIsActive());
-        categoryResponse.setSortOrder(category.getSortOrder());
-        response.setSpecialty(categoryResponse);
-        
+
+        response.setSpecialty(categoryResponse); // Set the specialty field
         response.setDescription(specialty.getDescription());
         response.setExperienceYears(specialty.getExperienceYears());
         response.setCertifications(specialty.getCertifications());
         response.setLevel(specialty.getLevel());
         response.setIsActive(specialty.getIsActive());
         response.setCreatedAt(specialty.getCreatedAt());
+
         return response;
     }
 
-    private TrainerResponse.TrainerDocumentResponse mapToDocumentResponse(TrainerDocument document) {
-        TrainerResponse.TrainerDocumentResponse response = new TrainerResponse.TrainerDocumentResponse();
+    private TrainerDocumentResponse mapToDocumentResponse(TrainerDocument document) {
+        TrainerDocumentResponse response = new TrainerDocumentResponse();
         response.setId(document.getId());
         response.setDocumentType(document.getDocumentType().name());
         response.setFileName(document.getFileName());

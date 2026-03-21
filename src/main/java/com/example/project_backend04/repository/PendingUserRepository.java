@@ -24,7 +24,6 @@ public interface PendingUserRepository extends JpaRepository<PendingUser, Long> 
     @Transactional
     void deleteByEmail(String email);
 
-    // Xóa tất cả PendingUser được tạo trước thời điểm chỉ định (sau 5 phút)
     @Modifying
     @Transactional
     void deleteAllByCreatedAtBefore(LocalDateTime cutoffTime);

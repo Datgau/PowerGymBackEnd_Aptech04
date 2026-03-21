@@ -29,6 +29,7 @@ public class GymServiceController {
             List<GymServiceResponse> services = gymService.getPublicServices();
             return ResponseEntity.ok(ApiResponse.success(services));
         } catch (Exception e) {
+            e.printStackTrace(); // Log the full stack trace for debugging
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to fetch services: " + e.getMessage()));
         }
@@ -43,6 +44,7 @@ public class GymServiceController {
             Page<GymServiceResponse> services = gymService.getPublicServices(page, size);
             return ResponseEntity.ok(ApiResponse.success(services));
         } catch (Exception e) {
+            e.printStackTrace(); // Log the full stack trace for debugging
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to fetch services: " + e.getMessage()));
         }

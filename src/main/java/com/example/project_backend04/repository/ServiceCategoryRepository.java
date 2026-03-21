@@ -15,9 +15,10 @@ public interface ServiceCategoryRepository extends JpaRepository<ServiceCategory
     // Tìm category theo name
     Optional<ServiceCategory> findByNameIgnoreCase(String name);
 
-    // Tìm tất cả categories active, sắp xếp theo sortOrder
-    @Query("SELECT sc FROM ServiceCategory sc WHERE sc.isActive = true ORDER BY sc.sortOrder ASC, sc.displayName ASC")
-    List<ServiceCategory> findAllActiveOrderBySortOrder();
+    // Tìm tất cả categories active, sắp xếp theo displayName
+    @Query("SELECT sc FROM ServiceCategory sc WHERE sc.isActive = true ORDER BY sc.displayName")
+    List<ServiceCategory> findAllActiveOrderByDisplayName();
+
 
     // Tìm categories theo displayName
     @Query("SELECT sc FROM ServiceCategory sc WHERE sc.displayName LIKE %:displayName% AND sc.isActive = true")
@@ -29,9 +30,6 @@ public interface ServiceCategoryRepository extends JpaRepository<ServiceCategory
     // Đếm số categories active
     long countByIsActiveTrue();
 
-    // Tìm category có sortOrder lớn nhất
-    @Query("SELECT MAX(sc.sortOrder) FROM ServiceCategory sc WHERE sc.isActive = true")
-    Integer findMaxSortOrder();
 
     // Tìm categories được sử dụng bởi trainers
     @Query("SELECT DISTINCT sc FROM ServiceCategory sc JOIN sc.trainerSpecialties ts WHERE ts.isActive = true AND sc.isActive = true")

@@ -98,6 +98,8 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.PUT, "/api/equipment-categories/**").hasRole("ADMIN")
                             .requestMatchers(HttpMethod.DELETE, "/api/equipment-categories/**").hasRole("ADMIN")
                             // AUTHENTICATED ENDPOINTS
+                            .requestMatchers("/api/payment/**").authenticated()
+                            .requestMatchers(HttpMethod.POST, "/api/payment/momo/ipn").permitAll() // MoMo IPN callback doesn't need auth
 
                             .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
                             .requestMatchers(HttpMethod.POST, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")

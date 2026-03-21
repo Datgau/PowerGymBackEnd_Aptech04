@@ -9,9 +9,7 @@ import java.util.List;
 @Data
 public class CreateMembershipPackageDto {
 
-    @NotBlank(message = "Package ID must not be blank")
-    @Size(max = 50, message = "Package ID must not exceed 50 characters")
-    private String packageId;
+    // Bỏ packageId - sẽ được tự động generate trong entity
 
     @NotBlank(message = "Package name must not be blank")
     @Size(max = 100, message = "Package name must not exceed 100 characters")

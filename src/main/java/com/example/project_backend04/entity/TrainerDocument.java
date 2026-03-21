@@ -37,10 +37,10 @@ public class TrainerDocument {
     private String description;
 
     @Column
-    private LocalDateTime expiryDate; // Ngày hết hạn (cho certificate, license)
+    private LocalDateTime expiryDate;
 
     @Column(nullable = false)
-    private Boolean isVerified = false; // Admin đã xác minh chưa
+    private Boolean isVerified = false;
 
     @Column(nullable = false)
     private Boolean isActive = true;

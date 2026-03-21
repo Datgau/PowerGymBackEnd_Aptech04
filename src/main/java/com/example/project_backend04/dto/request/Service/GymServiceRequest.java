@@ -1,7 +1,6 @@
 package com.example.project_backend04.dto.request.Service;
 
 
-import com.example.project_backend04.entity.ServiceCategory;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,7 +12,7 @@ public class GymServiceRequest {
 
     private String name;
     private String description;
-    private ServiceCategory category;
+    private Long categoryId;
     private BigDecimal price;
     private Integer duration;
     private Integer maxParticipants;

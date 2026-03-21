@@ -21,8 +21,8 @@ public class MembershipPackage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String packageId; // e.g., "monthly", "quarterly", "yearly"
+    @Column(unique = true)
+    private String packageId; // sẽ được tự động generate
 
     @Column(nullable = false)
     private String name;
@@ -70,6 +70,32 @@ public class MembershipPackage {
     protected void onCreate() {
         this.createDate = LocalDateTime.now();
         this.updateDate = LocalDateTime.now();
+        
+        // Tự động generate packageId nếu chưa có
+        if (this.packageId == null || this.packageId.trim().isEmpty()) {
+            this.packageId = generateUniquePackageId();
+        }
+    }
+    
+    private String generateUniquePackageId() {
+        if (this.name == null || this.name.trim().isEmpty()) {
+            return "PKG_" + System.currentTimeMillis() % 10000;
+        }
+        
+        String baseName = this.name.toUpperCase()
+            .replaceAll("[^A-Z0-9\\s]", "") // Loại bỏ ký tự đặc biệt
+            .replaceAll("\\s+", "_") // Thay khoảng trắng bằng underscore
+            .trim();
+            
+        if (baseName.length() > 15) {
+            baseName = baseName.substring(0, 15);
+        }
+        
+        if (baseName.isEmpty()) {
+            baseName = "PKG";
+        }
+        
+        return baseName + "_" + (System.currentTimeMillis() % 10000);
     }
 
     @PreUpdate

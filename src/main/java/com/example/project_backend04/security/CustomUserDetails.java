@@ -10,21 +10,36 @@ import java.util.Collection;
 @Getter
 public class CustomUserDetails implements UserDetails {
 
-    private final Long id;
-    private final String email;
-    private final String password;
+    private final User user; // Store the full User entity
     private final Collection<? extends GrantedAuthority> authorities;
 
     public CustomUserDetails(User user, Collection<? extends GrantedAuthority> authorities) {
-        this.id = user.getId();
-        this.email = user.getEmail();
-        this.password = user.getPassword();
+        this.user = user;
         this.authorities = authorities;
+    }
+
+    // Getter for User entity
+    public User getUser() {
+        return user;
+    }
+
+    // Convenience getters
+    public Long getId() {
+        return user.getId();
+    }
+
+    public String getEmail() {
+        return user.getEmail();
     }
 
     @Override
     public String getUsername() {
-        return email;
+        return user.getEmail();
+    }
+
+    @Override
+    public String getPassword() {
+        return user.getPassword();
     }
 
     @Override

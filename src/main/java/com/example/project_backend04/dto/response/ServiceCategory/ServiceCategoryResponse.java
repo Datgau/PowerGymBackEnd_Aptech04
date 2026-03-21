@@ -13,7 +13,7 @@ public class ServiceCategoryResponse {
     private String icon;
     private String color;
     private Boolean isActive;
-    private Integer sortOrder;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     

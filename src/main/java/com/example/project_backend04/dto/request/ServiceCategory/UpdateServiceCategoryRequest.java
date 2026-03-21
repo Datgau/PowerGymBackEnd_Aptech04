@@ -24,7 +24,7 @@ public class UpdateServiceCategoryRequest {
     @Size(max = 7, message = "Color phải là mã hex hợp lệ")
     private String color;
 
-    private Integer sortOrder = 0;
+
 
     private Boolean isActive = true;
 }

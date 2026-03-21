@@ -2,6 +2,7 @@ package com.example.project_backend04.controller;
 
 import com.example.project_backend04.dto.request.Service.ServiceRegistrationRequest;
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationResponse;
+import com.example.project_backend04.dto.response.Service.ServiceRegistrationWithTrainerSelectionResponse;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.service.ServiceRegistrationService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,28 @@ public class ServiceRegistrationController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to register service: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get registration details with trainer selection options
+     * This endpoint is called after successful service registration or payment
+     */
+    @GetMapping("/{registrationId}/trainer-selection")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ServiceRegistrationWithTrainerSelectionResponse>> getRegistrationForTrainerSelection(
+            @PathVariable Long registrationId
+    ) {
+        try {
+            ServiceRegistrationWithTrainerSelectionResponse response = 
+                registrationService.getRegistrationForTrainerSelection(registrationId);
+            return ResponseEntity.ok(ApiResponse.success(response, "Lấy thông tin đăng ký và danh sách trainer thành công"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to get trainer selection data: " + e.getMessage()));
         }
     }
 

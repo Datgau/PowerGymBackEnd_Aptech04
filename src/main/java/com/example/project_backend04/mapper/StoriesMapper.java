@@ -28,7 +28,7 @@ public class StoriesMapper {
                 .expiresAt(story.getExpiresAt())
                 .approvedAt(story.getApprovedAt())
                 .userId(user.getId())
-                .username(user.getEmail()) // bạn đang dùng email làm username
+                .username(user.getEmail())
                 .userAvatar(user.getAvatar())
                 .userFullName(user.getFullName())
                 .likeCount(story.getLikeCount() != null ? story.getLikeCount() : 0L)

@@ -1,6 +1,7 @@
 package com.example.project_backend04.mapper;
 
 import com.example.project_backend04.dto.request.MembershipPackage.CreateMembershipPackageDto;
+import com.example.project_backend04.dto.request.MembershipPackage.UpdateMembershipPackageDto;
 import com.example.project_backend04.entity.MembershipPackage;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
@@ -11,6 +12,6 @@ public interface MembershipPackageMapper {
 
     MembershipPackage toEntity(CreateMembershipPackageDto dto);
 
-    void updateEntityFromDto(CreateMembershipPackageDto dto, @MappingTarget MembershipPackage entity);
+    void updateEntityFromDto(UpdateMembershipPackageDto dto, @MappingTarget MembershipPackage entity);
 
 }

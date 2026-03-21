@@ -1,5 +1,6 @@
 package com.example.project_backend04.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -32,6 +33,9 @@ public class User {
     private String phoneNumber;
 
     @Column
+    private String dateOfBirth;
+
+    @Column
     private String avatar;
 
     @Column(columnDefinition = "TEXT")
@@ -40,7 +44,6 @@ public class User {
     @Column
     private String coverPhoto;
     
-    // Trainer-specific fields
     @Column
     private Integer totalExperienceYears;
     
@@ -69,9 +72,10 @@ public class User {
     @JoinColumn(name = "role_id")
     private Role role;
 
-    // Một user có thể liên kết nhiều providers (Facebook, Google,…)
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<UserProvider> providers;
+
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Post> posts;

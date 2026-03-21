@@ -3,6 +3,7 @@ package com.example.project_backend04.controller.admin;
 import com.example.project_backend04.dto.request.Trainer.CreateTrainerRequest;
 import com.example.project_backend04.dto.request.Trainer.UploadTrainerDocumentRequest;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
+import com.example.project_backend04.dto.response.Trainer.TrainerDocumentResponse;
 import com.example.project_backend04.dto.response.Trainer.TrainerResponse;
 import com.example.project_backend04.service.IService.ITrainerService;
 import jakarta.validation.Valid;
@@ -35,9 +36,7 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Upload avatar cho trainer
-     */
+
     @PostMapping(value = "/{trainerId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<String>> uploadTrainerAvatar(
             @PathVariable Long trainerId,
@@ -54,9 +53,6 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Upload cover photo cho trainer
-     */
     @PostMapping(value = "/{trainerId}/cover-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<String>> uploadTrainerCoverPhoto(
             @PathVariable Long trainerId,
@@ -73,11 +69,8 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Upload documents cho trainer (giấy tờ, chứng chỉ)
-     */
     @PostMapping(value = "/{trainerId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<TrainerResponse.TrainerDocumentResponse>> uploadTrainerDocument(
+    public ResponseEntity<ApiResponse<TrainerDocumentResponse>> uploadTrainerDocument(
             @PathVariable Long trainerId,
             @RequestParam("file") MultipartFile file,
             @RequestParam("documentType") String documentType,
@@ -98,7 +91,7 @@ public class AdminTrainerController {
                 request.setExpiryDate(java.time.LocalDateTime.parse(expiryDate));
             }
 
-            ApiResponse<TrainerResponse.TrainerDocumentResponse> response = 
+            ApiResponse<TrainerDocumentResponse> response =
                     trainerService.uploadTrainerDocument(trainerId, file, request);
             
             return ResponseEntity
@@ -114,9 +107,6 @@ public class AdminTrainerController {
         }
     }
 
-    /**
-     * Lấy thông tin trainer theo ID
-     */
     @GetMapping("/{trainerId}")
     public ResponseEntity<ApiResponse<TrainerResponse>> getTrainerById(@PathVariable Long trainerId) {
         ApiResponse<TrainerResponse> response = trainerService.getTrainerById(trainerId);
@@ -125,9 +115,6 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Lấy danh sách tất cả trainers với phân trang
-     */
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TrainerResponse>>> getAllTrainers(
             @RequestParam(defaultValue = "0") int page,
@@ -139,9 +126,6 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Lấy trainers theo specialty
-     */
     @GetMapping("/specialty/{specialty}")
     public ResponseEntity<ApiResponse<List<TrainerResponse>>> getTrainersBySpecialty(
             @PathVariable String specialty) {
@@ -152,9 +136,6 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Verify document của trainer
-     */
     @PutMapping("/documents/{documentId}/verify")
     public ResponseEntity<ApiResponse<String>> verifyTrainerDocument(
             @PathVariable Long documentId,
@@ -166,9 +147,6 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Xóa document của trainer
-     */
     @DeleteMapping("/{trainerId}/documents/{documentId}")
     public ResponseEntity<ApiResponse<String>> deleteTrainerDocument(
             @PathVariable Long trainerId,
@@ -180,9 +158,7 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Cập nhật thông tin trainer
-     */
+
     @PutMapping("/{trainerId}")
     public ResponseEntity<ApiResponse<TrainerResponse>> updateTrainer(
             @PathVariable Long trainerId,

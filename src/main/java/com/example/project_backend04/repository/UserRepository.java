@@ -22,10 +22,43 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Tìm tất cả users theo role
     List<User> findByRoleAndIsActiveTrue(Role role);
     
+    // Tìm tất cả users theo role với ordering
+    List<User> findByRoleAndIsActiveTrueOrderByCreateDateDesc(Role role);
+    
     // Đếm số users theo role
     long countByRoleAndIsActiveTrue(Role role);
     
     // Tìm users theo role name
     @Query("SELECT u FROM User u WHERE u.role.name = :roleName AND u.isActive = true")
     List<User> findByRoleNameAndIsActiveTrue(@Param("roleName") String roleName);
+    
+    // Tìm users theo multiple role names với pagination
+    @Query("SELECT u FROM User u WHERE u.role.name IN :roleNames ORDER BY u.createDate DESC")
+    Page<User> findByRoleNameIn(@Param("roleNames") List<String> roleNames, Pageable pageable);
+    
+    // Đếm số lượng users theo role name
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role.name = :roleName")
+    long countByRoleName(@Param("roleName") String roleName);
+    
+    // Tìm users theo single role name với pagination
+    @Query("SELECT u FROM User u WHERE u.role.name = :roleName ORDER BY u.createDate DESC")
+    Page<User> findByRoleName(@Param("roleName") String roleName, Pageable pageable);
+    
+    // Search users theo email hoặc phone trong tất cả roles (USER, STAFF)
+    @Query("SELECT u FROM User u WHERE u.role.name IN :roleNames AND " +
+           "(LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "u.phoneNumber LIKE CONCAT('%', :searchTerm, '%')) " +
+           "ORDER BY u.createDate DESC")
+    Page<User> searchByEmailOrPhoneInRoles(@Param("roleNames") List<String> roleNames, 
+                                          @Param("searchTerm") String searchTerm, 
+                                          Pageable pageable);
+    
+    // Search users theo email hoặc phone trong single role
+    @Query("SELECT u FROM User u WHERE u.role.name = :roleName AND " +
+           "(LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "u.phoneNumber LIKE CONCAT('%', :searchTerm, '%')) " +
+           "ORDER BY u.createDate DESC")
+    Page<User> searchByEmailOrPhoneInRole(@Param("roleName") String roleName, 
+                                         @Param("searchTerm") String searchTerm, 
+                                         Pageable pageable);
 }

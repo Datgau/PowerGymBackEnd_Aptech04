@@ -20,6 +20,7 @@ public class ServiceRegistrationResponse {
     private ServiceRegistration.RegistrationStatus status;
     private String notes;
     private LocalDateTime registrationDate;
+    private LocalDateTime expirationDate;
     private LocalDateTime cancelledDate;
     private String cancellationReason;
 }

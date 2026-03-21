@@ -1,6 +1,7 @@
 package com.example.project_backend04.controller.admin;
 
 import com.example.project_backend04.dto.request.MembershipPackage.CreateMembershipPackageDto;
+import com.example.project_backend04.dto.request.MembershipPackage.UpdateMembershipPackageDto;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.entity.MembershipPackage;
 import com.example.project_backend04.service.IService.IMembershipPackageService;
@@ -65,7 +66,7 @@ public class MembershipPackageController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MembershipPackage>> updateMembershipPackage(
             @PathVariable Long id,
-            @Valid @RequestBody CreateMembershipPackageDto request
+            @Valid @RequestBody UpdateMembershipPackageDto request
     ) {
         ApiResponse<MembershipPackage> response =
                 membershipPackageService.updateMembershipPackage(id, request);

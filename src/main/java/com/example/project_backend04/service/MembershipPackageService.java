@@ -1,6 +1,7 @@
 package com.example.project_backend04.service;
 
 import com.example.project_backend04.dto.request.MembershipPackage.CreateMembershipPackageDto;
+import com.example.project_backend04.dto.request.MembershipPackage.UpdateMembershipPackageDto;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.entity.MembershipPackage;
 import com.example.project_backend04.mapper.MembershipPackageMapper;
@@ -58,43 +59,50 @@ public class MembershipPackageService implements IMembershipPackageService {
     @Override
     @org.springframework.transaction.annotation.Transactional
     public ApiResponse<MembershipPackage> createMembershipPackage(CreateMembershipPackageDto request) {
+        try {
+            MembershipPackage membershipPackage =
+                    membershipPackageMapper.toEntity(request);
 
-        if (membershipPackageRepository.existsByPackageId(request.getPackageId())) {
-            return ApiResponse.error("Package ID already exists");
+            MembershipPackage savedPackage =
+                    membershipPackageRepository.save(membershipPackage);
+
+            return ApiResponse.success(
+                    savedPackage,
+                    "Membership package created successfully"
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ApiResponse.error("Failed to create membership package: " + e.getMessage());
         }
-
-        MembershipPackage membershipPackage =
-                membershipPackageMapper.toEntity(request);
-
-        MembershipPackage savedPackage =
-                membershipPackageRepository.save(membershipPackage);
-
-        return ApiResponse.success(
-                savedPackage,
-                "Membership package created successfully"
-        );
     }
 
     @Override
     @org.springframework.transaction.annotation.Transactional
-    public ApiResponse<MembershipPackage> updateMembershipPackage(Long id, CreateMembershipPackageDto request) {
-        Optional<MembershipPackage> existingPackageOpt = membershipPackageRepository.findById(id);
-        
-        if (existingPackageOpt.isEmpty()) {
-            return ApiResponse.error("Package not found");
-        }
+    public ApiResponse<MembershipPackage> updateMembershipPackage(Long id, UpdateMembershipPackageDto request) {
+        try {
+            Optional<MembershipPackage> existingPackageOpt = membershipPackageRepository.findById(id);
+            
+            if (existingPackageOpt.isEmpty()) {
+                return ApiResponse.error("Package not found");
+            }
 
-        MembershipPackage existingPackage = existingPackageOpt.get();
-        if (!existingPackage.getPackageId().equals(request.getPackageId()) &&
-            membershipPackageRepository.existsByPackageId(request.getPackageId())) {
-            return ApiResponse.error("Package ID already exists");
-        }
+            MembershipPackage existingPackage = existingPackageOpt.get();
+            
+            // Check if packageId is being changed and if new packageId already exists
+            if (!existingPackage.getPackageId().equals(request.getPackageId()) &&
+                membershipPackageRepository.existsByPackageId(request.getPackageId())) {
+                return ApiResponse.error("Package ID already exists");
+            }
 
-        membershipPackageMapper.updateEntityFromDto(request, existingPackage);
-        
-        MembershipPackage updatedPackage = membershipPackageRepository.save(existingPackage);
-        
-        return ApiResponse.success(updatedPackage, "Package updated successfully");
+            membershipPackageMapper.updateEntityFromDto(request, existingPackage);
+            
+            MembershipPackage updatedPackage = membershipPackageRepository.save(existingPackage);
+            
+            return ApiResponse.success(updatedPackage, "Package updated successfully");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ApiResponse.error("Failed to update membership package: " + e.getMessage());
+        }
     }
 
     @Override

@@ -20,25 +20,24 @@ public class ServiceCategory {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 100)
-    private String name; // PERSONAL_TRAINER, BOXING, YOGA, etc.
+    private String name;
 
     @Column(nullable = false, length = 200)
-    private String displayName; // "Personal Trainer", "Boxing", "Yoga", etc.
+    private String displayName;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column
-    private String icon; // Icon class or URL
+    private String icon;
 
     @Column
-    private String color; // Hex color code for UI
+    private String color;
 
     @Column(nullable = false)
     private Boolean isActive = true;
 
-    @Column(nullable = false)
-    private Integer sortOrder = 0; // For ordering in UI
+
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

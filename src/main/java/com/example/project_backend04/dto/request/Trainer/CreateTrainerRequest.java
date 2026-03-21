@@ -1,6 +1,5 @@
 package com.example.project_backend04.dto.request.Trainer;
 
-import com.example.project_backend04.entity.ServiceCategory;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -41,7 +40,7 @@ public class CreateTrainerRequest {
     @Data
     public static class TrainerSpecialtyRequest {
         @NotNull(message = "Chuyên môn không được để trống")
-        private ServiceCategory specialty;
+        private Long specialtyId;
         
         @Size(max = 500, message = "Mô tả không được quá 500 ký tự")
         private String description;

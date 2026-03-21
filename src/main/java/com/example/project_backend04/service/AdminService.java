@@ -6,12 +6,22 @@ import com.example.project_backend04.dto.request.User.CreateUserRequest;
 import com.example.project_backend04.dto.request.User.UpdateUserRequest;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.User.UserResponse;
+import com.example.project_backend04.dto.response.User.UserDetailResponse;
+import com.example.project_backend04.dto.response.User.UserMembershipResponse;
+import com.example.project_backend04.dto.response.User.UserServiceRegistrationResponse;
+import com.example.project_backend04.dto.response.User.TrainerSpecialtyResponse;
 import com.example.project_backend04.entity.Role;
 import com.example.project_backend04.entity.User;
+import com.example.project_backend04.entity.Membership;
+import com.example.project_backend04.entity.ServiceRegistration;
+import com.example.project_backend04.entity.TrainerSpecialty;
 import com.example.project_backend04.event.EntityChangedEvent;
 import com.example.project_backend04.mapper.UserMapper;
 import com.example.project_backend04.repository.RoleRepository;
 import com.example.project_backend04.repository.UserRepository;
+import com.example.project_backend04.repository.MembershipRepository;
+import com.example.project_backend04.repository.ServiceRegistrationRepository;
+import com.example.project_backend04.repository.TrainerSpecialtyRepository;
 import com.example.project_backend04.service.IService.IAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -25,6 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.time.LocalDate;
+import java.time.Period;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +46,9 @@ public class AdminService implements IAdminService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final MembershipRepository membershipRepository;
+    private final ServiceRegistrationRepository serviceRegistrationRepository;
+    private final TrainerSpecialtyRepository trainerSpecialtyRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final EmailService emailService;
@@ -111,8 +128,27 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
     //      UserManager
     @Transactional
     public ApiResponse<UserResponse> createUser(CreateUserRequest req) {
+        System.out.println("=== DEBUG: Creating user with data: " + req.toString() + " ===");
+        
         if (userRepository.findByEmail(req.getEmail()).isPresent()) {
             return new ApiResponse<>(false, "Email đã tồn tại", null, 400);
+        }
+
+        // Validate age if dateOfBirth is provided
+        if (req.getDateOfBirth() != null && !req.getDateOfBirth().trim().isEmpty()) {
+            try {
+                LocalDate birthDate = LocalDate.parse(req.getDateOfBirth());
+                LocalDate today = LocalDate.now();
+                int age = Period.between(birthDate, today).getYears();
+                
+                if (age < 16) {
+                    return new ApiResponse<>(false, "User must be at least 16 years old to register", null, 400);
+                }
+                
+                System.out.println("=== DEBUG: User age validation passed: " + age + " years old ===");
+            } catch (Exception e) {
+                return new ApiResponse<>(false, "Invalid date of birth format", null, 400);
+            }
         }
 
         // Tạo mật khẩu ngẫu nhiên
@@ -128,7 +164,11 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
                 .orElseGet(() -> roleRepository.save(new Role(null, "USER", null)));
         user.setRole(role);
 
+        System.out.println("=== DEBUG: User entity before save: " + user.toString() + " ===");
+        
         User saved = userRepository.save(user);
+        
+        System.out.println("=== DEBUG: User entity after save: " + saved.toString() + " ===");
 
         // Gửi email với mật khẩu
         try {
@@ -143,7 +183,10 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
             new EntityChangedEvent(this, "USER", "CREATED", userMapper.toResponse(saved), saved.getId())
         );
 
-        return new ApiResponse<>(true, "Tạo user thành công. Mật khẩu đã được gửi qua email.", userMapper.toResponse(saved), 201);
+        UserResponse response = userMapper.toResponse(saved);
+        System.out.println("=== DEBUG: Final response: " + response.toString() + " ===");
+
+        return new ApiResponse<>(true, "Tạo user thành công. Mật khẩu đã được gửi qua email.", response, 201);
     }
 
     private String generateRandomPassword() {
@@ -224,14 +267,220 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
 
     @Override
     public ApiResponse<Page<UserResponse>> getAllUsers(int page, int size) {
-
         Pageable pageable = PageRequest.of(page, size, Sort.by("createDate").descending());
 
-        Page<User> userPage = userRepository.findAll(pageable);
+        // Chỉ lấy users có role USER và STAFF
+        Page<User> userPage = userRepository.findByRoleNameIn(
+            List.of("USER", "STAFF"), 
+            pageable
+        );
 
         Page<UserResponse> responsePage = userPage.map(userMapper::toResponse);
 
         return new ApiResponse<>(true, "User list retrieved successfully", responsePage, 200);
+    }
+
+    @Override
+    public ApiResponse<Page<UserResponse>> getUsersByRole(String roleName, int page, int size) {
+        // Chỉ cho phép lấy USER và STAFF
+        if (!List.of("USER", "STAFF").contains(roleName)) {
+            return new ApiResponse<>(false, "Invalid role name", null, 400);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createDate").descending());
+        Page<User> userPage = userRepository.findByRoleName(roleName, pageable);
+        Page<UserResponse> responsePage = userPage.map(userMapper::toResponse);
+
+        return new ApiResponse<>(true, "Users by role retrieved successfully", responsePage, 200);
+    }
+
+    @Override
+    public ApiResponse<Map<String, Long>> getUserCounts() {
+        long userCount = userRepository.countByRoleName("USER");
+        long staffCount = userRepository.countByRoleName("STAFF");
+        long totalCount = userCount + staffCount;
+
+        Map<String, Long> counts = Map.of(
+            "USER", userCount,
+            "STAFF", staffCount,
+            "TOTAL", totalCount
+        );
+
+        return new ApiResponse<>(true, "User counts retrieved successfully", counts, 200);
+    }
+
+    @Override
+    public ApiResponse<Page<UserResponse>> searchUsers(String searchTerm, String role, int page, int size) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return new ApiResponse<>(false, "Search term cannot be empty", null, 400);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createDate").descending());
+        Page<User> userPage;
+
+        if ("ALL".equals(role)) {
+            // Tìm trong cả USER và STAFF
+            userPage = userRepository.searchByEmailOrPhoneInRoles(
+                List.of("USER", "STAFF"), 
+                searchTerm.trim(), 
+                pageable
+            );
+        } else if (List.of("USER", "STAFF").contains(role)) {
+            // Tìm trong role cụ thể
+            userPage = userRepository.searchByEmailOrPhoneInRole(
+                role, 
+                searchTerm.trim(), 
+                pageable
+            );
+        } else {
+            return new ApiResponse<>(false, "Invalid role name", null, 400);
+        }
+
+        Page<UserResponse> responsePage = userPage.map(userMapper::toResponse);
+        return new ApiResponse<>(true, "Search results retrieved successfully", responsePage, 200);
+    }
+
+    // User detail methods
+    @Override
+    public ApiResponse<UserDetailResponse> getUserDetail(Long id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+        }
+
+        User user = userOpt.get();
+        UserDetailResponse response = UserDetailResponse.builder()
+                .id(user.getId())
+                .username(user.getEmail()) // Using email as username
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .phoneNumber(user.getPhoneNumber())
+                .dateOfBirth(user.getDateOfBirth())
+                .avatar(user.getAvatar())
+                .bio(user.getBio())
+                .coverPhoto(user.getCoverPhoto())
+                .createDate(user.getCreateDate())
+                .role(user.getRole())
+                .isActive(user.getIsActive())
+                .totalExperienceYears(user.getTotalExperienceYears())
+                .education(user.getEducation())
+                .emergencyContact(user.getEmergencyContact())
+                .emergencyPhone(user.getEmergencyPhone())
+                .build();
+
+        return new ApiResponse<>(true, "Lấy thông tin user thành công", response, 200);
+    }
+
+    @Override
+    public ApiResponse<List<UserMembershipResponse>> getUserMemberships(Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+        }
+
+        User user = userOpt.get();
+        List<Membership> memberships = membershipRepository.findByUserOrderByCreateDateDesc(user);
+
+        List<UserMembershipResponse> responses = memberships.stream()
+                .map(membership -> UserMembershipResponse.builder()
+                        .id(membership.getId())
+                        .membershipPackage(UserMembershipResponse.MembershipPackageInfo.builder()
+                                .id(membership.getMembershipPackage().getId())
+                                .name(membership.getMembershipPackage().getName())
+                                .description(membership.getMembershipPackage().getDescription())
+                                .duration(membership.getMembershipPackage().getDuration())
+                                .price(membership.getMembershipPackage().getPrice())
+                                .build())
+                        .startDate(membership.getStartDate())
+                        .endDate(membership.getEndDate())
+                        .isActive(membership.isActive())
+                        .paidAmount(membership.getPaidAmount())
+                        .status(membership.getStatus().name())
+                        .build())
+                .collect(Collectors.toList());
+
+        return new ApiResponse<>(true, "Lấy danh sách membership thành công", responses, 200);
+    }
+
+    @Override
+    public ApiResponse<List<UserServiceRegistrationResponse>> getUserServiceRegistrations(Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+        }
+
+        User user = userOpt.get();
+        List<ServiceRegistration> registrations = serviceRegistrationRepository.findByUserWithGymServiceOrderByRegistrationDateDesc(user);
+
+        List<UserServiceRegistrationResponse> responses = registrations.stream()
+                .map(registration -> {
+                    UserServiceRegistrationResponse.ServiceInfo serviceInfo = UserServiceRegistrationResponse.ServiceInfo.builder()
+                            .id(registration.getGymService().getId())
+                            .name(registration.getGymService().getName())
+                            .description(registration.getGymService().getDescription())
+                            .price(registration.getGymService().getPrice())
+                            .category(UserServiceRegistrationResponse.CategoryInfo.builder()
+                                    .id(registration.getGymService().getCategory().getId())
+                                    .name(registration.getGymService().getCategory().getName())
+                                    .displayName(registration.getGymService().getCategory().getDisplayName())
+                                    .build())
+                            .build();
+
+                    UserServiceRegistrationResponse response = UserServiceRegistrationResponse.builder()
+                            .id(registration.getId())
+                            .service(serviceInfo)
+                            .registrationDate(registration.getRegistrationDate())
+                            .expirationDate(registration.getExpirationDate())
+                            .status(registration.getActualStatus().name()) // Sử dụng getActualStatus() để auto check expired
+                            .notes(registration.getNotes())
+                            .trainer(registration.getTrainer() != null ? 
+                                UserServiceRegistrationResponse.TrainerInfo.builder()
+                                    .id(registration.getTrainer().getId())
+                                    .fullName(registration.getTrainer().getFullName())
+                                    .avatar(registration.getTrainer().getAvatar())
+                                    .build() : null)
+                            .build();
+                    
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        return new ApiResponse<>(true, "Lấy danh sách service registration thành công", responses, 200);
+    }
+
+    @Override
+    public ApiResponse<List<TrainerSpecialtyResponse>> getTrainerSpecialties(Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+        }
+
+        User user = userOpt.get();
+        
+        // Check if user is a trainer
+        if (!user.isTrainer()) {
+            return new ApiResponse<>(false, "User không phải là trainer", null, 400);
+        }
+
+        List<TrainerSpecialty> specialties = trainerSpecialtyRepository.findByUserAndIsActiveTrueOrderBySpecialtyAsc(user);
+
+        List<TrainerSpecialtyResponse> responses = specialties.stream()
+                .map(specialty -> TrainerSpecialtyResponse.builder()
+                        .id(specialty.getId())
+                        .specialty(TrainerSpecialtyResponse.SpecialtyInfo.builder()
+                                .id(specialty.getSpecialty().getId())
+                                .name(specialty.getSpecialty().getName())
+                                .displayName(specialty.getSpecialty().getDisplayName())
+                                .build())
+                        .description(specialty.getDescription())
+                        .experienceYears(specialty.getExperienceYears())
+                        .certifications(specialty.getCertifications())
+                        .level(specialty.getLevel())
+                        .isActive(specialty.getIsActive())
+                        .build())
+                .collect(Collectors.toList());
+
+        return new ApiResponse<>(true, "Lấy danh sách trainer specialty thành công", responses, 200);
     }
 
 }
