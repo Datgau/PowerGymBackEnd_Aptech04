@@ -44,12 +44,11 @@ public class TrainerStatisticsResponse {
     // Revenue & Service Statistics
     private double totalRevenue;
     private double averageRevenuePerBooking;
-    private Map<String, Integer> serviceBreakdown; // service name -> count
-    private Map<String, Double> serviceRevenue; // service name -> revenue
-    
+    private Map<String, Integer> serviceBreakdown;
+    private Map<String, Double> serviceRevenue;
     // Time Analysis
-    private Map<String, Integer> bookingsByDayOfWeek; // "MONDAY" -> count
-    private Map<Integer, Integer> bookingsByHour; // hour -> count
+    private Map<String, Integer> bookingsByDayOfWeek;
+    private Map<Integer, Integer> bookingsByHour;
     private int totalWorkingHours;
     private double averageSessionDuration; // in minutes
     

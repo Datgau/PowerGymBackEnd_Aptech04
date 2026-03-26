@@ -193,4 +193,12 @@ public class AdminController {
                 new ApiResponse<>(true, "OK", exists, 200)
         );
     }
+
+    @PutMapping("/user/{userId}/toggle-status")
+    public ResponseEntity<ApiResponse<UserResponse>> toggleUserStatus(@PathVariable Long userId) {
+        ApiResponse<UserResponse> response = adminService.toggleUserStatus(userId);
+        return ResponseEntity
+                .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.NOT_FOUND)
+                .body(response);
+    }
 }

@@ -37,4 +37,7 @@ public interface IAdminService {
     ApiResponse<List<UserMembershipResponse>> getUserMemberships(Long userId);
     ApiResponse<List<UserServiceRegistrationResponse>> getUserServiceRegistrations(Long userId);
     ApiResponse<List<TrainerSpecialtyResponse>> getTrainerSpecialties(Long userId);
+    
+    // User status management
+    ApiResponse<UserResponse> toggleUserStatus(Long userId);
 }

@@ -33,21 +33,13 @@ public class TrainerManagementService {
     private final RoleRepository roleRepository;
     private final IntegratedBookingService integratedBookingService;
 
-    /**
-     * Get trainer's schedule for a date range
-     */
     public TrainerScheduleResponse getTrainerSchedule(Long trainerId, LocalDate fromDate, LocalDate toDate) {
         User trainer = findTrainerById(trainerId);
         
-        // Get all bookings in the date range
         List<TrainerBooking> bookings = trainerBookingRepository
             .findTrainerBookingsInDateRange(trainer, fromDate, toDate);
-        
-        // Group bookings by date
         Map<LocalDate, List<TrainerBooking>> bookingsByDate = bookings.stream()
             .collect(Collectors.groupingBy(TrainerBooking::getBookingDate));
-        
-        // Create daily schedules
         List<TrainerScheduleResponse.DailySchedule> dailySchedules = new ArrayList<>();
         LocalDate currentDate = fromDate;
         
@@ -57,8 +49,6 @@ public class TrainerManagementService {
             dailySchedules.add(dailySchedule);
             currentDate = currentDate.plusDays(1);
         }
-        
-        // Calculate statistics
         int totalBookings = bookings.size();
         int confirmedBookings = (int) bookings.stream()
             .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.CONFIRMED)
@@ -69,8 +59,6 @@ public class TrainerManagementService {
         int completedBookings = (int) bookings.stream()
             .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.COMPLETED)
             .count();
-        
-        // Calculate availability summary
         List<String> availableDays = getAvailableDays(dailySchedules);
         LocalTime earliestStart = getEarliestStartTime(bookings);
         LocalTime latestEnd = getLatestEndTime(bookings);
@@ -96,10 +84,6 @@ public class TrainerManagementService {
             .averageBookingsPerDay(averageBookingsPerDay)
             .build();
     }
-
-    /**
-     * Get pending booking requests for a trainer
-     */
     public List<TrainerBookingResponse> getPendingBookingRequests(Long trainerId) {
         User trainer = findTrainerById(trainerId);
         
@@ -110,18 +94,10 @@ public class TrainerManagementService {
             .map(this::mapToBookingResponse)
             .collect(Collectors.toList());
     }
-
-    /**
-     * Get trainer statistics for a period
-     */
     public TrainerStatisticsResponse getTrainerStatistics(Long trainerId, LocalDate fromDate, LocalDate toDate) {
         User trainer = findTrainerById(trainerId);
-        
-        // Get all bookings in the period
         List<TrainerBooking> bookings = trainerBookingRepository
             .findTrainerBookingsInDateRange(trainer, fromDate, toDate);
-        
-        // Calculate basic statistics
         int totalBookings = bookings.size();
         int confirmedBookings = (int) bookings.stream()
             .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.CONFIRMED)
@@ -142,35 +118,29 @@ public class TrainerManagementService {
         // Calculate rates
         double completionRate = confirmedBookings > 0 ? (completedBookings / (double) confirmedBookings) * 100 : 0;
         double confirmationRate = totalBookings > 0 ? (confirmedBookings / (double) totalBookings) * 100 : 0;
-        
-        // Calculate average rating
+
         Double averageRating = trainerBookingRepository.findAverageRatingByTrainer(trainerId);
         averageRating = averageRating != null ? averageRating : 0.0;
         
         int totalRatings = (int) bookings.stream()
             .filter(b -> b.getRating() != null)
             .count();
-        
-        // Calculate time-based statistics
+
         int totalDays = (int) fromDate.datesUntil(toDate.plusDays(1)).count();
         double averageBookingsPerDay = totalBookings / (double) totalDays;
-        
-        // Service breakdown
+
         Map<String, Integer> serviceBreakdown = bookings.stream()
             .filter(b -> b.getServiceRegistration() != null && b.getServiceRegistration().getGymService() != null)
             .collect(Collectors.groupingBy(
                 b -> b.getServiceRegistration().getGymService().getName(),
                 Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)
             ));
-        
-        // Day of week analysis
         Map<String, Integer> bookingsByDayOfWeek = bookings.stream()
             .collect(Collectors.groupingBy(
                 b -> b.getBookingDate().getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase(),
                 Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)
             ));
-        
-        // Hour analysis
+
         Map<Integer, Integer> bookingsByHour = bookings.stream()
             .collect(Collectors.groupingBy(
                 b -> b.getStartTime().getHour(),
@@ -206,6 +176,15 @@ public class TrainerManagementService {
             .bookingsByDayOfWeek(bookingsByDayOfWeek)
             .bookingsByHour(bookingsByHour)
             .uniqueClients(uniqueClients)
+            .totalRevenue(0)
+            .averageRevenuePerBooking(0)
+            .serviceRevenue(new HashMap<>())
+            .totalWorkingHours(0)
+            .averageSessionDuration(0)
+            .returningClients(0)
+            .clientRetentionRate(0)
+            .topClients(new ArrayList<>())
+            .monthlyTrends(new ArrayList<>())
             .build();
     }
 
@@ -223,9 +202,6 @@ public class TrainerManagementService {
             .collect(Collectors.toList());
     }
 
-    /**
-     * Bulk respond to booking requests
-     */
     @Transactional
     public int bulkRespondToBookings(List<Long> bookingIds, String action, String reason) {
         int processedCount = 0;
@@ -246,9 +222,6 @@ public class TrainerManagementService {
         return processedCount;
     }
 
-    /**
-     * Get workload summary for all trainers
-     */
     public List<TrainerStatisticsResponse> getWorkloadSummary(LocalDate fromDate, LocalDate toDate) {
         Role trainerRole = roleRepository.findRoleByName("TRAINER")
             .orElseThrow(() -> new RuntimeException("TRAINER role not found"));
@@ -324,7 +297,7 @@ public class TrainerManagementService {
             .clientName(booking.getUser().getFullName())
             .clientEmail(booking.getUser().getEmail())
             .clientPhone(booking.getUser().getPhoneNumber())
-            .serviceName(booking.getServiceRegistration() != null && 
+            .serviceName(booking.getServiceRegistration() != null &&
                         booking.getServiceRegistration().getGymService() != null ?
                         booking.getServiceRegistration().getGymService().getName() : "Direct Booking")
             .bookingDate(booking.getBookingDate())
@@ -335,6 +308,7 @@ public class TrainerManagementService {
             .specialRequests(booking.getSessionObjective())
             .createdAt(booking.getCreatedAt())
             .isServiceLinked(booking.getServiceRegistration() != null)
+
             .build();
     }
 

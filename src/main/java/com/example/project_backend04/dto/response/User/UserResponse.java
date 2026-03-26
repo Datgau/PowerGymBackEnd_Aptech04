@@ -23,5 +23,6 @@ public class UserResponse {
     private String coverPhoto;
     private LocalDateTime createDate;
     private Role role;
+    private Boolean isActive;
     private String dateOfBirth;
 }

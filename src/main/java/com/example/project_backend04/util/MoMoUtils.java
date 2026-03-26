@@ -10,10 +10,6 @@ import java.util.Base64;
 public class MoMoUtils {
     
     private static final String HMAC_SHA256 = "HmacSHA256";
-    
-    /**
-     * Generate HMAC SHA256 signature for MoMo payment request
-     */
     public static String generateSignature(String rawData, String secretKey) {
         try {
             Mac mac = Mac.getInstance(HMAC_SHA256);
@@ -25,10 +21,7 @@ public class MoMoUtils {
             throw new RuntimeException("Error generating MoMo signature", e);
         }
     }
-    
-    /**
-     * Convert byte array to hex string
-     */
+
     private static String bytesToHex(byte[] bytes) {
         StringBuilder result = new StringBuilder();
         for (byte b : bytes) {
@@ -36,10 +29,7 @@ public class MoMoUtils {
         }
         return result.toString();
     }
-    
-    /**
-     * Generate signature for payment request
-     */
+
     public static String generatePaymentSignature(String accessKey, Long amount, String extraData, 
                                                  String ipnUrl, String orderId, String orderInfo, 
                                                  String partnerCode, String redirectUrl, 
@@ -57,10 +47,7 @@ public class MoMoUtils {
         
         return generateSignature(rawData, secretKey);
     }
-    
-    /**
-     * Generate signature for IPN verification
-     */
+
     public static String generateIPNSignature(String accessKey, Long amount, String extraData, 
                                             String message, String orderId, String orderInfo, 
                                             String orderType, String partnerCode, String payType, 
@@ -82,17 +69,11 @@ public class MoMoUtils {
         
         return generateSignature(rawData, secretKey);
     }
-    
-    /**
-     * Encode data to Base64
-     */
+
     public static String encodeBase64(String data) {
         return Base64.getEncoder().encodeToString(data.getBytes(StandardCharsets.UTF_8));
     }
-    
-    /**
-     * Decode Base64 data
-     */
+
     public static String decodeBase64(String encodedData) {
         return new String(Base64.getDecoder().decode(encodedData), StandardCharsets.UTF_8);
     }

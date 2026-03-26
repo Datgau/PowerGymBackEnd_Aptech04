@@ -59,7 +59,7 @@ public class MoMoPaymentService {
     private String requestType;
 
 
-    // Create MoMo payment request
+    // tạo request QR tới momo
     @Transactional
     public MoMoPaymentResponse createPayment(CreatePaymentRequest request, User user) {
         try {
@@ -103,7 +103,6 @@ public class MoMoPaymentService {
                     .lang(request.getLang() != null ? request.getLang() : "vi")
                     .build();
 
-            // Call MoMo API
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<MoMoPaymentRequest> entity = new HttpEntity<>(momoRequest, headers);
@@ -114,7 +113,6 @@ public class MoMoPaymentService {
             MoMoPaymentResponse momoResponse = response.getBody();
             
             if (momoResponse != null && momoResponse.getResultCode() == 0) {
-                // Save payment order to database
                 PaymentOrder paymentOrder = new PaymentOrder();
                 paymentOrder.setId(orderId);
                 paymentOrder.setAmount(request.getAmount());
@@ -127,8 +125,7 @@ public class MoMoPaymentService {
                 paymentOrder.setQrCodeUrl(momoResponse.getQrCodeUrl());
                 paymentOrder.setDeeplink(momoResponse.getDeeplink());
                 paymentOrder.setPaymentMethod("MOMO");
-                
-                // Set item information from extra data
+
                 if (request.getItemType() != null) {
                     paymentOrder.setItemType(request.getItemType());
                     paymentOrder.setItemId(request.getItemId());
@@ -153,15 +150,11 @@ public class MoMoPaymentService {
         }
     }
 
-    /**
-     * Handle MoMo IPN (Instant Payment Notification)
-     */
+
+    // check PIN từ momo trả về
     @Transactional
     public void handleIPN(MoMoIPNRequest ipnRequest) {
         try {
-            log.info("Received MoMo IPN for order: {}", ipnRequest.getOrderId());
-            
-            // Verify signature
             String expectedSignature = MoMoUtils.generateIPNSignature(
                 accessKey,
                 ipnRequest.getAmount(),
@@ -183,46 +176,30 @@ public class MoMoPaymentService {
                 log.error("Invalid MoMo IPN signature for order: {}", ipnRequest.getOrderId());
                 throw new RuntimeException("Invalid signature");
             }
-
-            // Find payment order
             PaymentOrder paymentOrder = paymentOrderRepository.findById(ipnRequest.getOrderId())
                 .orElseThrow(() -> new RuntimeException("Payment order not found: " + ipnRequest.getOrderId()));
 
-            // Update payment status
             if (ipnRequest.getResultCode() == 0) {
                 paymentOrder.setStatus(PaymentStatus.SUCCESS);
                 paymentOrder.setMomoTransId(ipnRequest.getTransId().toString());
                 paymentOrder.setTransactionRef(ipnRequest.getTransId().toString());
                 
-                // Process the purchase based on item type
                 processSuccessfulPayment(paymentOrder);
-                
-                log.info("Payment successful for order: {}", ipnRequest.getOrderId());
             } else {
                 paymentOrder.setStatus(PaymentStatus.FAILED);
-                log.warn("Payment failed for order: {} with result code: {}", 
-                    ipnRequest.getOrderId(), ipnRequest.getResultCode());
             }
 
             paymentOrderRepository.save(paymentOrder);
 
         } catch (Exception e) {
-            log.error("Error handling MoMo IPN", e);
             throw new RuntimeException("Error handling MoMo IPN: " + e.getMessage());
         }
     }
 
-    /**
-     * Check payment status
-     */
+    // check status
     public PaymentOrder getPaymentStatus(String orderId) {
-        log.info("Getting payment status for orderId: {}", orderId);
         PaymentOrder paymentOrder = paymentOrderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Payment order not found: " + orderId));
-        
-        log.info("Found payment order: {} with user: {}", orderId, 
-            paymentOrder.getUser() != null ? paymentOrder.getUser().getId() : "NULL");
-        
         return paymentOrder;
     }
 

@@ -2,6 +2,7 @@ package com.example.project_backend04.config;
 
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.security.CustomUserDetailsService;
+import com.example.project_backend04.security.WebhookAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService customUserDetailsService;
+    private final WebhookAuthenticationFilter webhookAuthenticationFilter;
 
     @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
     private String allowedOrigins;
@@ -100,6 +102,11 @@ public class SecurityConfig {
                             // AUTHENTICATED ENDPOINTS
                             .requestMatchers("/api/payment/**").authenticated()
                             .requestMatchers(HttpMethod.POST, "/api/payment/momo/ipn").permitAll() // MoMo IPN callback doesn't need auth
+                            
+                            // BANK PAYMENT ENDPOINTS
+                            .requestMatchers("/api/bank-payments/create").authenticated()
+                            .requestMatchers("/api/bank-payments/status/**").authenticated()
+                            .requestMatchers(HttpMethod.POST, "/api/bank-payments/webhook").permitAll() // SePay webhook - secured by WebhookAuthenticationFilter
 
                             .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
                             .requestMatchers(HttpMethod.POST, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
@@ -108,6 +115,7 @@ public class SecurityConfig {
                             .anyRequest().authenticated();
                 })
                 .authenticationProvider(authenticationProvider())
+                .addFilterBefore(webhookAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, authException) -> {

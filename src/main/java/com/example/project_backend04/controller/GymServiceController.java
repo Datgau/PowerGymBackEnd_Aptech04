@@ -21,8 +21,6 @@ public class GymServiceController {
 
     private final IGymService gymService;
 
-    // ===================== PUBLIC =====================
-
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<List<GymServiceResponse>>> getActiveServices() {
         try {

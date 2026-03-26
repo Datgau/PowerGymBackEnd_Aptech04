@@ -53,3 +53,16 @@ momo:
   ipn-url: ${MOMO_IPN_URL:http://localhost:8080/api/payment/momo/ipn}
   request-type: ${MOMO_REQUEST_TYPE:captureWallet}
 
+# Bank Payment Configuration
+bank:
+  payment:
+    bank-code: ${BANK_PAYMENT_BANK_CODE:BIDV}
+    account-no: ${BANK_PAYMENT_ACCOUNT_NO}
+    account-name: ${BANK_PAYMENT_ACCOUNT_NAME}
+    sepay-api-key: ${BANK_PAYMENT_SEPAY_API_KEY}
+    vietqr-base-url: ${BANK_PAYMENT_VIETQR_BASE_URL:https://img.vietqr.io/image}
+    payment-expiry-minutes: ${BANK_PAYMENT_EXPIRY_MINUTES:15}
+    webhook:
+      rate-limit-per-minute: ${RATE_LIMIT_PER_MINUTE:100}
+      api-key-header: ${API_KEY_HEADER:X-API-Key}
+      path: ${WEBHOOK_PATH:/api/bank-payments/webhook}

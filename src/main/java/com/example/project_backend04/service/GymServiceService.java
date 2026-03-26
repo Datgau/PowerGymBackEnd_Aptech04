@@ -261,28 +261,16 @@ public class GymServiceService implements IGymService {
 
     @Transactional
     public void deleteService(Long id) {
-        System.out.println("=== Deleting service ===");
-        System.out.println("Service ID: " + id);
-        
-        // Fetch service with images to avoid lazy loading issue
         GymService service = gymServiceRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
 
-        System.out.println("Service found: " + service.getName());
-        
-        // Kiểm tra xem service có người đăng ký không
         Long activeRegistrations = serviceRegistrationRepository.countActiveRegistrations(service);
-        System.out.println("Active registrations count: " + activeRegistrations);
-        
         if (activeRegistrations > 0) {
-            throw new RuntimeException("Không thể xóa service này vì đang có " + activeRegistrations + " người đăng ký");
+            throw new RuntimeException("Cannot delete this service because there are "
+                    + activeRegistrations + " active registrations");
         }
 
-        System.out.println("No active registrations, proceeding to delete");
-
-        // Delete images from cloud storage
         if (service.getImages() != null && !service.getImages().isEmpty()) {
-            System.out.println("Deleting " + service.getImages().size() + " images from cloud");
             service.getImages().forEach(serviceImage -> {
                 try {
                     cloudStorageService.deleteFile(serviceImage.getImageUrl());
@@ -294,7 +282,6 @@ public class GymServiceService implements IGymService {
         }
 
         gymServiceRepository.delete(service);
-        System.out.println("Service deleted successfully");
     }
 
     private void validateServiceRequest(GymServiceRequest request) {

@@ -52,6 +52,10 @@ public class PaymentOrder {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
-        this.expiredAt = createdAt.plusMinutes(15);
+        // expiredAt được set bởi BankPaymentService dựa theo config
+        // Nếu chưa set thì default 15 phút
+        if (this.expiredAt == null) {
+            this.expiredAt = this.createdAt.plusMinutes(15);
+        }
     }
 }

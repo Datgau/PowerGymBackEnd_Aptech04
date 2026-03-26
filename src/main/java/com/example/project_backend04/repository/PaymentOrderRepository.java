@@ -27,6 +27,8 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Stri
     
     Optional<PaymentOrder> findByMomoTransId(String momoTransId);
     
+    Optional<PaymentOrder> findByContent(String content);
+    
     @Query("SELECT p FROM PaymentOrder p WHERE p.user = :user ORDER BY p.createdAt DESC")
     List<PaymentOrder> findByUserOrderByCreatedAtDesc(@Param("user") User user);
     

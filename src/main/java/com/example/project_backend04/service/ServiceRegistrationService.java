@@ -48,18 +48,18 @@ public class ServiceRegistrationService {
     @Transactional
     public ServiceRegistrationResponse registerService(ServiceRegistrationRequest request) {
         User currentUser = getCurrentUser();
-        
+
         GymService gymService = gymServiceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Service not found"));
 
         if (!gymService.getIsActive()) {
             throw new RuntimeException("Service is not active");
         }
+
         if (registrationRepository.existsByUserAndGymServiceAndStatus(
                 currentUser, gymService, ServiceRegistration.RegistrationStatus.ACTIVE)) {
-            throw new RuntimeException("Bạn đã đăng ký service này rồi");
+            throw new RuntimeException("You have already registered for this service");
         }
-
         ServiceRegistration registration = new ServiceRegistration();
         registration.setUser(currentUser);
         registration.setGymService(gymService);

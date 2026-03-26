@@ -16,10 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.MessagingException;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -39,14 +36,13 @@ public class AuthController {
         } catch (MessagingException e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Lỗi khi gửi email xác minh", null, 500));
+                    .body(new ApiResponse<>(false, "Error sending verification email", null, 500));
         } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(false, "Đăng ký thất bại: " + e.getMessage(), null, 500));
-    }
-
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Registration failed: " + e.getMessage(), null, 500));
+        }
 }
 
 
@@ -68,12 +64,12 @@ public class AuthController {
         } catch (MessagingException e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Lỗi khi gửi email OTP", null, 500));
+                    .body(new ApiResponse<>(false, "Error sending OTP email", null, 500));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Gửi lại OTP thất bại: " + e.getMessage(), null, 500));
+                    .body(new ApiResponse<>(false, "Failed to resend OTP: " + e.getMessage(), null, 500));
         }
     }
 
@@ -88,10 +84,21 @@ public class AuthController {
             e.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Lỗi khi lấy trạng thái OTP: " + e.getMessage(), null, 500));
+                    .body(new ApiResponse<>(false, "Error retrieving OTP status: " + e.getMessage(), null, 500));
         }
     }
+    @PostMapping("/forgot-password")
+    public ApiResponse<String> forgotPassword(@RequestParam String email) {
+        return authService.forgotPassword(email);
+    }
 
+    @PostMapping("/reset-password")
+    public ApiResponse<String> resetPassword(
+            @RequestParam String token,
+            @RequestParam String newPassword
+    ) {
+        return authService.resetPassword(token, newPassword);
+    }
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request,
@@ -103,11 +110,10 @@ public class AuthController {
             return ResponseEntity
                     .status(apiResponse.isSuccess() ? HttpStatus.OK : HttpStatus.UNAUTHORIZED)
                     .body(apiResponse);
-
         } catch (BadCredentialsException e) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>(false, "Đăng nhập thất bại: " + e.getMessage()));
+                    .body(new ApiResponse<>(false, "Login failed: " + e.getMessage()));
         }
     }
 
@@ -128,7 +134,7 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>(false, "Làm mới token thất bại: " + e.getMessage()));
+                    .body(new ApiResponse<>(false, "Token refresh failed: " + e.getMessage()));
         }
     }
 
@@ -158,7 +164,7 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Đăng xuất thất bại: " + e.getMessage()));
+                    .body(new ApiResponse<>(false, "Logout failed: " + e.getMessage()));
         }
     }
 

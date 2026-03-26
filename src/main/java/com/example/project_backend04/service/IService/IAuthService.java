@@ -19,4 +19,6 @@ public interface IAuthService {
     ApiResponse<JwtResponse> refreshToken(String refreshToken, HttpServletResponse response);
     ApiResponse<Void> logout(String username);
     ApiResponse<LoginResponse> oauthLogin(OAuthLoginRequest request, HttpServletResponse response);
+    ApiResponse<String> forgotPassword(String email);
+    ApiResponse<String> resetPassword(String token, String newPassword);
 }

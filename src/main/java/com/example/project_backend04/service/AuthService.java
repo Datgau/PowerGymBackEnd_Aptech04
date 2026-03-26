@@ -5,11 +5,9 @@ import com.example.project_backend04.dto.request.Auth.OAuthLoginRequest;
 import com.example.project_backend04.dto.request.Auth.RegisterRequest;
 import com.example.project_backend04.dto.response.Auth.*;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
-import com.example.project_backend04.entity.PendingUser;
-import com.example.project_backend04.entity.Role;
-import com.example.project_backend04.entity.User;
-import com.example.project_backend04.entity.UserProvider;
+import com.example.project_backend04.entity.*;
 import com.example.project_backend04.repository.AuthRepository;
+import com.example.project_backend04.repository.PasswordResetTokenRepository;
 import com.example.project_backend04.repository.PendingUserRepository;
 import com.example.project_backend04.repository.UserProviderRepository;
 import com.example.project_backend04.security.JwtService;
@@ -28,8 +26,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,6 +44,7 @@ public class AuthService implements IAuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserProviderRepository userProviderRepository;
     private final FacebookApiService facebookApiService;
     private final GoogleApiService googleApiService;
@@ -74,7 +75,6 @@ public class AuthService implements IAuthService {
             LocalDateTime tenMinutesAfterCreation = existingPending.getCreatedAt().plusMinutes(10);
             
             if (now.isAfter(tenMinutesAfterCreation)) {
-                // Delete expired PendingUser and create new one immediately
                 pendingUserRepository.delete(existingPending);
                 
                 PendingUser newPendingUser = new PendingUser();
@@ -95,7 +95,6 @@ public class AuthService implements IAuthService {
                     );
                 }
             } else {
-                // Session not expired - check OTP validity
                 if (existingPending.getOtpExpiry().isAfter(now)) {
                     long secondsLeft = Duration.between(now, existingPending.getOtpExpiry()).getSeconds();
                     return new ApiResponse<>(
@@ -125,7 +124,6 @@ public class AuthService implements IAuthService {
                 }
             }
         } else {
-            // Create new PendingUser
             PendingUser pendingUser = new PendingUser();
             pendingUser.setEmail(request.getEmail());
             pendingUser.setPassword(encodedPassword);
@@ -148,7 +146,6 @@ public class AuthService implements IAuthService {
             }
         }
 
-        // Send email asynchronously
         try {
             emailService.sendOtpEmailAsync(request.getEmail(), otp);
         } catch (Exception e) {
@@ -349,7 +346,6 @@ public class AuthService implements IAuthService {
             );
         }
 
-        // Check OTP expiry (1 minute)
         boolean canResend = pendingUser.getOtpExpiry().isBefore(now);
         long secondsUntilResend = 0;
         
@@ -395,7 +391,14 @@ public class AuthService implements IAuthService {
 
         User user = authRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Authentication failed."));
-
+        if (user.getIsActive() == null || !user.getIsActive()) {
+            return new ApiResponse<>(
+                    false,
+                    "This account has been banned.",
+                    null,
+                    403
+            );
+        }
         String accessToken = jwtService.generateToken(user);
         String refreshToken = UUID.randomUUID().toString();
 
@@ -427,6 +430,78 @@ public class AuthService implements IAuthService {
         );
     }
 
+
+    @Transactional
+    public ApiResponse<String> forgotPassword(String email) {
+
+        User user = authRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return new ApiResponse<>(true, "If email exists, reset link sent.", null, 200);
+        }
+        if (user.getProviders() != null && !user.getProviders().equals("LOCAL")) {
+            return new ApiResponse<>(false, "Account uses social login.", null, 400);
+        }
+        String rawToken = UUID.randomUUID().toString();
+        String tokenHash = passwordEncoder.encode(rawToken);
+        PasswordResetToken token = PasswordResetToken.builder()
+                .userId(user.getId())
+                .tokenHash(tokenHash)
+                .expiryTime(LocalDateTime.now().plusMinutes(15))
+                .isUsed(false)
+                .build();
+
+        passwordResetTokenRepository.save(token);
+
+        try {
+            String resetLink = "https://powergym-aptech.netlify.app/reset-password?token=" + rawToken;
+            emailService.sendResetPasswordEmail(user.getEmail(), resetLink);
+        } catch (IOException e) {
+            log.error("Failed to send reset password email: {}", e.getMessage());
+        }
+        return new ApiResponse<>(true, "If email exists, reset link sent.", null, 200);
+    }
+
+    @Transactional
+    public ApiResponse<String> resetPassword(String token, String newPassword) {
+
+        List<PasswordResetToken> tokens = passwordResetTokenRepository.findAllByIsUsedFalse();
+
+        PasswordResetToken validToken = null;
+
+        for (PasswordResetToken t : tokens) {
+            if (passwordEncoder.matches(token, t.getTokenHash())) {
+                validToken = t;
+                break;
+            }
+        }
+
+        if (validToken == null) {
+            return new ApiResponse<>(false, "Invalid token.", null, 400);
+        }
+
+        if (validToken.getExpiryTime().isBefore(LocalDateTime.now())) {
+            return new ApiResponse<>(false, "Token expired.", null, 400);
+        }
+
+        User user = authRepository.findById(validToken.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+
+        // invalidate refresh token (bảo mật)
+        user.setRefreshToken(null);
+
+        authRepository.save(user);
+
+        // mark token used
+        validToken.setIsUsed(true);
+        passwordResetTokenRepository.save(validToken);
+
+        return new ApiResponse<>(true, "Password reset successful.", null, 200);
+    }
+
+
     @Override
     public ApiResponse<JwtResponse> refreshToken(String refreshToken, HttpServletResponse response) {
 
@@ -439,6 +514,14 @@ public class AuthService implements IAuthService {
                     "Refresh token has expired. Please log in again.",
                     null,
                     401
+            );
+        }
+        if (user.getIsActive() == null || !user.getIsActive()) {
+            return new ApiResponse<>(
+                    false,
+                    "This account has been banned.",
+                    null,
+                    403
             );
         }
 

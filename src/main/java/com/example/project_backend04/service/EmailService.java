@@ -160,6 +160,104 @@ public class EmailService {
 
         sendEmail(to, "Email verify otp - PowerGym", stringContent);
     }
+
+    // Reset Password
+    public void sendResetPasswordEmail(String to, String resetLink) throws IOException {
+
+        String htmlContent = String.format("""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+
+        <body style="margin:0; padding:0; background:#f4f6f8; font-family:Segoe UI,Arial,sans-serif;">
+
+        <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8; padding:40px 0;">
+            <tr>
+                <td align="center">
+
+                    <table width="600" cellpadding="0" cellspacing="0"
+                           style="background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.08);">
+
+                        <!-- HEADER -->
+                        <tr>
+                            <td style="background:linear-gradient(135deg,#045668,#00b4ff); padding:40px; text-align:center;">
+                                <h1 style="margin:0; color:white; font-size:32px;">PowerGym</h1>
+                                <p style="margin:10px 0 0 0; color:rgba(255,255,255,0.9); font-size:16px;">
+                                    Password Reset Request
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- CONTENT -->
+                        <tr>
+                            <td style="padding:45px 40px;">
+
+                                <h2 style="text-align:center; color:#1a202c;">
+                                    Reset Your Password
+                                </h2>
+
+                                <p style="text-align:center; color:#4a5568; line-height:1.6;">
+                                    We received a request to reset your password.
+                                    Click the button below to set a new password.
+                                </p>
+
+                                <!-- BUTTON -->
+                                <table width="100%%" cellpadding="0" cellspacing="0" style="margin:30px 0;">
+                                    <tr>
+                                        <td align="center">
+
+                                            <a href="%s"
+                                               style="
+                                                background:linear-gradient(135deg,#045668,#00b4ff);
+                                                color:white;
+                                                padding:14px 28px;
+                                                border-radius:10px;
+                                                text-decoration:none;
+                                                font-weight:600;
+                                                display:inline-block;
+                                                font-size:16px;">
+                                                Reset Password
+                                            </a>
+
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <!-- FALLBACK LINK -->
+                                <p style="text-align:center; color:#718096; font-size:14px;">
+                                    If the button doesn't work, copy and paste this link:
+                                </p>
+
+                                <p style="text-align:center; word-break:break-all; font-size:13px; color:#3182ce;">
+                                    %s
+                                </p>
+
+                                <p style="text-align:center; color:#718096; font-size:14px; margin-top:20px;">
+                                    This link will expire in <strong>15 minutes</strong>.
+                                </p>
+
+                                <p style="text-align:center; color:#a0aec0; font-size:13px; margin-top:20px;">
+                                    If you did not request this, please ignore this email.
+                                </p>
+
+                            </td>
+                        </tr>
+
+                    </table>
+
+                </td>
+            </tr>
+        </table>
+
+        </body>
+        </html>
+        """, resetLink, resetLink);
+
+        sendEmail(to, "Reset your password - PowerGym", htmlContent);
+    }
     // ================= SUCCESS REGISTER ================= (SYNC - for internal use)
     public void sendSuccessRegisterEmail(String to, String fullName) throws IOException {
 

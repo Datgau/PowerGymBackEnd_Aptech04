@@ -40,11 +40,9 @@ public class TrainerSelectionService implements ITrainerSelectionService {
     public List<TrainerAvailabilityDTO> findAvailableTrainers(Long serviceId, LocalDate preferredDate) {
         log.info("Finding available trainers for service {} on date {}", serviceId, preferredDate);
         
-        // Get service and its category
         GymService service = gymServiceRepository.findById(serviceId)
             .orElseThrow(() -> new EntityNotFoundException("Service not found with id: " + serviceId));
-        
-        // Find trainers with matching specialties
+
         List<User> trainers = trainerSpecialtyRepository.findTrainersBySpecialtyCategory(
             service.getCategory().getId());
         

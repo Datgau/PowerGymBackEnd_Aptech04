@@ -170,9 +170,7 @@ public class AdminTrainerController {
                 .body(response);
     }
 
-    /**
-     * Deactivate trainer
-     */
+
     @PutMapping("/{trainerId}/deactivate")
     public ResponseEntity<ApiResponse<String>> deactivateTrainer(@PathVariable Long trainerId) {
         ApiResponse<String> response = trainerService.deactivateTrainer(trainerId);

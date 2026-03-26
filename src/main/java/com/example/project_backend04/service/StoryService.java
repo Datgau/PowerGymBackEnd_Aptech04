@@ -49,7 +49,7 @@ public class StoryService implements IStoryService {
             story.setIsActive(true);
             story.setStatus(StoryStatus.PENDING);
             story.setCreatedAt(LocalDateTime.now());
-            story.setExpiresAt(LocalDateTime.now().plusHours(24));
+            story.setExpiresAt(LocalDateTime.now().plusHours(168));
             Story savedStory = storyRepository.save(story);
 
             return storiesMapper.toDto(savedStory);
@@ -61,7 +61,6 @@ public class StoryService implements IStoryService {
     @Override
     @Transactional(readOnly = true)
     public List<StoryResponseDto> getActiveStories() {
-        // Only return APPROVED stories
         List<Story> stories = storyRepository.findActiveStoriesWithUser(LocalDateTime.now());
         return stories.stream()
                 .map(storiesMapper::toDto)
@@ -128,9 +127,6 @@ public class StoryService implements IStoryService {
         return storiesMapper.toDto(story);
     }
 
-    /**
-     * Get story by ID with user-specific information (like status)
-     */
     @Transactional(readOnly = true)
     public StoryResponseDto getStoryByIdWithUserInfo(Long storyId, Long currentUserId) {
         Story story = storyRepository.findByIdWithUser(storyId);
@@ -207,8 +203,6 @@ public class StoryService implements IStoryService {
                 throw new RuntimeException("Failed to upload image: " + e.getMessage());
             }
         }
-
-        // Update other fields
         if (request.getTitle() != null && !request.getTitle().trim().isEmpty()) {
             story.setTitle(request.getTitle().trim());
         }
@@ -220,7 +214,7 @@ public class StoryService implements IStoryService {
         }
 
         story.setStatus(StoryStatus.PENDING);
-        story.getCreatedAt().plusHours(24);
+        story.getCreatedAt().plusHours(168);
 
         Story updatedStory = storyRepository.save(story);
         return storiesMapper.toDto(updatedStory);
@@ -251,8 +245,6 @@ public class StoryService implements IStoryService {
 
         return storyRepository.countActiveStoriesByUser(user, LocalDateTime.now());
     }
-
-    // ==================== ADMIN METHODS ====================
 
     @Override
     @Transactional(readOnly = true)
@@ -374,23 +366,18 @@ public class StoryService implements IStoryService {
         if (story == null) {
             throw new RuntimeException("Story not found");
         }
-
         if (story.getStatus() == StoryStatus.REJECTED) {
             throw new RuntimeException("Cannot update status of rejected stories");
         }
-
         if (newStatus == story.getStatus()) {
             throw new RuntimeException("Story is already in " + newStatus.name().toLowerCase() + " status");
         }
-
         story.setStatus(newStatus);
         story.setApprovedBy(admin);
         story.setApprovedAt(LocalDateTime.now());
-
         if (newStatus == StoryStatus.REJECTED) {
             story.setExpiresAt(LocalDateTime.now());
         }
-
         Story savedStory = storyRepository.save(story);
         return storiesMapper.toDto(savedStory);
     }

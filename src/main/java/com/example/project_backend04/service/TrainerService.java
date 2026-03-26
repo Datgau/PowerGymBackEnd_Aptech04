@@ -202,7 +202,8 @@ public class TrainerService implements ITrainerService {
                     .orElseThrow(() -> new RuntimeException("Role TRAINER không tồn tại"));
 
             Pageable pageable = PageRequest.of(page, size, Sort.by("createDate").descending());
-            Page<User> trainers = userRepository.findByRoleAndIsActiveTrue(trainerRole, pageable);
+            // Lấy tất cả trainers bao gồm cả inactive
+            Page<User> trainers = userRepository.findByRole(trainerRole, pageable);
 
             Page<TrainerResponse> response = trainers.map(this::mapToTrainerResponse);
             return new ApiResponse<>(true, "Lấy danh sách trainers thành công", response, 200);

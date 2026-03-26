@@ -28,9 +28,7 @@ public class CachedTrainerService {
     private final TrainerSpecialtyRepository trainerSpecialtyRepository;
     private final TrainerBookingRepository trainerBookingRepository;
     
-    /**
-     * Get available trainers with caching
-     */
+
     @Cacheable(value = "trainer_availability", 
                key = "#serviceId + '_' + #preferredDate", 
                unless = "#result.isEmpty()")
@@ -38,10 +36,7 @@ public class CachedTrainerService {
         log.debug("Cache miss - fetching available trainers for service {} on {}", serviceId, preferredDate);
         return trainerSelectionService.findAvailableTrainers(serviceId, preferredDate);
     }
-    
-    /**
-     * Get trainer specialties with caching
-     */
+
     @Cacheable(value = "trainer_specialties", 
                key = "#trainerId", 
                unless = "#result.isEmpty()")
@@ -50,9 +45,7 @@ public class CachedTrainerService {
         return trainerSpecialtyRepository.findActiveSpecialtiesByTrainer(trainerId);
     }
     
-    /**
-     * Get trainers by specialty category with caching
-     */
+
     @Cacheable(value = "trainer_specialties", 
                key = "'category_' + #categoryId", 
                unless = "#result.isEmpty()")
@@ -60,10 +53,7 @@ public class CachedTrainerService {
         log.debug("Cache miss - fetching trainers for category {}", categoryId);
         return trainerSpecialtyRepository.findTrainersBySpecialtyCategory(categoryId);
     }
-    
-    /**
-     * Get trainer availability slots with caching
-     */
+
     @Cacheable(value = "trainer_availability", 
                key = "'slots_' + #trainerId + '_' + #date", 
                unless = "#result.isEmpty()")
@@ -71,20 +61,13 @@ public class CachedTrainerService {
         log.debug("Cache miss - fetching available slots for trainer {} on {}", trainerId, date);
         return conflictDetectionService.getAvailableSlots(trainerId, date);
     }
-    
-    /**
-     * Get trainer booking statistics with caching
-     */
     @Cacheable(value = "booking_statistics", 
                key = "#trainerId + '_' + #fromDate + '_' + #toDate")
     public Double getCachedTrainerAverageRating(Long trainerId) {
         log.debug("Cache miss - fetching average rating for trainer {}", trainerId);
         return trainerBookingRepository.findAverageRatingByTrainer(trainerId);
     }
-    
-    /**
-     * Get completed sessions count with caching
-     */
+
     @Cacheable(value = "booking_statistics", 
                key = "'completed_' + #trainerId")
     public Long getCachedCompletedSessionsCount(Long trainerId) {
@@ -96,66 +79,45 @@ public class CachedTrainerService {
             TrainerBooking.BookingStatus.COMPLETED
         );
     }
-    
-    /**
-     * Evict trainer availability cache when booking is confirmed/cancelled
-     */
+
     @CacheEvict(value = "trainer_availability", 
                 key = "'slots_' + #trainerId + '_' + #date")
     public void evictTrainerAvailabilityCache(Long trainerId, LocalDate date) {
         log.debug("Evicting trainer availability cache for trainer {} on {}", trainerId, date);
     }
-    
-    /**
-     * Evict all trainer availability cache for a trainer
-     */
+
     @CacheEvict(value = "trainer_availability", 
                 allEntries = true, 
                 condition = "#trainerId != null")
     public void evictAllTrainerAvailabilityCache(Long trainerId) {
         log.debug("Evicting all trainer availability cache for trainer {}", trainerId);
     }
-    
-    /**
-     * Evict trainer specialties cache when specialties are updated
-     */
+
     @CacheEvict(value = "trainer_specialties", 
                 key = "#trainerId")
     public void evictTrainerSpecialtiesCache(Long trainerId) {
         log.debug("Evicting trainer specialties cache for trainer {}", trainerId);
     }
-    
-    /**
-     * Evict category trainers cache when trainer specialties change
-     */
+
     @CacheEvict(value = "trainer_specialties", 
                 key = "'category_' + #categoryId")
     public void evictCategoryTrainersCache(Long categoryId) {
         log.debug("Evicting category trainers cache for category {}", categoryId);
     }
-    
-    /**
-     * Evict booking statistics cache when new booking is completed
-     */
+
     @CacheEvict(value = "booking_statistics", 
                 allEntries = true, 
                 condition = "#trainerId != null")
     public void evictBookingStatisticsCache(Long trainerId) {
         log.debug("Evicting booking statistics cache for trainer {}", trainerId);
     }
-    
-    /**
-     * Clear all caches (for admin use)
-     */
+
     @CacheEvict(value = {"trainer_availability", "trainer_specialties", "booking_statistics"}, 
                 allEntries = true)
     public void clearAllCaches() {
         log.info("Clearing all trainer-related caches");
     }
-    
-    /**
-     * Warm up cache for popular trainers
-     */
+
     public void warmUpCache(List<Long> popularTrainerIds, LocalDate date) {
         log.info("Warming up cache for {} popular trainers", popularTrainerIds.size());
         
