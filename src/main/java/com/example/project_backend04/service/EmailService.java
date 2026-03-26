@@ -226,7 +226,6 @@ public class EmailService {
                                     </tr>
                                 </table>
 
-                                <!-- FALLBACK LINK -->
                                 <p style="text-align:center; color:#718096; font-size:14px;">
                                     If the button doesn't work, copy and paste this link:
                                 </p>

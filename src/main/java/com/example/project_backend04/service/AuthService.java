@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.MessagingException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -48,6 +49,9 @@ public class AuthService implements IAuthService {
     private final UserProviderRepository userProviderRepository;
     private final FacebookApiService facebookApiService;
     private final GoogleApiService googleApiService;
+
+    @Value("${CORS_ALLOWED_ORIGINS}")
+    private String frontendUrl;
 
     @Transactional
     @Override
@@ -438,9 +442,10 @@ public class AuthService implements IAuthService {
         if (user == null) {
             return new ApiResponse<>(true, "If email exists, reset link sent.", null, 200);
         }
-        if (user.getProviders() != null && !user.getProviders().equals("LOCAL")) {
+        if (user.getProviders() != null && !user.getProviders().isEmpty()) {
             return new ApiResponse<>(false, "Account uses social login.", null, 400);
         }
+
         String rawToken = UUID.randomUUID().toString();
         String tokenHash = passwordEncoder.encode(rawToken);
         PasswordResetToken token = PasswordResetToken.builder()
@@ -453,7 +458,7 @@ public class AuthService implements IAuthService {
         passwordResetTokenRepository.save(token);
 
         try {
-            String resetLink = "https://powergym-aptech.netlify.app/reset-password?token=" + rawToken;
+            String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
             emailService.sendResetPasswordEmail(user.getEmail(), resetLink);
         } catch (IOException e) {
             log.error("Failed to send reset password email: {}", e.getMessage());
