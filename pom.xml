@@ -159,7 +159,7 @@
             <version>2.2.4</version>
         </dependency>
 
-        <!-- Load .env file -->
+        <!-- Load ..env file -->
         <dependency>
             <groupId>me.paulschwarz</groupId>
             <artifactId>spring-dotenv</artifactId>
