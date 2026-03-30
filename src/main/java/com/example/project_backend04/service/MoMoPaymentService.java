@@ -10,6 +10,7 @@ import com.example.project_backend04.entity.PaymentOrder;
 import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.entity.User;
 import com.example.project_backend04.enums.PaymentStatus;
+import com.example.project_backend04.enums.RegistrationStatus;
 import com.example.project_backend04.repository.PaymentOrderRepository;
 import com.example.project_backend04.repository.ServiceRegistrationRepository;
 import com.example.project_backend04.util.MoMoUtils;
@@ -235,7 +236,7 @@ public class MoMoPaymentService {
         // Get user's service registrations that might need trainer selection
         List<ServiceRegistration> userRegistrations = serviceRegistrationRepository
             .findByUserAndStatusOrderByRegistrationDateDesc(
-                paymentOrder.getUser(), ServiceRegistration.RegistrationStatus.ACTIVE);
+                paymentOrder.getUser(), RegistrationStatus.ACTIVE);
         
         // Convert to trainer selection responses
         List<ServiceRegistrationWithTrainerSelectionResponse> registrationResponses = 

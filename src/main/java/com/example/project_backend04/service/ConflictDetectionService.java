@@ -4,6 +4,7 @@ import com.example.project_backend04.dto.request.TrainerBooking.CreateBookingReq
 import com.example.project_backend04.dto.response.TrainerBooking.ConflictCheckResult;
 import com.example.project_backend04.dto.response.TrainerBooking.TimeSlot;
 import com.example.project_backend04.entity.TrainerBooking;
+import com.example.project_backend04.enums.BookingStatus;
 import com.example.project_backend04.repository.TrainerBookingRepository;
 import com.example.project_backend04.service.IService.IConflictDetectionService;
 import lombok.RequiredArgsConstructor;
@@ -26,8 +27,6 @@ public class ConflictDetectionService implements IConflictDetectionService {
     
     private final TrainerBookingRepository trainerBookingRepository;
     private final RedisTemplate<String, Object> redisTemplate;
-    
-    // Default working hours (can be made configurable per trainer)
     private static final LocalTime DEFAULT_START_TIME = LocalTime.of(6, 0);
     private static final LocalTime DEFAULT_END_TIME = LocalTime.of(22, 0);
     private static final int SLOT_DURATION_MINUTES = 60; // 1 hour slots
@@ -37,9 +36,7 @@ public class ConflictDetectionService implements IConflictDetectionService {
         log.debug("Checking time conflict for trainer {} on {} from {} to {}", 
                  trainerId, date, startTime, endTime);
         
-        // Check cache first
         String cacheKey = String.format("trainer_conflicts:%d:%s", trainerId, date.toString());
-        @SuppressWarnings("unchecked")
         List<TrainerBooking> cachedBookings = (List<TrainerBooking>) redisTemplate.opsForValue().get(cacheKey);
         
         List<TrainerBooking> confirmedBookings;
@@ -48,7 +45,7 @@ public class ConflictDetectionService implements IConflictDetectionService {
             log.debug("Using cached bookings for trainer {} on {}", trainerId, date);
         } else {
             confirmedBookings = trainerBookingRepository.findByTrainerIdAndBookingDateAndStatus(
-                trainerId, date, TrainerBooking.BookingStatus.CONFIRMED);
+                trainerId, date, BookingStatus.CONFIRMED);
             
             // Cache for 1 hour
             redisTemplate.opsForValue().set(cacheKey, confirmedBookings, Duration.ofHours(1));
@@ -65,28 +62,20 @@ public class ConflictDetectionService implements IConflictDetectionService {
     @Override
     @Cacheable(value = "trainer_availability", key = "#trainerId + '_' + #date")
     public List<TimeSlot> getAvailableSlots(Long trainerId, LocalDate date) {
-        log.debug("Getting available slots for trainer {} on {}", trainerId, date);
-        
-        // Get trainer's working hours (could be from trainer profile or default)
         List<TimeSlot> workingHours = getTrainerWorkingHours(trainerId, date);
         
-        // Get confirmed bookings for the date
         List<TrainerBooking> confirmedBookings = trainerBookingRepository
-            .findByTrainerIdAndBookingDateAndStatus(trainerId, date, TrainerBooking.BookingStatus.CONFIRMED);
+            .findByTrainerIdAndBookingDateAndStatus(trainerId, date, BookingStatus.CONFIRMED);
         
-        // Remove booked slots from working hours
         List<TimeSlot> availableSlots = new ArrayList<>();
         for (TimeSlot workingSlot : workingHours) {
             List<TimeSlot> freeSlots = subtractBookedTime(workingSlot, confirmedBookings);
             availableSlots.addAll(freeSlots);
         }
         
-        // Filter slots that are at least minimum duration
         List<TimeSlot> validSlots = availableSlots.stream()
             .filter(slot -> slot.getDuration().toMinutes() >= SLOT_DURATION_MINUTES)
             .collect(Collectors.toList());
-        
-        log.debug("Found {} available slots for trainer {} on {}", validSlots.size(), trainerId, date);
         return validSlots;
     }
     
@@ -160,17 +149,10 @@ public class ConflictDetectionService implements IConflictDetectionService {
     
     @Override
     public List<TimeSlot> getTrainerWorkingHours(Long trainerId, LocalDate date) {
-        // For now, return default working hours
-        // In the future, this could be customized per trainer
+
         List<TimeSlot> workingHours = new ArrayList<>();
-        
-        // Morning session: 6:00 - 12:00
         workingHours.add(TimeSlot.of(date, LocalTime.of(6, 0), LocalTime.of(12, 0)));
-        
-        // Afternoon session: 14:00 - 18:00
         workingHours.add(TimeSlot.of(date, LocalTime.of(14, 0), LocalTime.of(18, 0)));
-        
-        // Evening session: 19:00 - 22:00
         workingHours.add(TimeSlot.of(date, LocalTime.of(19, 0), LocalTime.of(22, 0)));
         
         return workingHours;
@@ -179,8 +161,6 @@ public class ConflictDetectionService implements IConflictDetectionService {
     @Override
     public List<TimeSlot> findAlternativeSlots(CreateBookingRequest request, int maxAlternatives) {
         Duration requestedDuration = Duration.between(request.getStartTime(), request.getEndTime());
-        
-        // Try same day first
         List<TimeSlot> sameDay = getAvailableSlots(request.getTrainerId(), request.getBookingDate())
             .stream()
             .filter(slot -> slot.getDuration().compareTo(requestedDuration) >= 0)
@@ -190,8 +170,6 @@ public class ConflictDetectionService implements IConflictDetectionService {
         if (!sameDay.isEmpty()) {
             return sameDay;
         }
-        
-        // Try next 7 days
         List<TimeSlot> alternatives = new ArrayList<>();
         for (int i = 1; i <= 7 && alternatives.size() < maxAlternatives; i++) {
             LocalDate alternativeDate = request.getBookingDate().plusDays(i);

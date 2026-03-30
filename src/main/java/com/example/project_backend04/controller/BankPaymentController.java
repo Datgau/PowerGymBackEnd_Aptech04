@@ -33,18 +33,12 @@ public class BankPaymentController {
         try {
             CreateBankPaymentResponse response = bankPaymentService.createBankPayment(
                 request.getUserId(), request.getServiceId());
-            
-            // Audit log: API response success
-            log.info("AUDIT_LOG - API_RESPONSE - Endpoint: /api/bank-payments/create, OrderId: {}, Amount: {}, Result: SUCCESS, Timestamp: {}", 
-                response.getOrderId(), response.getAmount(), java.time.LocalDateTime.now());
-            
             return ResponseEntity.ok(ApiResponse.success(response, "Bank payment created successfully"));
             
         } catch (Exception e) {
-            // Audit log: API response failure
-            log.error("AUDIT_LOG - API_RESPONSE - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, Result: FAILURE, Error: {}, Timestamp: {}", 
+            log.error("AUDIT_LOG - API_RESPONSE - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, Result: FAILURE, Error: {}, Timestamp: {}",
                 request.getUserId(), request.getServiceId(), e.getMessage(), java.time.LocalDateTime.now());
-            throw e; // Re-throw to be handled by GlobalExceptionHandler
+            throw e;
         }
     }
     @PostMapping("/webhook")
@@ -53,7 +47,7 @@ public class BankPaymentController {
             @RequestBody @Valid SepayWebhookRequest request) {
 
         try {
-            // ===== Audit request =====
+
             log.info("AUDIT_LOG - WEBHOOK_API_REQUEST - Endpoint: /api/bank-payments/webhook, Description: {}, Amount: {}, TransactionId: {}, Timestamp: {}",
                     request.getDescription(), request.getAmount(), request.getTransactionId(), java.time.LocalDateTime.now());
 

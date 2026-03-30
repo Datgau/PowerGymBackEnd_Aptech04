@@ -16,19 +16,30 @@ import java.time.LocalTime;
 @Builder
 public class CreateBookingRequest {
     
-    @NotNull(message = "Trainer ID is required")
+    /**
+     * ID trainer mà user muốn đặt lịch.
+     * Để null nếu muốn admin tự gán trainer sau.
+     */
     private Long trainerId;
-    
+
+    /**
+     * ID ServiceRegistration đang ACTIVE của user.
+     * Bắt buộc: dùng để validate trainer phải có chuyên môn
+     * phù hợp với gói dịch vụ user đã đăng ký.
+     */
+    @NotNull(message = "Service registration ID is required")
+    private Long serviceRegistrationId;
+
     @NotNull(message = "Booking date is required")
     @Future(message = "Booking date must be in the future")
     private LocalDate bookingDate;
-    
+
     @NotNull(message = "Start time is required")
     private LocalTime startTime;
-    
+
     @NotNull(message = "End time is required")
     private LocalTime endTime;
-    
+
     private String notes;
     private String sessionType;
     private Long excludeBookingId; // For rescheduling validation

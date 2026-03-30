@@ -89,7 +89,6 @@ public class WebhookAuthenticationFilter implements Filter {
         }
         
         String extractedKey = apiKey.trim();
-        // Handle "Apikey <token>" or "Bearer <token>" prefixes commonly used in Authorization headers
         if (extractedKey.toLowerCase().startsWith("apikey ")) {
             extractedKey = extractedKey.substring(7).trim();
         } else if (extractedKey.toLowerCase().startsWith("bearer ")) {
@@ -203,7 +202,6 @@ public class WebhookAuthenticationFilter implements Filter {
     
     @Override
     public void destroy() {
-        // Clean up resources
         requestCounts.clear();
         lastResetTime.clear();
         log.info("WebhookAuthenticationFilter destroyed");

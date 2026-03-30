@@ -2,6 +2,7 @@ package com.example.project_backend04.dto.response.Trainer;
 
 import com.example.project_backend04.dto.response.TrainerBooking.TimeSlot;
 import com.example.project_backend04.dto.response.User.UserResponse;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,8 +26,15 @@ public class TrainerAvailabilityDTO {
     private String bio;
     private String education;
     private List<String> certifications;
-    private boolean isAvailable;
+
+    @JsonProperty("isAvailable")
+    private Boolean available;  // renamed from isAvailable to avoid Lombok/Jackson conflict
+
     private String unavailabilityReason;
+
+    public boolean isAvailable() {
+        return Boolean.TRUE.equals(available);
+    }
     
     public boolean hasAvailableSlots() {
         return availableSlots != null && !availableSlots.isEmpty();

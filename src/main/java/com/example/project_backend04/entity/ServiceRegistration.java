@@ -1,5 +1,7 @@
 package com.example.project_backend04.entity;
 
+import com.example.project_backend04.enums.BookingStatus;
+import com.example.project_backend04.enums.RegistrationStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -51,24 +53,17 @@ public class ServiceRegistration {
     // NEW FIELDS for trainer integration
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trainer_id")
-    private User trainer; // Selected trainer (nullable for backward compatibility)
+    private User trainer;
     
     @Column
-    private LocalDateTime trainerSelectedAt; // When trainer was selected
+    private LocalDateTime trainerSelectedAt;
     
     @Column(columnDefinition = "TEXT")
-    private String trainerSelectionNotes; // Notes about trainer selection
+    private String trainerSelectionNotes;
     
-    // NEW RELATIONSHIP
     @OneToMany(mappedBy = "serviceRegistration", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<TrainerBooking> trainerBookings = new ArrayList<>();
 
-    public enum RegistrationStatus {
-        ACTIVE,
-        CANCELLED,
-        COMPLETED,
-        EXPIRED
-    }
 
     @PrePersist
     protected void onCreate() {
@@ -103,7 +98,7 @@ public class ServiceRegistration {
             return new ArrayList<>();
         }
         return trainerBookings.stream()
-            .filter(booking -> booking.getStatus() == TrainerBooking.BookingStatus.CONFIRMED)
+            .filter(booking -> booking.getStatus() == BookingStatus.CONFIRMED)
             .collect(Collectors.toList());
     }
     
@@ -112,7 +107,7 @@ public class ServiceRegistration {
             return new ArrayList<>();
         }
         return trainerBookings.stream()
-            .filter(booking -> booking.getStatus() == TrainerBooking.BookingStatus.PENDING)
+            .filter(booking -> booking.getStatus() == BookingStatus.PENDING)
             .collect(Collectors.toList());
     }
     

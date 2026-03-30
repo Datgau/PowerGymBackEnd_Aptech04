@@ -28,7 +28,7 @@ public class TrainerSpecialty {
     private ServiceCategory specialty;
 
     @Column(columnDefinition = "TEXT")
-    private String description; // Mô tả về chuyên môn của trainer trong bộ môn này
+    private String description; // Mô tả về chuyên môn của trainer trong bộ môn nàyx`
 
     @Column
     private Integer experienceYears; // Số năm kinh nghiệm trong bộ môn này

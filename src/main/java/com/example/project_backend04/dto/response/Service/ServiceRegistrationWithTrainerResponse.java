@@ -2,6 +2,7 @@ package com.example.project_backend04.dto.response.Service;
 
 import com.example.project_backend04.dto.response.TrainerBooking.TrainerBookingResponse;
 import com.example.project_backend04.entity.ServiceRegistration;
+import com.example.project_backend04.enums.RegistrationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,7 +27,7 @@ public class ServiceRegistrationWithTrainerResponse {
     private String trainerName;
     private String trainerAvatar;
     private String trainerBio;
-    private ServiceRegistration.RegistrationStatus status;
+    private RegistrationStatus status;
     private LocalDateTime registrationDate;
     private LocalDateTime trainerSelectedAt;
     private String trainerSelectionNotes;
@@ -38,7 +39,7 @@ public class ServiceRegistrationWithTrainerResponse {
     private List<TrainerBookingResponse> recentBookings;
     
     public boolean isActive() {
-        return status == ServiceRegistration.RegistrationStatus.ACTIVE;
+        return status == RegistrationStatus.ACTIVE;
     }
     
     public boolean canAssignTrainer() {

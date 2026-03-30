@@ -108,6 +108,10 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrainerDocument> trainerDocuments;
 
+    // Trainer working hours (only for users with TRAINER role)
+    @OneToMany(mappedBy = "trainer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TrainerWorkingHours> workingHours;
+
     @PrePersist
     protected void onCreate() {
         this.createDate = LocalDateTime.now();

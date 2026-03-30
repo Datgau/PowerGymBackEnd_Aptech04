@@ -2,6 +2,7 @@ package com.example.project_backend04.dto.response.Service;
 
 import com.example.project_backend04.dto.response.User.UserResponse;
 import com.example.project_backend04.entity.ServiceRegistration;
+import com.example.project_backend04.enums.RegistrationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +18,7 @@ public class ServiceRegistrationResponse {
     private Long id;
     private UserResponse user;
     private GymServiceResponse service;
-    private ServiceRegistration.RegistrationStatus status;
+    private RegistrationStatus status;
     private String notes;
     private LocalDateTime registrationDate;
     private LocalDateTime expirationDate;

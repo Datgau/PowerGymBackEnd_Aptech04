@@ -35,11 +35,8 @@ public class TrainerManagementController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-        
-        log.info("Getting schedule for trainer {} from {} to {}", trainerId, fromDate, toDate);
-        
+
         try {
-            // Default to current week if no dates provided
             LocalDate startDate = fromDate != null ? fromDate : LocalDate.now();
             LocalDate endDate = toDate != null ? toDate : startDate.plusDays(7);
             
@@ -77,7 +74,6 @@ public class TrainerManagementController {
         try {
             List<TrainerBookingResponse> pendingRequests = 
                 trainerManagementService.getPendingBookingRequests(trainerId);
-            
             String message = pendingRequests.isEmpty() ? 
                 "Không có yêu cầu đặt lịch nào đang chờ" : 
                 String.format("Có %d yêu cầu đặt lịch đang chờ xử lý", pendingRequests.size());
@@ -111,9 +107,7 @@ public class TrainerManagementController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-        
-        log.info("Getting statistics for trainer {} from {} to {}", trainerId, fromDate, toDate);
-        
+
         try {
             // Default to current month if no dates provided
             LocalDate startDate = fromDate != null ? fromDate : LocalDate.now().withDayOfMonth(1);
@@ -169,42 +163,6 @@ public class TrainerManagementController {
                 .body(ApiResponse.<List<TrainerScheduleResponse>>builder()
                     .success(false)
                     .message("Lỗi khi lấy tổng quan trainer: " + e.getMessage())
-                    .status(HttpStatus.BAD_REQUEST.value())
-                    .build());
-        }
-    }
-
-    /**
-     * Bulk respond to booking requests (for admin)
-     */
-    @PostMapping("/bulk-respond")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<String>> bulkRespondToBookings(
-            @RequestParam List<Long> bookingIds,
-            @RequestParam String action, // "CONFIRM" or "REJECT"
-            @RequestParam(required = false) String reason) {
-        
-        log.info("Bulk responding to {} bookings with action {}", bookingIds.size(), action);
-        
-        try {
-            int processedCount = trainerManagementService.bulkRespondToBookings(bookingIds, action, reason);
-            
-            String message = String.format("Đã xử lý %d/%d yêu cầu đặt lịch", 
-                processedCount, bookingIds.size());
-            
-            return ResponseEntity.ok(ApiResponse.<String>builder()
-                .success(true)
-                .message(message)
-                .data(String.valueOf(processedCount))
-                .status(HttpStatus.OK.value())
-                .build());
-                
-        } catch (Exception e) {
-            log.error("Error in bulk respond to bookings", e);
-            return ResponseEntity.badRequest()
-                .body(ApiResponse.<String>builder()
-                    .success(false)
-                    .message("Lỗi khi xử lý hàng loạt: " + e.getMessage())
                     .status(HttpStatus.BAD_REQUEST.value())
                     .build());
         }

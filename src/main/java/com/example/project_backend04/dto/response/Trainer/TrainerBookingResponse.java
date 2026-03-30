@@ -1,6 +1,7 @@
 package com.example.project_backend04.dto.response.Trainer;
 
 import com.example.project_backend04.entity.TrainerBooking;
+import com.example.project_backend04.enums.BookingStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,7 +23,7 @@ public class TrainerBookingResponse {
     private LocalDate bookingDate;
     private LocalTime startTime;
     private LocalTime endTime;
-    private TrainerBooking.BookingStatus status;
+    private BookingStatus status;
     private String notes;
     private String specialRequests;
     private Integer rating;
@@ -62,25 +63,28 @@ public class TrainerBookingResponse {
     private boolean canCancel;
     private boolean canRate;
     
+    // Payment Status
+    private String paymentStatus;
+    
     // Helper methods
     public boolean isPending() {
-        return status == TrainerBooking.BookingStatus.PENDING;
+        return status == BookingStatus.PENDING;
     }
     
     public boolean isConfirmed() {
-        return status == TrainerBooking.BookingStatus.CONFIRMED;
+        return status == BookingStatus.CONFIRMED;
     }
     
     public boolean isCompleted() {
-        return status == TrainerBooking.BookingStatus.COMPLETED;
+        return status == BookingStatus.COMPLETED;
     }
     
     public boolean isCancelled() {
-        return status == TrainerBooking.BookingStatus.CANCELLED;
+        return status == BookingStatus.CANCELLED;
     }
     
     public boolean isRejected() {
-        return status == TrainerBooking.BookingStatus.CANCELLED;
+        return status == BookingStatus.CANCELLED;
     }
     
     public boolean isUpcoming() {
@@ -117,23 +121,7 @@ public class TrainerBookingResponse {
             }
         }
     }
-    
-    public String getStatusDisplay() {
-        switch (status) {
-            case PENDING:
-                return "Chờ xác nhận";
-            case CONFIRMED:
-                return "Đã xác nhận";
-            case COMPLETED:
-                return "Hoàn thành";
-            case CANCELLED:
-                return "Đã hủy";
-            case RESCHEDULED:
-                return "Đã dời lịch";
-            default:
-                return status.name();
-        }
-    }
+
     
     public String getTimeSlot() {
         if (startTime != null && endTime != null) {

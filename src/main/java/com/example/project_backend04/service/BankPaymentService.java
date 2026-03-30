@@ -9,6 +9,7 @@ import com.example.project_backend04.entity.PaymentOrder;
 import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.entity.User;
 import com.example.project_backend04.enums.PaymentStatus;
+import com.example.project_backend04.enums.RegistrationStatus;
 import com.example.project_backend04.exception.BankPaymentException;
 import com.example.project_backend04.exception.PaymentOrderNotFoundException;
 import com.example.project_backend04.exception.ServiceNotActiveException;
@@ -349,13 +350,10 @@ public class BankPaymentService {
                 content, LocalDateTime.now());
             
             try {
-                // Validate input parameter
                 if (content == null || content.trim().isEmpty()) {
                     log.error("Invalid content provided for status check: {}", content);
                     throw new BankPaymentException("Content cannot be null or empty", "INVALID_CONTENT");
                 }
-                
-                // Find PaymentOrder by content with retry logic
                 Optional<PaymentOrder> orderOpt = DatabaseRetryUtil.executeWithRetry(
                     () -> paymentOrderRepository.findByContent(content),
                     "findPaymentOrderByContentForStatus"
@@ -381,20 +379,16 @@ public class BankPaymentService {
                         .itemType(order.getItemType())
                         .itemName(order.getItemName())
                         .build();
-                        
-                // Audit log: Status check success
-                log.info("AUDIT_LOG - STATUS_CHECK_RESPONSE - Content: {}, OrderId: {}, Status: {}, Amount: {}, Result: SUCCESS, Timestamp: {}", 
+                log.info("AUDIT_LOG - STATUS_CHECK_RESPONSE - Content: {}, OrderId: {}, Status: {}, Amount: {}, Result: SUCCESS, Timestamp: {}",
                     content, order.getId(), order.getStatus(), order.getAmount(), LocalDateTime.now());
                     
                 return response;
                 
             } catch (PaymentOrderNotFoundException e) {
-                // Re-throw as-is (already logged above)
                 throw e;
                 
             } catch (DataAccessException e) {
-                // Audit log: Status check failure
-                log.error("AUDIT_LOG - STATUS_CHECK_RESPONSE - Content: {}, Result: DATABASE_ERROR, Error: {}, Timestamp: {}", 
+                log.error("AUDIT_LOG - STATUS_CHECK_RESPONSE - Content: {}, Result: DATABASE_ERROR, Error: {}, Timestamp: {}",
                     content, e.getMessage(), LocalDateTime.now());
                 throw new BankPaymentException("Database error checking payment status", "DATABASE_ERROR", e);
                 
@@ -434,7 +428,7 @@ public class BankPaymentService {
                 // Kiễm tra nếu đã có registration ACTIVE rồi thì bỏ qua
                 boolean alreadyActive = serviceRegistrationRepository
                     .existsByUserAndGymServiceAndStatus(
-                        user, service, ServiceRegistration.RegistrationStatus.ACTIVE);
+                        user, service, RegistrationStatus.ACTIVE);
                 
                 if (alreadyActive) {
                     log.warn("ServiceRegistration already ACTIVE for userId={}, serviceId={} - skipping",
@@ -446,7 +440,7 @@ public class BankPaymentService {
                 ServiceRegistration registration = new ServiceRegistration();
                 registration.setUser(user);
                 registration.setGymService(service);
-                registration.setStatus(ServiceRegistration.RegistrationStatus.ACTIVE);
+                registration.setStatus(RegistrationStatus.ACTIVE);
                 registration.setNotes("Activated via bank transfer payment. OrderId: " + order.getId());
 
                 DatabaseRetryUtil.executeWithRetry(

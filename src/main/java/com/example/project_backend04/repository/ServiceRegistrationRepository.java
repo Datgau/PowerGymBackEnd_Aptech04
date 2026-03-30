@@ -4,6 +4,8 @@ import com.example.project_backend04.entity.GymService;
 import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.entity.TrainerBooking;
 import com.example.project_backend04.entity.User;
+import com.example.project_backend04.enums.BookingStatus;
+import com.example.project_backend04.enums.RegistrationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -52,7 +54,7 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
     @Query("SELECT COUNT(sr) FROM ServiceRegistration sr WHERE sr.gymService = :service AND sr.status = 'ACTIVE'")
     Long countActiveRegistrations(@Param("service") GymService service);
     
-    boolean existsByUserAndGymServiceAndStatus(User user, GymService gymService, ServiceRegistration.RegistrationStatus status);
+    boolean existsByUserAndGymServiceAndStatus(User user, GymService gymService, RegistrationStatus status);
     
     // NEW METHODS for trainer integration
     
@@ -64,7 +66,7 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
     /**
      * Find registrations by trainer and status
      */
-    List<ServiceRegistration> findByTrainerIdAndStatus(Long trainerId, ServiceRegistration.RegistrationStatus status);
+    List<ServiceRegistration> findByTrainerIdAndStatus(Long trainerId, RegistrationStatus status);
     
     /**
      * Find registrations by user and status with trainer and service info
@@ -75,7 +77,7 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
            "WHERE sr.user.id = :userId AND sr.status = :status")
     List<ServiceRegistration> findByUserIdAndStatusWithTrainerAndService(
         @Param("userId") Long userId, 
-        @Param("status") ServiceRegistration.RegistrationStatus status);
+        @Param("status") RegistrationStatus status);
     
     /**
      * Find registration with its trainer bookings
@@ -85,7 +87,7 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
            "WHERE sr.id = :registrationId AND (tb.status IN :statuses OR tb IS NULL)")
     Optional<ServiceRegistration> findByIdWithBookings(
         @Param("registrationId") Long registrationId,
-        @Param("statuses") List<TrainerBooking.BookingStatus> statuses);
+        @Param("statuses") List<BookingStatus> statuses);
     
     /**
      * Count active registrations by trainer
@@ -126,5 +128,5 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
     /**
      * Find registrations by user and status
      */
-    List<ServiceRegistration> findByUserAndStatusOrderByRegistrationDateDesc(User user, ServiceRegistration.RegistrationStatus status);
+    List<ServiceRegistration> findByUserAndStatusOrderByRegistrationDateDesc(User user, RegistrationStatus status);
 }

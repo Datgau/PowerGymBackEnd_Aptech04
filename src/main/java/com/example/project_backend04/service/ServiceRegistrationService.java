@@ -5,11 +5,14 @@ import com.example.project_backend04.dto.response.Service.GymServiceResponse;
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationResponse;
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationWithTrainerSelectionResponse;
 import com.example.project_backend04.dto.response.Trainer.TrainerAvailabilityDTO;
+import com.example.project_backend04.dto.response.Trainer.TrainerForBookingResponse;
 import com.example.project_backend04.dto.response.User.UserResponse;
 import com.example.project_backend04.entity.GymService;
 import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.entity.TrainerBooking;
 import com.example.project_backend04.entity.User;
+import com.example.project_backend04.enums.BookingStatus;
+import com.example.project_backend04.enums.RegistrationStatus;
 import com.example.project_backend04.event.EntityChangedEvent;
 import com.example.project_backend04.mapper.UserMapper;
 import com.example.project_backend04.repository.GymServiceRepository;
@@ -57,14 +60,14 @@ public class ServiceRegistrationService {
         }
 
         if (registrationRepository.existsByUserAndGymServiceAndStatus(
-                currentUser, gymService, ServiceRegistration.RegistrationStatus.ACTIVE)) {
+                currentUser, gymService, RegistrationStatus.ACTIVE)) {
             throw new RuntimeException("You have already registered for this service");
         }
         ServiceRegistration registration = new ServiceRegistration();
         registration.setUser(currentUser);
         registration.setGymService(gymService);
         registration.setNotes(request.getNotes());
-        registration.setStatus(ServiceRegistration.RegistrationStatus.ACTIVE);
+        registration.setStatus(RegistrationStatus.ACTIVE);
 
         ServiceRegistration saved = registrationRepository.save(registration);
         ServiceRegistrationResponse response = mapToResponse(saved);
@@ -86,11 +89,11 @@ public class ServiceRegistrationService {
             throw new RuntimeException("You can only cancel your own registration");
         }
 
-        if (registration.getStatus() != ServiceRegistration.RegistrationStatus.ACTIVE) {
+        if (registration.getStatus() != RegistrationStatus.ACTIVE) {
             throw new RuntimeException("Registration is not active");
         }
 
-        registration.setStatus(ServiceRegistration.RegistrationStatus.CANCELLED);
+        registration.setStatus(RegistrationStatus.CANCELLED);
         registration.setCancelledDate(LocalDateTime.now());
         registrationRepository.save(registration);
     }
@@ -152,14 +155,13 @@ public class ServiceRegistrationService {
             throw new RuntimeException("You can only access your own registration");
         }
 
-        if (registration.getStatus() != ServiceRegistration.RegistrationStatus.ACTIVE) {
+        if (registration.getStatus() != RegistrationStatus.ACTIVE) {
             throw new RuntimeException("Registration is not active");
         }
 
         // Get available trainers for this service
-        List<TrainerAvailabilityDTO> availableTrainers = 
-            enhancedServiceRegistrationService.getAvailableTrainers(
-                registration.getGymService().getId(), LocalDate.now());
+        List<TrainerForBookingResponse> availableTrainers =
+            enhancedServiceRegistrationService.getAvailableTrainers(registration.getGymService().getId());
 
         // Check if trainer is already selected
         boolean hasSelectedTrainer = registration.getTrainer() != null;
@@ -169,8 +171,8 @@ public class ServiceRegistrationService {
             .findByServiceRegistration_Id(registrationId);
         
         TrainerBooking activeBooking = activeBookings.stream()
-            .filter(booking -> booking.getStatus() == TrainerBooking.BookingStatus.PENDING || 
-                             booking.getStatus() == TrainerBooking.BookingStatus.CONFIRMED)
+            .filter(booking -> booking.getStatus() == BookingStatus.PENDING ||
+                             booking.getStatus() == BookingStatus.CONFIRMED)
             .findFirst()
             .orElse(null);
 

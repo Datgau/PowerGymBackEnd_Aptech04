@@ -14,70 +14,47 @@ import java.util.Optional;
 @Repository
 public interface TrainerSpecialtyRepository extends JpaRepository<TrainerSpecialty, Long> {
 
-    // Tìm tất cả specialties của một user trainer
     @Query("SELECT ts FROM TrainerSpecialty ts JOIN FETCH ts.specialty WHERE ts.user = :user AND ts.isActive = true ORDER BY ts.specialty.displayName ASC")
     List<TrainerSpecialty> findByUserAndIsActiveTrueOrderBySpecialtyAsc(@Param("user") User user);
 
-    // Tìm specialty cụ thể của user trainer
     @Query("SELECT ts FROM TrainerSpecialty ts JOIN FETCH ts.specialty WHERE ts.user = :user AND ts.specialty = :specialty AND ts.isActive = true")
     Optional<TrainerSpecialty> findByUserAndSpecialtyAndIsActiveTrue(@Param("user") User user, @Param("specialty") ServiceCategory specialty);
 
-    // Tìm tất cả trainer có specialty cụ thể
     @Query("SELECT ts FROM TrainerSpecialty ts JOIN FETCH ts.specialty WHERE ts.specialty = :specialty AND ts.isActive = true AND ts.user.isActive = true AND ts.user.role.name = 'TRAINER'")
     List<TrainerSpecialty> findBySpecialtyAndIsActiveTrue(@Param("specialty") ServiceCategory specialty);
 
     // Đếm số specialty của user trainer
     long countByUserAndIsActiveTrue(User user);
 
-    // Đếm số trainer có specialty cụ thể
     @Query("SELECT COUNT(DISTINCT ts.user) FROM TrainerSpecialty ts WHERE ts.specialty = :specialty AND ts.isActive = true AND ts.user.isActive = true AND ts.user.role.name = 'TRAINER'")
     long countTrainersBySpecialty(@Param("specialty") ServiceCategory specialty);
 
-    // Đếm số specialty của user trainer cụ thể
     @Query("SELECT COUNT(ts) FROM TrainerSpecialty ts WHERE ts.specialty = :specialty AND ts.isActive = true")
     long countBySpecialtyAndIsActiveTrue(@Param("specialty") ServiceCategory specialty);
-    // Xóa tất cả specialties của user trainer
     void deleteByUser(User user);
 
-    // Tìm tất cả trainers có thể dạy một category cụ thể
     @Query("SELECT DISTINCT ts.user FROM TrainerSpecialty ts WHERE ts.specialty = :category AND ts.isActive = true AND ts.user.isActive = true AND ts.user.role.name = 'TRAINER'")
     List<User> findTrainersByCategory(@Param("category") ServiceCategory category);
 
-    // Tìm tất cả specialties của trainers
-    @Query("SELECT ts FROM TrainerSpecialty ts JOIN FETCH ts.specialty WHERE ts.isActive = true AND ts.user.isActive = true AND ts.user.role.name = 'TRAINER' ORDER BY ts.user.fullName ASC")
-    List<TrainerSpecialty> findAllActiveTrainerSpecialties();
-    
-    // NEW METHODS for trainer selection
-    
-    /**
-     * Find trainers by specialty category ID
-     */
     @Query("SELECT DISTINCT ts.user FROM TrainerSpecialty ts " +
-           "WHERE ts.specialty.id = :categoryId " +
-           "AND ts.isActive = true " +
-           "AND ts.user.isActive = true " +
-           "AND ts.user.role.name = 'TRAINER'")
+           "JOIN FETCH ts.user.role " +
+           "WHERE ts.specialty.id = :categoryId AND ts.isActive = true AND ts.user.isActive = true AND ts.user.role.name = 'TRAINER'")
     List<User> findTrainersBySpecialtyCategory(@Param("categoryId") Long categoryId);
-    
-    /**
-     * Find active specialties by trainer with specialty details
-     */
+
+    @Query("SELECT ts FROM TrainerSpecialty ts JOIN FETCH ts.user JOIN FETCH ts.specialty WHERE ts.isActive = true AND ts.user.isActive = true AND ts.user.role.name = 'TRAINER' ORDER BY ts.user.fullName ASC")
+    List<TrainerSpecialty> findAllActiveTrainerSpecialties();
+
+
     @Query("SELECT ts FROM TrainerSpecialty ts " +
            "JOIN FETCH ts.specialty " +
            "WHERE ts.user.id = :trainerId AND ts.isActive = true")
     List<TrainerSpecialty> findActiveSpecialtiesByTrainer(@Param("trainerId") Long trainerId);
-    
-    /**
-     * Count trainers by specialty category
-     */
+
     @Query("SELECT COUNT(DISTINCT ts.user) FROM TrainerSpecialty ts " +
            "WHERE ts.specialty.id = :categoryId AND ts.isActive = true " +
            "AND ts.user.isActive = true AND ts.user.role.name = 'TRAINER'")
     Long countTrainersBySpecialtyCategory(@Param("categoryId") Long categoryId);
-    
-    /**
-     * Find trainers with multiple specialties including specific category
-     */
+
     @Query("SELECT DISTINCT ts.user FROM TrainerSpecialty ts " +
            "WHERE ts.specialty.id = :categoryId " +
            "AND ts.isActive = true " +
@@ -89,23 +66,21 @@ public interface TrainerSpecialtyRepository extends JpaRepository<TrainerSpecial
            "    GROUP BY ts2.user.id " +
            "    HAVING COUNT(ts2) >= :minSpecialties" +
            ")")
+
     List<User> findExperiencedTrainersByCategory(
         @Param("categoryId") Long categoryId, 
         @Param("minSpecialties") Long minSpecialties);
-    
-    /**
-     * Find trainer specialties with experience and certification info
-     */
+
     @Query("SELECT ts FROM TrainerSpecialty ts " +
-           "JOIN FETCH ts.specialty " +
-           "JOIN FETCH ts.user " +
-           "WHERE ts.specialty.id = :categoryId " +
-           "AND ts.isActive = true " +
-           "AND ts.user.isActive = true " +
-           "AND ts.user.role.name = 'TRAINER' " +
-           "ORDER BY ts.experienceYears DESC NULLS LAST, ts.level DESC")
+            "JOIN FETCH ts.specialty " +
+            "JOIN FETCH ts.user u " +
+            "JOIN FETCH u.role " +
+            "WHERE ts.specialty.id = :categoryId " +
+            "AND ts.isActive = true " +
+            "AND u.isActive = true " +
+            "AND u.role.name = 'TRAINER' " +
+            "ORDER BY ts.experienceYears DESC, ts.level DESC")
     List<TrainerSpecialty> findTrainerSpecialtiesByCategory(@Param("categoryId") Long categoryId);
-    
     /**
      * Check if trainer has specialty for specific category
      */

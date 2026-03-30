@@ -6,16 +6,16 @@ import com.example.project_backend04.dto.response.Trainer.TrainerStatisticsRespo
 import com.example.project_backend04.entity.Role;
 import com.example.project_backend04.entity.TrainerBooking;
 import com.example.project_backend04.entity.User;
+import com.example.project_backend04.enums.BookingStatus;
+import com.example.project_backend04.mapper.TrainerBookingMapper;
 import com.example.project_backend04.repository.RoleRepository;
 import com.example.project_backend04.repository.TrainerBookingRepository;
 import com.example.project_backend04.repository.UserRepository;
-import com.example.project_backend04.service.IntegratedBookingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.TextStyle;
@@ -31,7 +31,6 @@ public class TrainerManagementService {
     private final TrainerBookingRepository trainerBookingRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final IntegratedBookingService integratedBookingService;
 
     public TrainerScheduleResponse getTrainerSchedule(Long trainerId, LocalDate fromDate, LocalDate toDate) {
         User trainer = findTrainerById(trainerId);
@@ -51,13 +50,13 @@ public class TrainerManagementService {
         }
         int totalBookings = bookings.size();
         int confirmedBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.CONFIRMED)
+            .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
             .count();
         int pendingBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.PENDING)
+            .filter(b -> b.getStatus() == BookingStatus.PENDING)
             .count();
         int completedBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.COMPLETED)
+            .filter(b -> b.getStatus() == BookingStatus.COMPLETED)
             .count();
         List<String> availableDays = getAvailableDays(dailySchedules);
         LocalTime earliestStart = getEarliestStartTime(bookings);
@@ -91,8 +90,8 @@ public class TrainerManagementService {
             .findPendingBookingsWithServiceInfo(trainerId);
         
         return pendingBookings.stream()
-            .map(this::mapToBookingResponse)
-            .collect(Collectors.toList());
+                .map(TrainerBookingMapper::toResponse)
+                .collect(Collectors.toList());
     }
     public TrainerStatisticsResponse getTrainerStatistics(Long trainerId, LocalDate fromDate, LocalDate toDate) {
         User trainer = findTrainerById(trainerId);
@@ -100,19 +99,19 @@ public class TrainerManagementService {
             .findTrainerBookingsInDateRange(trainer, fromDate, toDate);
         int totalBookings = bookings.size();
         int confirmedBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.CONFIRMED)
+            .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
             .count();
         int completedBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.COMPLETED)
+            .filter(b -> b.getStatus() == BookingStatus.COMPLETED)
             .count();
         int cancelledBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.CANCELLED)
+            .filter(b -> b.getStatus() == BookingStatus.CANCELLED)
             .count();
         int pendingBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.PENDING)
+            .filter(b -> b.getStatus() == BookingStatus.PENDING)
             .count();
         int rejectedBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == TrainerBooking.BookingStatus.CANCELLED)
+            .filter(b -> b.getStatus() == BookingStatus.CANCELLED)
             .count();
         
         // Calculate rates
@@ -202,25 +201,25 @@ public class TrainerManagementService {
             .collect(Collectors.toList());
     }
 
-    @Transactional
-    public int bulkRespondToBookings(List<Long> bookingIds, String action, String reason) {
-        int processedCount = 0;
-        
-        for (Long bookingId : bookingIds) {
-            try {
-                if ("CONFIRM".equalsIgnoreCase(action)) {
-                    integratedBookingService.confirmBooking(bookingId, reason);
-                } else if ("REJECT".equalsIgnoreCase(action)) {
-                    integratedBookingService.rejectBooking(bookingId, reason);
-                }
-                processedCount++;
-            } catch (Exception e) {
-                log.error("Failed to process booking {}: {}", bookingId, e.getMessage());
-            }
-        }
-        
-        return processedCount;
-    }
+//    @Transactional
+//    public int bulkRespondToBookings(List<Long> bookingIds, String action, String reason) {
+//        int processedCount = 0;
+//
+//        for (Long bookingId : bookingIds) {
+//            try {
+//                if ("CONFIRM".equalsIgnoreCase(action)) {
+//                    integratedBookingService.confirmBooking(bookingId, reason);
+//                } else if ("REJECT".equalsIgnoreCase(action)) {
+//                    integratedBookingService.rejectBooking(bookingId, reason);
+//                }
+//                processedCount++;
+//            } catch (Exception e) {
+//                log.error("Failed to process booking {}: {}", bookingId, e.getMessage());
+//            }
+//        }
+//
+//        return processedCount;
+//    }
 
     public List<TrainerStatisticsResponse> getWorkloadSummary(LocalDate fromDate, LocalDate toDate) {
         Role trainerRole = roleRepository.findRoleByName("TRAINER")
@@ -287,28 +286,6 @@ public class TrainerManagementService {
             .isServiceLinked(booking.getServiceRegistration() != null)
             .serviceRegistrationId(booking.getServiceRegistration() != null ? 
                                  booking.getServiceRegistration().getId() : null)
-            .build();
-    }
-
-    private TrainerBookingResponse mapToBookingResponse(TrainerBooking booking) {
-        return TrainerBookingResponse.builder()
-            .id(booking.getId())
-            .bookingId(booking.getBookingId())
-            .clientName(booking.getUser().getFullName())
-            .clientEmail(booking.getUser().getEmail())
-            .clientPhone(booking.getUser().getPhoneNumber())
-            .serviceName(booking.getServiceRegistration() != null &&
-                        booking.getServiceRegistration().getGymService() != null ?
-                        booking.getServiceRegistration().getGymService().getName() : "Direct Booking")
-            .bookingDate(booking.getBookingDate())
-            .startTime(booking.getStartTime())
-            .endTime(booking.getEndTime())
-            .status(booking.getStatus())
-            .notes(booking.getNotes())
-            .specialRequests(booking.getSessionObjective())
-            .createdAt(booking.getCreatedAt())
-            .isServiceLinked(booking.getServiceRegistration() != null)
-
             .build();
     }
 

@@ -2,10 +2,11 @@ package com.example.project_backend04.service;
 
 import com.example.project_backend04.dto.request.Service.ServiceRegistrationWithTrainerRequest;
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationWithTrainerResponse;
-import com.example.project_backend04.dto.response.Trainer.TrainerAvailabilityDTO;
+import com.example.project_backend04.dto.response.Trainer.TrainerForBookingResponse;
 import com.example.project_backend04.entity.GymService;
 import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.entity.User;
+import com.example.project_backend04.enums.RegistrationStatus;
 import com.example.project_backend04.repository.GymServiceRepository;
 import com.example.project_backend04.repository.ServiceRegistrationRepository;
 import com.example.project_backend04.repository.UserRepository;
@@ -16,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +24,6 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
 public class EnhancedServiceRegistrationService {
     
     private final ServiceRegistrationRepository serviceRegistrationRepository;
@@ -32,7 +31,9 @@ public class EnhancedServiceRegistrationService {
     private final GymServiceRepository gymServiceRepository;
     private final ITrainerSelectionService trainerSelectionService;
     private final NotificationService notificationService;
+    private final TrainerForBookingService trainerForBookingService;
     
+    @Transactional
     public ServiceRegistrationWithTrainerResponse registerServiceWithTrainer(
             ServiceRegistrationWithTrainerRequest request) {
         log.info("Registering service with trainer for user {} and service {}", 
@@ -50,7 +51,7 @@ public class EnhancedServiceRegistrationService {
         
         // Check if user already has active registration for this service
         boolean hasActiveRegistration = serviceRegistrationRepository
-            .existsByUserAndGymServiceAndStatus(user, gymService, ServiceRegistration.RegistrationStatus.ACTIVE);
+            .existsByUserAndGymServiceAndStatus(user, gymService, RegistrationStatus.ACTIVE);
         
         if (hasActiveRegistration) {
             throw new IllegalStateException("User already has an active registration for this service");
@@ -78,24 +79,22 @@ public class EnhancedServiceRegistrationService {
         return mapToResponseWithTrainer(saved);
     }
     
-    public List<TrainerAvailabilityDTO> getAvailableTrainers(Long serviceId, LocalDate preferredDate) {
-        log.info("Getting available trainers for service {} on date {}", serviceId, preferredDate);
-        
-        // Validate service exists
+    @Transactional(readOnly = true)
+    public List<TrainerForBookingResponse> getAvailableTrainers(Long serviceId) {
         if (!gymServiceRepository.existsById(serviceId)) {
             throw new EntityNotFoundException("Service not found with id: " + serviceId);
         }
-        
-        return trainerSelectionService.findAvailableTrainers(serviceId, preferredDate);
+        return trainerForBookingService.getTrainersByServiceId(serviceId);
     }
     
+    @Transactional
     public ServiceRegistrationWithTrainerResponse assignTrainer(Long registrationId, Long trainerId, String notes) {
         log.info("Assigning trainer {} to registration {}", trainerId, registrationId);
         
         ServiceRegistration registration = serviceRegistrationRepository.findById(registrationId)
             .orElseThrow(() -> new EntityNotFoundException("Service registration not found"));
         
-        if (registration.getStatus() != ServiceRegistration.RegistrationStatus.ACTIVE) {
+        if (registration.getStatus() != RegistrationStatus.ACTIVE) {
             throw new IllegalStateException("Can only assign trainer to active registrations");
         }
         
@@ -114,6 +113,7 @@ public class EnhancedServiceRegistrationService {
         return mapToResponseWithTrainer(updated);
     }
     
+    @Transactional(readOnly = true)
     public ServiceRegistrationWithTrainerResponse getRegistrationFullDetails(Long registrationId) {
         log.debug("Getting full details for registration {}", registrationId);
         
@@ -124,28 +124,31 @@ public class EnhancedServiceRegistrationService {
         return mapToResponseWithTrainer(registration);
     }
     
+    @Transactional(readOnly = true)
     public List<ServiceRegistrationWithTrainerResponse> getUserRegistrationsWithTrainers(Long userId) {
         log.debug("Getting registrations with trainers for user {}", userId);
         
         List<ServiceRegistration> registrations = serviceRegistrationRepository
-            .findByUserIdAndStatusWithTrainerAndService(userId, ServiceRegistration.RegistrationStatus.ACTIVE);
+            .findByUserIdAndStatusWithTrainerAndService(userId, RegistrationStatus.ACTIVE);
         
         return registrations.stream()
             .map(this::mapToResponseWithTrainer)
             .toList();
     }
     
+    @Transactional(readOnly = true)
     public List<ServiceRegistrationWithTrainerResponse> getTrainerRegistrations(Long trainerId) {
         log.debug("Getting registrations for trainer {}", trainerId);
         
         List<ServiceRegistration> registrations = serviceRegistrationRepository
-            .findByTrainerIdAndStatus(trainerId, ServiceRegistration.RegistrationStatus.ACTIVE);
+            .findByTrainerIdAndStatus(trainerId, RegistrationStatus.ACTIVE);
         
         return registrations.stream()
             .map(this::mapToResponseWithTrainer)
             .toList();
     }
     
+    @Transactional
     public ServiceRegistrationWithTrainerResponse updateTrainerNotes(Long registrationId, String notes) {
         log.info("Updating trainer notes for registration {}", registrationId);
         
@@ -162,6 +165,7 @@ public class EnhancedServiceRegistrationService {
         return mapToResponseWithTrainer(saved);
     }
     
+    @Transactional
     public void removeTrainerFromRegistration(Long registrationId, String reason) {
         log.info("Removing trainer from registration {} - reason: {}", registrationId, reason);
         
@@ -210,7 +214,7 @@ public class EnhancedServiceRegistrationService {
         ServiceRegistration registration = new ServiceRegistration();
         registration.setUser(user);
         registration.setGymService(gymService);
-        registration.setStatus(ServiceRegistration.RegistrationStatus.ACTIVE);
+        registration.setStatus(RegistrationStatus.ACTIVE);
         registration.setNotes(request.getNotes());
         
         return registration;

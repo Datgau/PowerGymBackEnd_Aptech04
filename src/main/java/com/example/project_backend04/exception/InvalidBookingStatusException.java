@@ -1,16 +1,17 @@
 package com.example.project_backend04.exception;
 
-import com.example.project_backend04.entity.TrainerBooking;
+
+import com.example.project_backend04.enums.BookingStatus;
 
 public class InvalidBookingStatusException extends RuntimeException {
     
     private final Long bookingId;
-    private final TrainerBooking.BookingStatus currentStatus;
-    private final TrainerBooking.BookingStatus requiredStatus;
+    private final BookingStatus currentStatus;
+    private final BookingStatus requiredStatus;
     
     public InvalidBookingStatusException(String message, Long bookingId, 
-                                       TrainerBooking.BookingStatus currentStatus,
-                                       TrainerBooking.BookingStatus requiredStatus) {
+                                       BookingStatus currentStatus,
+                                       BookingStatus requiredStatus) {
         super(message);
         this.bookingId = bookingId;
         this.currentStatus = currentStatus;
@@ -18,7 +19,7 @@ public class InvalidBookingStatusException extends RuntimeException {
     }
     
     public InvalidBookingStatusException(String message, Long bookingId, 
-                                       TrainerBooking.BookingStatus currentStatus) {
+                                       BookingStatus currentStatus) {
         super(message);
         this.bookingId = bookingId;
         this.currentStatus = currentStatus;
@@ -29,11 +30,11 @@ public class InvalidBookingStatusException extends RuntimeException {
         return bookingId;
     }
     
-    public TrainerBooking.BookingStatus getCurrentStatus() {
+    public BookingStatus getCurrentStatus() {
         return currentStatus;
     }
     
-    public TrainerBooking.BookingStatus getRequiredStatus() {
+    public BookingStatus getRequiredStatus() {
         return requiredStatus;
     }
 }

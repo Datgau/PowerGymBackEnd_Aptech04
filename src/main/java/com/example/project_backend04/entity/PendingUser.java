@@ -6,12 +6,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-
-@Data
 @Entity
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class PendingUser {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -31,10 +31,11 @@ public class PendingUser {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    private LocalDateTime lastOtpSentAt;
+
     @PrePersist
     protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
+        this.createdAt = LocalDateTime.now();
+        this.lastOtpSentAt = LocalDateTime.now();
     }
 }

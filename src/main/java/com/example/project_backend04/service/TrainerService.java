@@ -476,13 +476,9 @@ public class TrainerService implements ITrainerService {
         password.append(lowerCase.charAt(random.nextInt(lowerCase.length())));
         password.append(digits.charAt(random.nextInt(digits.length())));
         password.append(special.charAt(random.nextInt(special.length())));
-
-        // Thêm 8 ký tự ngẫu nhiên nữa (tổng 12 ký tự)
         for (int i = 0; i < 8; i++) {
             password.append(allChars.charAt(random.nextInt(allChars.length())));
         }
-
-        // Shuffle để không có pattern cố định
         char[] passwordArray = password.toString().toCharArray();
         for (int i = passwordArray.length - 1; i > 0; i--) {
             int j = random.nextInt(i + 1);

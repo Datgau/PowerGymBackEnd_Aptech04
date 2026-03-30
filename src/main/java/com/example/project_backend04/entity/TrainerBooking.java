@@ -1,5 +1,7 @@
 package com.example.project_backend04.entity;
 
+import com.example.project_backend04.enums.BookingStatus;
+import com.example.project_backend04.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,11 +29,11 @@ public class TrainerBooking {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user; // Client who books
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trainer_id", nullable = false)
-    private User trainer; // Trainer (User with TRAINER role)
+    @JoinColumn(name = "trainer_id", nullable = true)
+    private User trainer;
 
     @Column(nullable = false)
     private LocalDate bookingDate;
@@ -46,11 +48,15 @@ public class TrainerBooking {
     private String notes;
 
     @Column(columnDefinition = "TEXT")
-    private String sessionType; // Personal Training, Group Session, etc.
+    private String sessionType;
+
+//    @Enumerated(EnumType.STRING)
+//    @Column(nullable = false, columnDefinition = "VARCHAR(20) CHECK (status IN ('PENDING','CONFIRMED','REJECTED','CANCELLED','COMPLETED','NO_SHOW','RESCHEDULED'))")
+//    private BookingStatus status = BookingStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private BookingStatus status = BookingStatus.CONFIRMED;
+    @Column(nullable = false, length = 20)
+    private BookingStatus status = BookingStatus.PENDING;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -64,84 +70,138 @@ public class TrainerBooking {
     @Column
     private String cancellationReason;
 
-    // NEW FIELDS for service integration
+
+    @Column
+    private LocalDateTime rejectedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column
+    private String rejectionMediaUrl;
+
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isAssignedByAdmin = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_registration_id")
-    private ServiceRegistration serviceRegistration; // Link to service registration
+    private ServiceRegistration serviceRegistration;
     
     @Column(columnDefinition = "TEXT")
-    private String sessionObjective; // Objective for this session
+    private String sessionObjective;
     
     @Column
-    private Integer sessionNumber; // Session number in the service program
-    
-    @Column(columnDefinition = "TEXT")
-    private String trainerNotes; // Trainer's notes about the session
-    
-    @Column(columnDefinition = "TEXT")
-    private String clientFeedback; // Client feedback after session
-    
-    @Column
-    private Integer rating; // Session rating (1-5)
+    private Integer sessionNumber;
 
-    public enum BookingStatus {
-        PENDING,     // Waiting for trainer confirmation
-        CONFIRMED,   // Confirmed by trainer
-        CANCELLED,   // Cancelled by either party
-        COMPLETED,   // Session completed
-        NO_SHOW,     // Client didn't show up
-        RESCHEDULED  // Rescheduled to another time
+    @Column(columnDefinition = "TEXT")
+    private String trainerNotes;
+    
+    @Column(columnDefinition = "TEXT")
+    private String clientFeedback;
+    
+    @Column
+    private Integer rating;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_order_id")
+    private PaymentOrder paymentOrder;
+
+    public boolean canTrainerRespond() {
+        return status == BookingStatus.PENDING;
     }
 
-    // Helper methods
     public boolean canCancel() {
-        return (status == BookingStatus.CONFIRMED || status == BookingStatus.PENDING) && 
+        return (status == BookingStatus.CONFIRMED || status == BookingStatus.PENDING) &&
                LocalDateTime.of(bookingDate, startTime)
-               .isAfter(LocalDateTime.now().plusHours(2)); // Can cancel 2 hours before session
+               .isAfter(LocalDateTime.now().plusHours(2));
     }
 
     public boolean isUpcoming() {
-        return (status == BookingStatus.CONFIRMED || status == BookingStatus.PENDING) && 
+        return (status == BookingStatus.CONFIRMED || status == BookingStatus.PENDING) &&
                LocalDateTime.of(bookingDate, startTime).isAfter(LocalDateTime.now());
     }
 
+    public boolean isUnassigned() {
+        return trainer == null;
+    }
+
+    public boolean isRejected() {
+        return status == BookingStatus.REJECTED;
+    }
+
     public boolean hasTimeConflict(LocalDate date, LocalTime start, LocalTime end) {
-        if (!this.bookingDate.equals(date) || this.status != BookingStatus.CONFIRMED) {
+        if (!this.bookingDate.equals(date)) return false;
+        if (this.status != BookingStatus.CONFIRMED && this.status != BookingStatus.PENDING) {
             return false;
         }
-        // Check if time ranges overlap: (start1 < end2) AND (end1 > start2)
         return start.isBefore(this.endTime) && end.isAfter(this.startTime);
     }
-    
-    // NEW HELPER METHODS for service integration
+
+
     public boolean isLinkedToService() {
         return serviceRegistration != null;
     }
-    
+
     public boolean canReschedule() {
-        return (status == BookingStatus.CONFIRMED || status == BookingStatus.PENDING) && 
+        return (status == BookingStatus.CONFIRMED || status == BookingStatus.PENDING) &&
                LocalDateTime.of(bookingDate, startTime)
                .isAfter(LocalDateTime.now().plusHours(4));
     }
-    
+
     public boolean requiresTrainerConfirmation() {
-        return status == BookingStatus.PENDING;
+        return status == BookingStatus.PENDING && trainer != null;
     }
-    
+
     public boolean isCompleted() {
         return status == BookingStatus.COMPLETED;
     }
-    
+
     public boolean hasRating() {
         return rating != null && rating >= 1 && rating <= 5;
     }
-    
+
     public String getServiceName() {
-        return isLinkedToService() ? serviceRegistration.getGymService().getName() : "Personal Training";
+        if (isLinkedToService() && serviceRegistration.getGymService() != null) {
+            return serviceRegistration.getGymService().getName();
+        }
+        return "Personal Training";
     }
-    
+
+    public String getPaymentStatus() {
+        if (paymentOrder != null) {
+            PaymentStatus status = paymentOrder.getStatus();
+            if (status != null) {
+                switch (status) {
+                    case SUCCESS:
+                        return "PAID";
+                    case PENDING:
+                        return "PENDING";
+                    case FAILED:
+                    case EXPIRED:
+                        return "UNPAID";
+                }
+            }
+        }
+        
+        // Fallback: Check payment through ServiceRegistration
+        if (serviceRegistration != null && serviceRegistration.getGymService() != null) {
+            // If service registration exists and is ACTIVE, assume service was paid
+            if (serviceRegistration.getStatus() == com.example.project_backend04.enums.RegistrationStatus.ACTIVE) {
+                return "PAID";
+            }
+        }
+        
+        return "UNPAID";
+    }
+
     public Long getServiceRegistrationId() {
         return isLinkedToService() ? serviceRegistration.getId() : null;
+    }
+
+    public boolean wasAssignedByAdmin() {
+        return Boolean.TRUE.equals(isAssignedByAdmin);
     }
 
     @PrePersist
@@ -151,7 +211,6 @@ public class TrainerBooking {
         if (this.bookingId == null) {
             this.bookingId = "TB" + System.currentTimeMillis();
         }
-        // Set default status to PENDING for new bookings
         if (this.status == null) {
             this.status = BookingStatus.PENDING;
         }

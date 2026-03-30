@@ -1,5 +1,6 @@
 package com.example.project_backend04.entity;
 
+import com.example.project_backend04.enums.BookingStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -48,16 +49,11 @@ public class Booking {
     @Column
     private LocalDateTime attendedDate;
 
-    public enum BookingStatus {
-        CONFIRMED,
-        CANCELLED,
-        ATTENDED,
-        NO_SHOW
-    }
+
 
     // Helper methods
     public boolean canCancel() {
-        return status == BookingStatus.CONFIRMED && 
+        return status == BookingStatus.CONFIRMED &&
                LocalDateTime.of(classSchedule.getDate(), classSchedule.getStartTime())
                .isAfter(LocalDateTime.now().plusHours(2)); // Can cancel 2 hours before class
     }

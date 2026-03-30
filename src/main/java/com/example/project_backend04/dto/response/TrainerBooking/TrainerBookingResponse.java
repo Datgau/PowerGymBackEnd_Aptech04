@@ -2,6 +2,7 @@ package com.example.project_backend04.dto.response.TrainerBooking;
 
 import com.example.project_backend04.dto.response.User.UserResponse;
 import com.example.project_backend04.entity.TrainerBooking;
+import com.example.project_backend04.enums.BookingStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,12 +27,20 @@ public class TrainerBookingResponse {
     private LocalTime endTime;
     private String notes;
     private String sessionType;
-    private TrainerBooking.BookingStatus status;
+    private BookingStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime cancelledAt;
     private String cancellationReason;
-    
+
+    // Rejection fields (trainer từ chối)
+    private LocalDateTime rejectedAt;
+    private String rejectionReason;
+    private String rejectionMediaUrl;
+
+    // Admin assignment
+    private Boolean isAssignedByAdmin;
+
     // Service integration fields
     private Long serviceRegistrationId;
     private String serviceName;
@@ -41,32 +50,35 @@ public class TrainerBookingResponse {
     private String clientFeedback;
     private Integer rating;
     
+    // Payment status
+    private String paymentStatus;
+    
     public boolean isUpcoming() {
-        return (status == TrainerBooking.BookingStatus.CONFIRMED || 
-                status == TrainerBooking.BookingStatus.PENDING) && 
+        return (status == BookingStatus.CONFIRMED ||
+                status == BookingStatus.PENDING) &&
                LocalDateTime.of(bookingDate, startTime).isAfter(LocalDateTime.now());
     }
     
     public boolean canCancel() {
-        return (status == TrainerBooking.BookingStatus.CONFIRMED || 
-                status == TrainerBooking.BookingStatus.PENDING) && 
+        return (status == BookingStatus.CONFIRMED ||
+                status == BookingStatus.PENDING) &&
                LocalDateTime.of(bookingDate, startTime)
                .isAfter(LocalDateTime.now().plusHours(2));
     }
     
     public boolean canReschedule() {
-        return (status == TrainerBooking.BookingStatus.CONFIRMED || 
-                status == TrainerBooking.BookingStatus.PENDING) && 
+        return (status == BookingStatus.CONFIRMED ||
+                status == BookingStatus.PENDING) &&
                LocalDateTime.of(bookingDate, startTime)
                .isAfter(LocalDateTime.now().plusHours(4));
     }
     
     public boolean requiresTrainerConfirmation() {
-        return status == TrainerBooking.BookingStatus.PENDING;
+        return status == BookingStatus.PENDING;
     }
     
     public boolean isCompleted() {
-        return status == TrainerBooking.BookingStatus.COMPLETED;
+        return status == BookingStatus.COMPLETED;
     }
     
     public boolean hasRating() {
@@ -95,17 +107,13 @@ public class TrainerBookingResponse {
         return hours + "h " + remainingMinutes + "m";
     }
     
-    public String getStatusDisplay() {
-        if (status == null) return "Unknown";
-        
-        switch (status) {
-            case PENDING: return "Pending Confirmation";
-            case CONFIRMED: return "Confirmed";
-            case CANCELLED: return "Cancelled";
-            case COMPLETED: return "Completed";
-            case NO_SHOW: return "No Show";
-            case RESCHEDULED: return "Rescheduled";
-            default: return status.name();
-        }
+
+
+    public boolean isRejected() {
+        return status == BookingStatus.REJECTED;
+    }
+
+    public boolean isUnassigned() {
+        return trainer == null;
     }
 }
