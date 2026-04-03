@@ -1,9 +1,0 @@
-com\example\project_backend04\integration\WebhookValidationIntegrationTest.class
-com\example\project_backend04\service\BankPaymentServiceTest.class
-com\example\project_backend04\dto\response\BankPayment\BankPaymentResponseDTOTest.class
-com\example\project_backend04\repository\PaymentOrderRepositoryCompatibilityTest.class
-com\example\project_backend04\compatibility\PaymentCompatibilityUnitTest.class
-com\example\project_backend04\config\BankPaymentConfigTest.class
-com\example\project_backend04\ProjectBackend04ApplicationTests.class
-com\example\project_backend04\security\WebhookAuthenticationFilterTest.class
-com\example\project_backend04\service\BankPaymentServiceUnitTest.class
