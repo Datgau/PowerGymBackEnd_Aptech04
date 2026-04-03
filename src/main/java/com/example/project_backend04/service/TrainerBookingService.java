@@ -4,10 +4,13 @@ import com.example.project_backend04.dto.request.TrainerBooking.CreateBookingReq
 import com.example.project_backend04.dto.request.TrainerBooking.RejectBookingRequest;
 import com.example.project_backend04.dto.response.TrainerBooking.TrainerBookingResponse;
 import com.example.project_backend04.dto.response.User.UserResponse;
+import com.example.project_backend04.entity.PaymentOrder;
 import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.entity.TrainerBooking;
 import com.example.project_backend04.entity.User;
 import com.example.project_backend04.enums.BookingStatus;
+import com.example.project_backend04.enums.PaymentStatus;
+import com.example.project_backend04.repository.PaymentOrderRepository;
 import com.example.project_backend04.repository.ServiceRegistrationRepository;
 import com.example.project_backend04.repository.TrainerBookingRepository;
 import com.example.project_backend04.repository.TrainerSpecialtyRepository;
@@ -21,20 +24,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @Transactional
-public class TrainerBookingServiceImpl implements ITrainerBookingService {
+public class TrainerBookingService implements ITrainerBookingService {
 
     private final TrainerBookingRepository bookingRepo;
     private final UserRepository userRepo;
     private final ServiceRegistrationRepository serviceRegRepo;
     private final TrainerSpecialtyRepository specialtyRepo;
     private final ITrainerWorkingHoursService workingHoursService;
+    private final PaymentOrderRepository paymentOrderRepo;
 
 
     @Override
@@ -71,6 +77,21 @@ public class TrainerBookingServiceImpl implements ITrainerBookingService {
         }
 
         // Check user booking conflicts
+        // First, check if user already has a PENDING/CONFIRMED booking for this service registration
+        List<TrainerBooking> existingBookings = bookingRepo.findByServiceRegistration_Id(req.getServiceRegistrationId())
+            .stream()
+            .filter(b -> b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.CONFIRMED)
+            .filter(b -> b.getUser().getId().equals(userId))
+            .collect(Collectors.toList());
+        
+        if (!existingBookings.isEmpty()) {
+            TrainerBooking existingBooking = existingBookings.get(0);
+            log.info("User {} already has booking {} for service registration {}, returning existing booking",
+                    userId, existingBooking.getBookingId(), req.getServiceRegistrationId());
+            return toResponse(existingBooking);
+        }
+        
+        // Check for time slot conflicts with OTHER bookings
         List<TrainerBooking> userConflicts = bookingRepo.findConflictingBookingsForUser(
                 userId, req.getBookingDate(), req.getStartTime(), req.getEndTime());
 
@@ -136,6 +157,47 @@ public class TrainerBookingServiceImpl implements ITrainerBookingService {
                 .build();
 
         TrainerBooking saved = bookingRepo.save(booking);
+        
+        // 7. Link to existing PaymentOrder if exists
+        // PaymentOrder should already exist from payment flow
+        // For ONLINE registrations, find SUCCESS payment (already paid)
+        // For COUNTER registrations, find PENDING payment (will pay at counter)
+        Optional<PaymentOrder> existingPaymentOrder = Optional.empty();
+        
+        if (reg.getRegistrationType() == com.example.project_backend04.enums.RegistrationType.ONLINE) {
+            // Online registration - find SUCCESS payment
+            existingPaymentOrder = paymentOrderRepo.findByUserAndItemIdAndStatus(
+                user, reg.getGymService().getId().toString(), PaymentStatus.SUCCESS);
+            
+            if (existingPaymentOrder.isEmpty()) {
+                log.warn("No SUCCESS PaymentOrder found for ONLINE booking {} - checking PENDING", saved.getBookingId());
+                // Fallback to PENDING if SUCCESS not found (edge case)
+                existingPaymentOrder = paymentOrderRepo.findByUserAndItemIdAndStatus(
+                    user, reg.getGymService().getId().toString(), PaymentStatus.PENDING);
+            }
+        } else {
+            // Counter registration - find PENDING payment (will pay at counter)
+            existingPaymentOrder = paymentOrderRepo.findByUserAndItemIdAndStatus(
+                user, reg.getGymService().getId().toString(), PaymentStatus.PENDING);
+        }
+        
+        if (existingPaymentOrder.isPresent()) {
+            PaymentOrder paymentOrder = existingPaymentOrder.get();
+            saved.setPaymentOrder(paymentOrder);
+            saved = bookingRepo.save(saved);
+            log.info("Linked PaymentOrder {} (status: {}) to booking {}", 
+                paymentOrder.getId(), paymentOrder.getStatus(), saved.getBookingId());
+        } else {
+            log.warn("No PaymentOrder found for booking {} - user may need to pay", saved.getBookingId());
+        }
+        
+        // 8. Update ServiceRegistration với trainer nếu chưa có
+        if (trainer != null && reg.getTrainer() == null) {
+            reg.setTrainer(trainer);
+            reg.setTrainerSelectedAt(java.time.LocalDateTime.now());
+            serviceRegRepo.save(reg);
+            log.info("Updated ServiceRegistration {} with trainer {}", reg.getId(), trainer.getId());
+        }
 
         log.info("Created booking {} for user {} with trainer {}",
                 saved.getBookingId(), userId, req.getTrainerId());
@@ -319,6 +381,34 @@ public class TrainerBookingServiceImpl implements ITrainerBookingService {
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    // ── Validation helpers ────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TrainerBookingResponse> getBookingsByServiceRegistration(Long serviceRegistrationId) {
+        return bookingRepo.findByServiceRegistration_Id(serviceRegistrationId)
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean checkUserTimeSlotConflict(Long userId, LocalDate date, 
+                                            LocalTime startTime, LocalTime endTime) {
+        List<TrainerBooking> conflicts = bookingRepo.findConflictingBookingsForUser(
+            userId, date, startTime, endTime);
+        return !conflicts.isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean checkTrainerTimeSlotConflict(Long trainerId, LocalDate date,
+                                                LocalTime startTime, LocalTime endTime) {
+        List<TrainerBooking> conflicts = bookingRepo.findConflictingBookingsForTrainer(
+            trainerId, date, startTime, endTime,
+            List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED));
+        return !conflicts.isEmpty();
+    }
+
 
 
     private TrainerBooking findAndValidateOwner(Long bookingId, Long userId) {
@@ -377,6 +467,8 @@ public class TrainerBookingServiceImpl implements ITrainerBookingService {
                 .trainerNotes(b.getTrainerNotes())
                 .clientFeedback(b.getClientFeedback())
                 .rating(b.getRating())
+                // Payment
+                .paymentStatus(b.getPaymentStatus())
                 .build();
     }
 

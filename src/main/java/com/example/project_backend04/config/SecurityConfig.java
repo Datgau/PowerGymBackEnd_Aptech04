@@ -82,6 +82,7 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.GET, "/api/service-registrations/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/stories/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/membership-packages/active").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/user/memberships/**").authenticated()
                             .requestMatchers(HttpMethod.GET, "/api/equipments/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/equipment-categories/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()

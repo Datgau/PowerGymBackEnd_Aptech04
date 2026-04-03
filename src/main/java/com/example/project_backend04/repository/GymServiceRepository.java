@@ -35,20 +35,5 @@ public interface GymServiceRepository extends JpaRepository<GymService, Long> {
 
     @Query("SELECT COUNT(gs) FROM GymService gs WHERE gs.category = :category AND gs.isActive = true")
     long countByCategoryAndIsActiveTrue(@Param("category") ServiceCategory category);
-    // Original methods (giữ lại để backward compatibility)
-    List<GymService> findByIsActiveTrue();
 
-    //tìm dịch vụ theo danh mục và đang hoạt động
-    List<GymService> findByCategoryAndIsActiveTrue(ServiceCategory category);
-
-    //tìm tất cả dịch vụ đang hoạt động và sắp xếp theo tên
-    @Query("SELECT gs FROM GymService gs WHERE gs.isActive = true ORDER BY gs.name ASC")
-    List<GymService> findAllActiveOrderByName();
-
-    //tìm dịch vụ theo tên chứa chuỗi và đang hoạt động
-    @Query("SELECT gs FROM GymService gs WHERE gs.name LIKE %:name% AND gs.isActive = true")
-    List<GymService> findByNameContainingAndIsActiveTrue(@Param("name") String name);
-
-    //tìm dịch vụ theo id và đang hoạt động
-    Optional<GymService> findByIdAndIsActiveTrue(Long id);
 }

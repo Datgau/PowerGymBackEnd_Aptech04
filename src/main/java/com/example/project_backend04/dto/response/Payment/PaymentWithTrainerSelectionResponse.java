@@ -40,27 +40,5 @@ public class PaymentWithTrainerSelectionResponse {
     private boolean needsTrainerSelection;
     private String nextAction; // "SELECT_TRAINER", "BOOK_SESSION", "COMPLETE"
     
-    // Helper methods
-    public boolean canSelectTrainer() {
-        return paymentCompleted && hasServiceRegistrations && needsTrainerSelection;
-    }
-    
-    public String getWorkflowMessage() {
-        if (!paymentCompleted) {
-            return "Thanh toán chưa hoàn tất";
-        } else if (!hasServiceRegistrations) {
-            return "Không có dịch vụ nào được đăng ký";
-        } else if (needsTrainerSelection) {
-            return "Vui lòng chọn trainer cho " + registrationsNeedingTrainer + " dịch vụ";
-        } else {
-            return "Đã hoàn tất đăng ký dịch vụ và chọn trainer";
-        }
-    }
-    
-    public int getCompletedRegistrations() {
-        if (serviceRegistrations == null) return 0;
-        return (int) serviceRegistrations.stream()
-            .filter(reg -> reg.isHasSelectedTrainer() || reg.isHasActiveBooking())
-            .count();
-    }
+
 }

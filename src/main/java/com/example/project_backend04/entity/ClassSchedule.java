@@ -70,7 +70,7 @@ public class ClassSchedule {
         CANCELLED
     }
 
-    // Helper methods
+
     public boolean isFull() {
         return maxParticipants != null && currentParticipants >= maxParticipants;
     }

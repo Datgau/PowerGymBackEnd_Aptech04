@@ -1,11 +1,18 @@
 package com.example.project_backend04.controller;
 
+import com.example.project_backend04.dto.request.Service.ServiceRegistrationFilterRequest;
 import com.example.project_backend04.dto.request.Service.ServiceRegistrationRequest;
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationResponse;
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationWithTrainerSelectionResponse;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
+import com.example.project_backend04.dto.response.Trainer.AvailableTrainerResponse;
+import com.example.project_backend04.enums.PaymentStatus;
+import com.example.project_backend04.enums.RegistrationStatus;
+import com.example.project_backend04.enums.RegistrationType;
 import com.example.project_backend04.service.ServiceRegistrationService;
+import com.example.project_backend04.service.EnhancedServiceRegistrationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +24,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/service-registrations")
 @RequiredArgsConstructor
+@Slf4j
 public class ServiceRegistrationController {
 
     private final ServiceRegistrationService registrationService;
+    private final EnhancedServiceRegistrationService enhancedServiceRegistrationService;
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -73,8 +82,12 @@ public class ServiceRegistrationController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ServiceRegistrationResponse>>> getMyRegistrations() {
         try {
-            return ResponseEntity.ok(ApiResponse.success(registrationService.getMyRegistrations()));
+            log.info("Fetching my registrations for current user");
+            List<ServiceRegistrationResponse> registrations = registrationService.getMyRegistrations();
+            log.info("Successfully fetched {} registrations", registrations.size());
+            return ResponseEntity.ok(ApiResponse.success(registrations));
         } catch (Exception e) {
+            log.error("Failed to fetch my registrations", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to fetch registrations: " + e.getMessage()));
         }
@@ -112,13 +125,44 @@ public class ServiceRegistrationController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<ServiceRegistrationResponse>>> getAllRegistrationsPaginated(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) RegistrationStatus status,
+            @RequestParam(required = false) PaymentStatus paymentStatus,
+            @RequestParam(required = false) RegistrationType registrationType,
+            @RequestParam(required = false) String searchQuery
     ) {
         try {
-            return ResponseEntity.ok(ApiResponse.success(registrationService.getAllRegistrations(page, size)));
+            ServiceRegistrationFilterRequest request = new ServiceRegistrationFilterRequest();
+            request.setPage(page);
+            request.setSize(size);
+            request.setStatus(status);
+            request.setPaymentStatus(paymentStatus);
+            request.setRegistrationType(registrationType);
+            request.setSearchQuery(searchQuery);
+            
+            return ResponseEntity.ok(ApiResponse.success(registrationService.getAllRegistrationsWithFilters(request)));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to fetch registrations: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/available-trainers")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<AvailableTrainerResponse>>> getAvailableTrainers(
+            @PathVariable Long id
+    ) {
+        try {
+            List<AvailableTrainerResponse> trainers = registrationService.getAvailableTrainersForRegistration(id);
+            return ResponseEntity.ok(ApiResponse.success(trainers));
+        } catch (RuntimeException e) {
+            if (e.getMessage().equals("Registration not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch available trainers: " + e.getMessage()));
         }
     }
 
@@ -130,6 +174,47 @@ public class ServiceRegistrationController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to fetch registrations: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{registrationId}/assign-trainer")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> assignTrainer(
+            @PathVariable Long registrationId,
+            @RequestParam Long trainerId,
+            @RequestParam(required = false) String notes
+    ) {
+        try {
+            enhancedServiceRegistrationService.assignTrainer(registrationId, trainerId, notes);
+            return ResponseEntity.ok(ApiResponse.success(null, "Trainer assigned successfully"));
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to assign trainer: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{registrationId}/confirm-payment")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> confirmCounterPayment(
+            @PathVariable Long registrationId,
+            @RequestParam Long amount
+    ) {
+        try {
+            enhancedServiceRegistrationService.confirmCounterPayment(registrationId, amount);
+            return ResponseEntity.ok(ApiResponse.success(null, "Payment confirmed successfully"));
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to confirm payment: " + e.getMessage()));
         }
     }
 }

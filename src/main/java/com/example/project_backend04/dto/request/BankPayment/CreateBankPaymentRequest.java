@@ -13,6 +13,11 @@ public class CreateBankPaymentRequest {
     @NotNull(message = "User ID is required")
     private Long userId;
     
-    @NotNull(message = "Service ID is required")
     private Long serviceId;
+    
+    private Long packageId;
+    
+    private String itemType;
+    
+    private Long bookingId;
 }

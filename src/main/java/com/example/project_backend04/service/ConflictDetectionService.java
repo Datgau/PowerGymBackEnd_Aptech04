@@ -9,8 +9,6 @@ import com.example.project_backend04.repository.TrainerBookingRepository;
 import com.example.project_backend04.service.IService.IConflictDetectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -26,7 +24,6 @@ import java.util.stream.Collectors;
 public class ConflictDetectionService implements IConflictDetectionService {
     
     private final TrainerBookingRepository trainerBookingRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
     private static final LocalTime DEFAULT_START_TIME = LocalTime.of(6, 0);
     private static final LocalTime DEFAULT_END_TIME = LocalTime.of(22, 0);
     private static final int SLOT_DURATION_MINUTES = 60; // 1 hour slots
@@ -36,21 +33,8 @@ public class ConflictDetectionService implements IConflictDetectionService {
         log.debug("Checking time conflict for trainer {} on {} from {} to {}", 
                  trainerId, date, startTime, endTime);
         
-        String cacheKey = String.format("trainer_conflicts:%d:%s", trainerId, date.toString());
-        List<TrainerBooking> cachedBookings = (List<TrainerBooking>) redisTemplate.opsForValue().get(cacheKey);
-        
-        List<TrainerBooking> confirmedBookings;
-        if (cachedBookings != null) {
-            confirmedBookings = cachedBookings;
-            log.debug("Using cached bookings for trainer {} on {}", trainerId, date);
-        } else {
-            confirmedBookings = trainerBookingRepository.findByTrainerIdAndBookingDateAndStatus(
-                trainerId, date, BookingStatus.CONFIRMED);
-            
-            // Cache for 1 hour
-            redisTemplate.opsForValue().set(cacheKey, confirmedBookings, Duration.ofHours(1));
-            log.debug("Cached bookings for trainer {} on {}", trainerId, date);
-        }
+        List<TrainerBooking> confirmedBookings = trainerBookingRepository.findByTrainerIdAndBookingDateAndStatus(
+            trainerId, date, BookingStatus.CONFIRMED);
         
         boolean hasConflict = confirmedBookings.stream()
             .anyMatch(booking -> booking.hasTimeConflict(date, startTime, endTime));
@@ -60,7 +44,6 @@ public class ConflictDetectionService implements IConflictDetectionService {
     }
     
     @Override
-    @Cacheable(value = "trainer_availability", key = "#trainerId + '_' + #date")
     public List<TimeSlot> getAvailableSlots(Long trainerId, LocalDate date) {
         List<TimeSlot> workingHours = getTrainerWorkingHours(trainerId, date);
         
@@ -130,20 +113,15 @@ public class ConflictDetectionService implements IConflictDetectionService {
     
     @Override
     public void reserveTimeSlot(Long trainerId, LocalDate date, LocalTime startTime, LocalTime endTime) {
-        // Implementation for temporary reservation (could use Redis with TTL)
-        String reservationKey = String.format("reservation:%d:%s:%s-%s", 
-                                            trainerId, date, startTime, endTime);
-        redisTemplate.opsForValue().set(reservationKey, "reserved", Duration.ofMinutes(15));
-        log.debug("Reserved time slot for trainer {} on {} from {} to {}", 
+        // No-op: Reservation feature removed (was using Redis)
+        log.debug("Time slot reservation requested for trainer {} on {} from {} to {} (feature disabled)", 
                  trainerId, date, startTime, endTime);
     }
     
     @Override
     public void releaseTimeSlot(Long trainerId, LocalDate date, LocalTime startTime, LocalTime endTime) {
-        String reservationKey = String.format("reservation:%d:%s:%s-%s", 
-                                            trainerId, date, startTime, endTime);
-        redisTemplate.delete(reservationKey);
-        log.debug("Released time slot for trainer {} on {} from {} to {}", 
+        // No-op: Reservation feature removed (was using Redis)
+        log.debug("Time slot release requested for trainer {} on {} from {} to {} (feature disabled)", 
                  trainerId, date, startTime, endTime);
     }
     

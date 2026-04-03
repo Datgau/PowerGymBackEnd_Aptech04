@@ -17,6 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MembershipPackageController {
     final IMembershipPackageService membershipPackageService;
+    final com.example.project_backend04.repository.MembershipRepository membershipRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<MembershipPackage>>> getAllPackages() {
@@ -78,5 +79,44 @@ public class MembershipPackageController {
         ApiResponse<Void> response =
                 membershipPackageService.deleteMembershipPackage(id);
         return ResponseEntity.status(response.getStatus()).body(response);
+    }
+    
+    @GetMapping("/{id}/members")
+    public ResponseEntity<ApiResponse<List<com.example.project_backend04.dto.response.Membership.PackageMemberDto>>> getPackageMembers(@PathVariable Long id) {
+        try {
+            List<com.example.project_backend04.entity.Membership> memberships = membershipRepository.findByMembershipPackageId(id);
+            
+            // Convert to DTO
+            List<com.example.project_backend04.dto.response.Membership.PackageMemberDto> memberDtos = memberships.stream()
+                .map(membership -> com.example.project_backend04.dto.response.Membership.PackageMemberDto.builder()
+                    .id(membership.getId())
+                    .user(com.example.project_backend04.dto.response.Membership.MembershipUserDto.builder()
+                        .id(membership.getUser().getId())
+                        .fullName(membership.getUser().getFullName())
+                        .email(membership.getUser().getEmail())
+                        .phoneNumber(membership.getUser().getPhoneNumber())
+                        .avatar(membership.getUser().getAvatar())
+                        .build())
+                    .startDate(membership.getStartDate())
+                    .endDate(membership.getEndDate())
+                    .paidAmount(membership.getPaidAmount())
+                    .status(membership.getStatus().name())
+                    .build())
+                .collect(java.util.stream.Collectors.toList());
+            
+            return ResponseEntity.ok(ApiResponse.success(memberDtos, "Members retrieved successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to retrieve members: " + e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/user/{userId}/active-packages")
+    public ResponseEntity<ApiResponse<List<Long>>> getUserActivePackages(@PathVariable Long userId) {
+        try {
+            List<Long> activePackageIds = membershipRepository.findActivePackageIdsByUserId(userId, java.time.LocalDate.now());
+            return ResponseEntity.ok(ApiResponse.success(activePackageIds, "Active packages retrieved successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to retrieve active packages: " + e.getMessage()));
+        }
     }
 }

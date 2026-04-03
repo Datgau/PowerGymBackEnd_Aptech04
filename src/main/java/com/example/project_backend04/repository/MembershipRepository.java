@@ -17,7 +17,8 @@ public interface MembershipRepository extends JpaRepository<Membership, Long> {
     @Query("SELECT m FROM Membership m WHERE m.user = :user AND m.status = 'ACTIVE' AND m.endDate > :currentDate ORDER BY m.endDate DESC")
     Optional<Membership> findCurrentActiveMembership(@Param("user") User user, @Param("currentDate") LocalDate currentDate);
     
-    List<Membership> findByUserOrderByCreateDateDesc(User user);
+    @Query("SELECT m FROM Membership m JOIN FETCH m.membershipPackage WHERE m.user = :user ORDER BY m.createDate DESC")
+    List<Membership> findByUserOrderByCreateDateDesc(@Param("user") User user);
     
     List<Membership> findByUserAndStatus(User user, Membership.MembershipStatus status);
     
@@ -31,4 +32,10 @@ public interface MembershipRepository extends JpaRepository<Membership, Long> {
     Long countActiveMemberships(@Param("currentDate") LocalDate currentDate);
     
     Optional<Membership> findByOrderId(String orderId);
+    
+    @Query("SELECT m FROM Membership m JOIN FETCH m.user WHERE m.membershipPackage.id = :packageId ORDER BY m.createDate DESC")
+    List<Membership> findByMembershipPackageId(@Param("packageId") Long packageId);
+    
+    @Query("SELECT m.membershipPackage.id FROM Membership m WHERE m.user.id = :userId AND m.status = 'ACTIVE' AND m.endDate > :currentDate")
+    List<Long> findActivePackageIdsByUserId(@Param("userId") Long userId, @Param("currentDate") LocalDate currentDate);
 }

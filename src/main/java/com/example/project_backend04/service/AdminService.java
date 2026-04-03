@@ -128,11 +128,10 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
     //      UserManager
     @Transactional
     public ApiResponse<UserResponse> createUser(CreateUserRequest req) {
-        System.out.println("=== DEBUG: Creating user with data: " + req.toString() + " ===");
-        
         if (userRepository.findByEmail(req.getEmail()).isPresent()) {
-            return new ApiResponse<>(false, "Email đã tồn tại", null, 400);
+            return new ApiResponse<>(false, "Email already exists", null, 400);
         }
+        
         if (req.getDateOfBirth() != null && !req.getDateOfBirth().trim().isEmpty()) {
             try {
                 LocalDate birthDate = LocalDate.parse(req.getDateOfBirth());
@@ -142,8 +141,6 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
                 if (age < 16) {
                     return new ApiResponse<>(false, "User must be at least 16 years old to register", null, 400);
                 }
-                
-                System.out.println("=== DEBUG: User age validation passed: " + age + " years old ===");
             } catch (Exception e) {
                 return new ApiResponse<>(false, "Invalid date of birth format", null, 400);
             }
@@ -159,20 +156,19 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
                 .orElseGet(() -> roleRepository.save(new Role(null, "USER", null)));
         user.setRole(role);
         User saved = userRepository.save(user);
+        
         try {
             emailService.sendPasswordEmail(req.getEmail(), req.getFullName(), randomPassword);
         } catch (Exception e) {
-            // Log error nhưng vẫn trả về success vì user đã được tạo
             System.err.println("Failed to send email: " + e.getMessage());
         }
 
-        // Publish event
         eventPublisher.publishEvent(
             new EntityChangedEvent(this, "USER", "CREATED", userMapper.toResponse(saved), saved.getId())
         );
 
         UserResponse response = userMapper.toResponse(saved);
-        return new ApiResponse<>(true, "Tạo user thành công. Mật khẩu đã được gửi qua email.", response, 201);
+        return new ApiResponse<>(true, "User created successfully. Password sent via email.", response, 201);
     }
 
     private String generateRandomPassword() {
@@ -185,18 +181,15 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
         StringBuilder password = new StringBuilder();
         java.util.Random random = new java.util.Random();
 
-        // Đảm bảo có ít nhất 1 ký tự mỗi loại
         password.append(upperCase.charAt(random.nextInt(upperCase.length())));
         password.append(lowerCase.charAt(random.nextInt(lowerCase.length())));
         password.append(digits.charAt(random.nextInt(digits.length())));
         password.append(special.charAt(random.nextInt(special.length())));
 
-        // Thêm 8 ký tự ngẫu nhiên nữa (tổng 12 ký tự)
         for (int i = 0; i < 8; i++) {
             password.append(allChars.charAt(random.nextInt(allChars.length())));
         }
 
-        // Shuffle để không có pattern cố định
         char[] passwordArray = password.toString().toCharArray();
         for (int i = passwordArray.length - 1; i > 0; i--) {
             int j = random.nextInt(i + 1);
@@ -212,7 +205,7 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
     public ApiResponse<UserResponse> updateUser(Long id, UpdateUserRequest req) {
         Optional<User> existingOpt = userRepository.findById(id);
         if (existingOpt.isEmpty()) {
-            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+            return new ApiResponse<>(false, "User not found", null, 404);
         }
 
         User existing = existingOpt.get();
@@ -228,12 +221,11 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
 
         User saved = userRepository.save(existing);
         
-        // Publish event
         eventPublisher.publishEvent(
             new EntityChangedEvent(this, "USER", "UPDATED", userMapper.toResponse(saved), saved.getId())
         );
         
-        return new ApiResponse<>(true, "Cập nhật user thành công", userMapper.toResponse(saved), 200);
+        return new ApiResponse<>(true, "User updated successfully", userMapper.toResponse(saved), 200);
     }
 
 //    @Transactional
@@ -251,18 +243,19 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
 
     @Transactional
     public ApiResponse<Void> deleteUser(Long id) {
-
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
             return new ApiResponse<>(false, "User not found", null, 404);
         }
+        
         user.setIsActive(false);
         userRepository.save(user);
+        
         eventPublisher.publishEvent(
-                new EntityChangedEvent(this, "USER", "DELETED", null, id)
+            new EntityChangedEvent(this, "USER", "DELETED", null, id)
         );
 
-        return new ApiResponse<>(true, "User disable successfully", null, 200);
+        return new ApiResponse<>(true, "User disabled successfully", null, 200);
     }
 
     @Override
@@ -317,14 +310,12 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
         Page<User> userPage;
 
         if ("ALL".equals(role)) {
-            // Tìm trong cả USER và STAFF
             userPage = userRepository.searchByEmailOrPhoneInRoles(
                 List.of("USER", "STAFF"), 
                 searchTerm.trim(), 
                 pageable
             );
         } else if (List.of("USER", "STAFF").contains(role)) {
-            // Tìm trong role cụ thể
             userPage = userRepository.searchByEmailOrPhoneInRole(
                 role, 
                 searchTerm.trim(), 
@@ -343,13 +334,13 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
     public ApiResponse<UserDetailResponse> getUserDetail(Long id) {
         Optional<User> userOpt = userRepository.findById(id);
         if (userOpt.isEmpty()) {
-            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+            return new ApiResponse<>(false, "User not found", null, 404);
         }
 
         User user = userOpt.get();
         UserDetailResponse response = UserDetailResponse.builder()
                 .id(user.getId())
-                .username(user.getEmail()) // Using email as username
+                .username(user.getEmail())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .phoneNumber(user.getPhoneNumber())
@@ -366,14 +357,14 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
                 .emergencyPhone(user.getEmergencyPhone())
                 .build();
 
-        return new ApiResponse<>(true, "Lấy thông tin user thành công", response, 200);
+        return new ApiResponse<>(true, "User details retrieved successfully", response, 200);
     }
 
     @Override
     public ApiResponse<List<UserMembershipResponse>> getUserMemberships(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
-            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+            return new ApiResponse<>(false, "User not found", null, 404);
         }
 
         User user = userOpt.get();
@@ -394,17 +385,19 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
                         .isActive(membership.isActive())
                         .paidAmount(membership.getPaidAmount())
                         .status(membership.getStatus().name())
+                        .paymentMethod(membership.getPaymentMethod().name())
+                        .registrationDate(membership.getCreateDate().toString())
                         .build())
                 .collect(Collectors.toList());
 
-        return new ApiResponse<>(true, "Lấy danh sách membership thành công", responses, 200);
+        return new ApiResponse<>(true, "Memberships retrieved successfully", responses, 200);
     }
 
     @Override
     public ApiResponse<List<UserServiceRegistrationResponse>> getUserServiceRegistrations(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
-            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+            return new ApiResponse<>(false, "User not found", null, 404);
         }
 
         User user = userOpt.get();
@@ -429,7 +422,7 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
                             .service(serviceInfo)
                             .registrationDate(registration.getRegistrationDate())
                             .expirationDate(registration.getExpirationDate())
-                            .status(registration.getActualStatus().name()) // Sử dụng getActualStatus() để auto check expired
+                            .status(registration.getActualStatus().name())
                             .notes(registration.getNotes())
                             .trainer(registration.getTrainer() != null ? 
                                 UserServiceRegistrationResponse.TrainerInfo.builder()
@@ -443,21 +436,20 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
                 })
                 .collect(Collectors.toList());
 
-        return new ApiResponse<>(true, "Lấy danh sách service registration thành công", responses, 200);
+        return new ApiResponse<>(true, "Service registrations retrieved successfully", responses, 200);
     }
 
     @Override
     public ApiResponse<List<TrainerSpecialtyResponse>> getTrainerSpecialties(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
-            return new ApiResponse<>(false, "User không tồn tại", null, 404);
+            return new ApiResponse<>(false, "User not found", null, 404);
         }
 
         User user = userOpt.get();
         
-        // Check if user is a trainer
         if (!user.isTrainer()) {
-            return new ApiResponse<>(false, "User không phải là trainer", null, 400);
+            return new ApiResponse<>(false, "User is not a trainer", null, 400);
         }
 
         List<TrainerSpecialty> specialties = trainerSpecialtyRepository.findByUserAndIsActiveTrueOrderBySpecialtyAsc(user);
@@ -478,7 +470,7 @@ public ApiResponse<Role> createRole(RoleCreateDto request) {
                         .build())
                 .collect(Collectors.toList());
 
-        return new ApiResponse<>(true, "Lấy danh sách trainer specialty thành công", responses, 200);
+        return new ApiResponse<>(true, "Trainer specialties retrieved successfully", responses, 200);
     }
 
     @Override

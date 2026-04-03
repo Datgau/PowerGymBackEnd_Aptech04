@@ -7,7 +7,7 @@ public enum DocumentType {
     LICENSE,           // Giấy phép hành nghề
     DIPLOMA,           // Bằng cấp
     HEALTH_CERTIFICATE, // Giấy khám sức khỏe
-    CRIMINAL_RECORD,   // Lý lịch tư pháp
-    CV,                // Sơ yếu lý lịch
-    OTHER              // Khác
+    CRIMINAL_RECORD,
+    CV,
+    OTHER
 }

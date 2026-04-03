@@ -89,4 +89,23 @@ public interface ITrainerBookingService {
      * Lấy tất cả booking bị từ chối (admin xem để xử lý).
      */
     List<TrainerBookingResponse> getAllRejectedBookings();
+
+    // ── Validation helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Get bookings by service registration ID
+     */
+    List<TrainerBookingResponse> getBookingsByServiceRegistration(Long serviceRegistrationId);
+
+    /**
+     * Check if user has time slot conflict
+     */
+    boolean checkUserTimeSlotConflict(Long userId, java.time.LocalDate date, 
+                                     java.time.LocalTime startTime, java.time.LocalTime endTime);
+
+    /**
+     * Check if trainer has time slot conflict
+     */
+    boolean checkTrainerTimeSlotConflict(Long trainerId, java.time.LocalDate date,
+                                        java.time.LocalTime startTime, java.time.LocalTime endTime);
 }

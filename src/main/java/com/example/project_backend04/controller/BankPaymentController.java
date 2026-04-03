@@ -27,17 +27,25 @@ public class BankPaymentController {
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<CreateBankPaymentResponse>> createBankPayment(
             @RequestBody @Valid CreateBankPaymentRequest request) {
-        log.info("AUDIT_LOG - API_REQUEST - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, Timestamp: {}",
-            request.getUserId(), request.getServiceId(), java.time.LocalDateTime.now());
+        
+        if (request.getServiceId() == null && request.getPackageId() == null) {
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error("Either serviceId or packageId must be provided", HttpStatus.BAD_REQUEST.value())
+            );
+        }
+        
+        log.info("AUDIT_LOG - API_REQUEST - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, PackageId: {}, ItemType: {}, BookingId: {}, Timestamp: {}",
+            request.getUserId(), request.getServiceId(), request.getPackageId(), request.getItemType(), request.getBookingId(), java.time.LocalDateTime.now());
         
         try {
             CreateBankPaymentResponse response = bankPaymentService.createBankPayment(
-                request.getUserId(), request.getServiceId());
+                request.getUserId(), request.getServiceId(), request.getPackageId(), 
+                request.getItemType(), request.getBookingId());
             return ResponseEntity.ok(ApiResponse.success(response, "Bank payment created successfully"));
             
         } catch (Exception e) {
-            log.error("AUDIT_LOG - API_RESPONSE - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, Result: FAILURE, Error: {}, Timestamp: {}",
-                request.getUserId(), request.getServiceId(), e.getMessage(), java.time.LocalDateTime.now());
+            log.error("AUDIT_LOG - API_RESPONSE - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, PackageId: {}, Result: FAILURE, Error: {}, Timestamp: {}",
+                request.getUserId(), request.getServiceId(), request.getPackageId(), e.getMessage(), java.time.LocalDateTime.now());
             throw e;
         }
     }

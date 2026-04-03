@@ -20,6 +20,8 @@ public class UserMembershipResponse {
     private Boolean isActive;
     private BigDecimal paidAmount;
     private String status;
+    private String paymentMethod;
+    private String registrationDate;
     
     @Data
     @NoArgsConstructor

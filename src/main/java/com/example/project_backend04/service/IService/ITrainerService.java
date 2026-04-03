@@ -34,6 +34,9 @@ public interface ITrainerService {
     // Lấy danh sách trainers với phân trang
     ApiResponse<Page<TrainerResponse>> getAllTrainers(int page, int size);
 
+    // Tìm kiếm trainers theo email hoặc phone number
+    ApiResponse<Page<TrainerResponse>> searchTrainers(String searchTerm, int page, int size);
+
     // Lấy tất cả trainers đang hoạt động
     List<TrainerResponse> getAllActiveTrainers();
 

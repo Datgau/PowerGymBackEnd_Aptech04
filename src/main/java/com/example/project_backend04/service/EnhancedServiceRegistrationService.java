@@ -4,10 +4,14 @@ import com.example.project_backend04.dto.request.Service.ServiceRegistrationWith
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationWithTrainerResponse;
 import com.example.project_backend04.dto.response.Trainer.TrainerForBookingResponse;
 import com.example.project_backend04.entity.GymService;
+import com.example.project_backend04.entity.PaymentOrder;
 import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.entity.User;
+import com.example.project_backend04.enums.PaymentStatus;
 import com.example.project_backend04.enums.RegistrationStatus;
+import com.example.project_backend04.enums.RegistrationType;
 import com.example.project_backend04.repository.GymServiceRepository;
+import com.example.project_backend04.repository.PaymentOrderRepository;
 import com.example.project_backend04.repository.ServiceRegistrationRepository;
 import com.example.project_backend04.repository.UserRepository;
 import com.example.project_backend04.service.IService.ITrainerSelectionService;
@@ -32,6 +36,7 @@ public class EnhancedServiceRegistrationService {
     private final ITrainerSelectionService trainerSelectionService;
     private final NotificationService notificationService;
     private final TrainerForBookingService trainerForBookingService;
+    private final PaymentOrderRepository paymentOrderRepository;
     
     @Transactional
     public ServiceRegistrationWithTrainerResponse registerServiceWithTrainer(
@@ -257,5 +262,47 @@ public class EnhancedServiceRegistrationService {
             .canBookTrainer(registration.canBookTrainer())
             .totalBookings(registration.getTotalBookingsCount())
             .build();
+    }
+
+    @Transactional
+    public void confirmCounterPayment(Long registrationId, Long amount) {
+        log.info("Confirming counter payment for registration {} with amount {}", registrationId, amount);
+        
+        ServiceRegistration registration = serviceRegistrationRepository.findById(registrationId)
+            .orElseThrow(() -> new EntityNotFoundException("Service registration not found"));
+        
+        if (registration.getRegistrationType() != RegistrationType.COUNTER) {
+            throw new IllegalStateException("Can only confirm payment for counter registrations");
+        }
+        
+        // Update registration date to current time (when payment is confirmed)
+        // This ensures the service starts from the payment confirmation date
+        LocalDateTime now = LocalDateTime.now();
+        registration.setRegistrationDate(now);
+        
+        // Recalculate expiration date based on service duration
+        if (registration.getGymService() != null && registration.getGymService().getDuration() != null) {
+            registration.setExpirationDate(now.plusDays(registration.getGymService().getDuration()));
+        }
+        
+        serviceRegistrationRepository.save(registration);
+        
+        // Create a PaymentOrder with SUCCESS status
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setId("COUNTER_" + registrationId + "_" + System.currentTimeMillis());
+        paymentOrder.setUser(registration.getUser());
+        paymentOrder.setAmount(amount);
+        paymentOrder.setStatus(PaymentStatus.SUCCESS);
+        paymentOrder.setItemType("SERVICE");
+        paymentOrder.setItemId(registration.getGymService().getId().toString());
+        paymentOrder.setItemName(registration.getGymService().getName());
+        paymentOrder.setContent("Counter payment for " + registration.getGymService().getName());
+        paymentOrder.setPaymentMethod("COUNTER");
+        paymentOrder.setCreatedAt(now);
+        
+        paymentOrderRepository.save(paymentOrder);
+        
+        log.info("Successfully confirmed counter payment for registration {} - Service start date: {}, expiration date: {}", 
+            registrationId, registration.getRegistrationDate(), registration.getExpirationDate());
     }
 }

@@ -37,4 +37,14 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Stri
     
     @Query("SELECT SUM(p.amount) FROM PaymentOrder p WHERE p.status = :status")
     Long sumAmountByStatus(@Param("status") PaymentStatus status);
+    
+    Optional<PaymentOrder> findByItemTypeAndItemId(String itemType, String itemId);
+    
+    /**
+     * Find PaymentOrder by user, itemId, and status
+     */
+    Optional<PaymentOrder> findByUserAndItemIdAndStatus(User user, String itemId, PaymentStatus status);
+    
+    @Query("SELECT p FROM PaymentOrder p WHERE p.user = :user AND p.itemType = :itemType AND p.itemId = :itemId ORDER BY p.createdAt DESC")
+    List<PaymentOrder> findByUserAndItemTypeAndItemIdOrderByCreatedAtDesc(@Param("user") User user, @Param("itemType") String itemType, @Param("itemId") String itemId);
 }

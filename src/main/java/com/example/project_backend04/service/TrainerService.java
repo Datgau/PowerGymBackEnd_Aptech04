@@ -214,6 +214,22 @@ public class TrainerService implements ITrainerService {
     }
 
     @Override
+    public ApiResponse<Page<TrainerResponse>> searchTrainers(String searchTerm, int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createDate").descending());
+            
+            // Search by email or phone number using existing repository method
+            Page<User> trainers = userRepository.searchByEmailOrPhoneInRole("TRAINER", searchTerm, pageable);
+
+            Page<TrainerResponse> response = trainers.map(this::mapToTrainerResponse);
+            return new ApiResponse<>(true, "Tìm kiếm trainers thành công", response, 200);
+
+        } catch (Exception e) {
+            return new ApiResponse<>(false, "Lỗi khi tìm kiếm trainers: " + e.getMessage(), null, 500);
+        }
+    }
+
+    @Override
     public List<TrainerResponse> getAllActiveTrainers() {
         try {
             Role trainerRole = roleRepository.findRoleByName("TRAINER")

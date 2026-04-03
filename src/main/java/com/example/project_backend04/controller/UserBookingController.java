@@ -46,6 +46,45 @@ public class UserBookingController {
         }
     }
 
+    @PostMapping("/validate")
+    public ResponseEntity<ApiResponse<String>> validateBooking(
+            @RequestParam Long userId,
+            @Valid @RequestBody CreateBookingRequest request) {
+        try {
+            // Check time slot conflicts for user
+            boolean hasConflict = bookingService.checkUserTimeSlotConflict(
+                userId, 
+                request.getBookingDate(), 
+                request.getStartTime(), 
+                request.getEndTime()
+            );
+            
+            if (hasConflict) {
+                return conflict("You already have a booking in this time slot");
+            }
+            
+            // Check trainer conflicts if trainer is specified
+            if (request.getTrainerId() != null) {
+                boolean trainerHasConflict = bookingService.checkTrainerTimeSlotConflict(
+                    request.getTrainerId(),
+                    request.getBookingDate(),
+                    request.getStartTime(),
+                    request.getEndTime()
+                );
+                
+                if (trainerHasConflict) {
+                    return conflict("Trainer is already booked for this time slot");
+                }
+            }
+            
+            return ok("Time slot is available", "Validation successful");
+        } catch (IllegalArgumentException e) {
+            return badRequest(e.getMessage());
+        } catch (Exception e) {
+            return serverError(e.getMessage());
+        }
+    }
+
     //  User xem lịch của mình
     @GetMapping("/user/{userId}")
     public ResponseEntity<ApiResponse<List<TrainerBookingResponse>>> getMyBookings(
@@ -61,10 +100,6 @@ public class UserBookingController {
 
     // User hủy booking
 
-    /**
-     * PUT /api/bookings/{bookingId}/cancel
-     * User hủy booking của mình (chỉ được hủy ≥ 2h trước giờ hẹn).
-     */
     @PutMapping("/{bookingId}/cancel")
     public ResponseEntity<ApiResponse<TrainerBookingResponse>> cancelBooking(
             @PathVariable Long bookingId,
@@ -83,12 +118,6 @@ public class UserBookingController {
     }
 
     //Xem lịch trống của trainer (trước khi đặt)
-
-    /**
-     * GET /api/bookings/trainers/{trainerId}/schedule?date=2025-04-01
-     * Xem lịch trống / bận của trainer theo ngày.
-     * Frontend dùng để render calendar picker.
-     */
     @GetMapping("/trainers/{trainerId}/schedule")
     public ResponseEntity<ApiResponse<TrainerScheduleResponse>> getTrainerDailySchedule(
             @PathVariable Long trainerId,
@@ -102,10 +131,6 @@ public class UserBookingController {
         }
     }
 
-    /**
-     * GET /api/bookings/trainers/{trainerId}/weekly-schedule
-     * Xem lịch làm việc cả tuần (static, không tính booking).
-     */
     @GetMapping("/trainers/{trainerId}/weekly-schedule")
     public ResponseEntity<ApiResponse<TrainerScheduleResponse>> getTrainerWeeklySchedule(
             @PathVariable Long trainerId) {

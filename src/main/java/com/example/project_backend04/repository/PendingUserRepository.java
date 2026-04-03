@@ -18,24 +18,7 @@ public interface PendingUserRepository extends JpaRepository<PendingUser, Long> 
 
     @Modifying
     @Transactional
-    void deleteAllByOtpExpiryBefore(LocalDateTime now);
-
-    @Modifying
-    @Transactional
-    void deleteByEmail(String email);
-
-    @Modifying
-    @Transactional
     void deleteAllByCreatedAtBefore(LocalDateTime cutoffTime);
 
-    // Update existing PendingUser với thông tin mới
-    @Modifying
-    @Transactional
-    @Query("UPDATE PendingUser p SET p.password = :password, p.fullName = :fullName, p.otp = :otp, p.otpExpiry = :otpExpiry WHERE p.email = :email")
-    int updatePendingUserByEmail(@Param("email") String email, 
-                                @Param("password") String password, 
-                                @Param("fullName") String fullName, 
-                                @Param("otp") String otp, 
-                                @Param("otpExpiry") LocalDateTime otpExpiry);
 }
 

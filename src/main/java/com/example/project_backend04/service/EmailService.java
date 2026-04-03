@@ -54,6 +54,28 @@ public class EmailService {
         }
     }
 
+    @Async("emailTaskExecutor")
+    public CompletableFuture<Boolean> sendPaymentConfirmationEmailAsync(String to, String fullName, String transactionId, String serviceName, String amount, String paymentTime) {
+        try {
+            sendPaymentConfirmationEmail(to, fullName, transactionId, serviceName, amount, paymentTime);
+            return CompletableFuture.completedFuture(true);
+        } catch (Exception e) {
+            log.error("Failed to send payment confirmation email to {}", to, e);
+            return CompletableFuture.completedFuture(false);
+        }
+    }
+
+    @Async("emailTaskExecutor")
+    public CompletableFuture<Boolean> sendCounterRegistrationEmailAsync(String to, String fullName, String registrationId, String serviceName, String amount) {
+        try {
+            sendCounterRegistrationEmail(to, fullName, registrationId, serviceName, amount);
+            return CompletableFuture.completedFuture(true);
+        } catch (Exception e) {
+            log.error("Failed to send counter registration email to {}", to, e);
+            return CompletableFuture.completedFuture(false);
+        }
+    }
+
     private void sendEmail(String to, String subject, String htmlContent) throws IOException {
 
         Email from = new Email(fromEmail);
@@ -379,5 +401,264 @@ font-size:15px;">
 """, fullName, to, password);
 
         sendEmail(to, "PowerGym login information", stringContent);
+    }
+
+    // ================= PAYMENT CONFIRMATION EMAIL ================= (SYNC - for internal use)
+    public void sendPaymentConfirmationEmail(String to, String fullName, String transactionId, String serviceName, String amount, String paymentTime) throws IOException {
+
+        String stringContent = String.format("""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background:#f4f6f8; font-family:Segoe UI,Arial,sans-serif;">
+<table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8; padding:40px 0;">
+    <tr>
+        <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0"
+                   style="background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.08);">
+                <tr>
+                    <td style="background:linear-gradient(135deg,#045668,#00b4ff); padding:40px; text-align:center;">
+                        <h1 style="margin:0; color:white; font-size:32px;">PowerGym</h1>
+                        <p style="margin:10px 0 0 0; color:rgba(255,255,255,0.9); font-size:16px;">
+                            Xác nhận thanh toán thành công
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:45px 40px;">
+                        <h2 style="text-align:center; color:#1a202c; margin-bottom:10px;">
+                            Xin chào %s!
+                        </h2>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8;">
+                            PowerGym xin chân thành cảm ơn bạn đã tin tưởng và sử dụng dịch vụ của chúng tôi.
+                        </p>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8;">
+                            Chúng tôi xác nhận rằng giao dịch thanh toán của bạn đã được thực hiện thành công với thông tin chi tiết như sau:
+                        </p>
+                        <table width="100%%" cellpadding="0" cellspacing="0" style="margin:30px 0;">
+                            <tr>
+                                <td>
+                                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:25px;">
+                                        <table width="100%%" cellpadding="8" cellspacing="0">
+                                            <tr>
+                                                <td style="color:#718096; font-size:14px; padding:8px 0;">
+                                                    <strong>Mã giao dịch:</strong>
+                                                </td>
+                                                <td style="color:#2d3748; font-size:14px; text-align:right; padding:8px 0;">
+                                                    %s
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#718096; font-size:14px; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    <strong>Dịch vụ:</strong>
+                                                </td>
+                                                <td style="color:#2d3748; font-size:14px; text-align:right; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    %s
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#718096; font-size:14px; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    <strong>Số tiền:</strong>
+                                                </td>
+                                                <td style="color:#045668; font-size:18px; font-weight:700; text-align:right; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    %s VNĐ
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#718096; font-size:14px; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    <strong>Thời gian thanh toán:</strong>
+                                                </td>
+                                                <td style="color:#2d3748; font-size:14px; text-align:right; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    %s
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        <table width="100%%" style="background:#f0fdf4; border-left:4px solid #10b981; border-radius:6px; margin:20px 0;">
+                            <tr>
+                                <td style="padding:14px;">
+                                    <p style="margin:0; font-size:14px; color:#065f46;">
+                                        ✓ Dịch vụ của bạn đã được kích hoạt và bạn có thể bắt đầu sử dụng ngay từ bây giờ.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8; margin-top:25px;">
+                            Nếu bạn cần hỗ trợ thêm hoặc có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua:
+                        </p>
+                        <table width="100%%" cellpadding="0" cellspacing="0" style="margin:15px 0;">
+                            <tr>
+                                <td style="padding:8px 0;">
+                                    <p style="margin:0; color:#4a5568; font-size:14px;">
+                                        📧 Email: <a href="mailto:support@powergym.com" style="color:#045668; text-decoration:none;">support@powergym.com</a>
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 0;">
+                                    <p style="margin:0; color:#4a5568; font-size:14px;">
+                                        📞 Hotline: <a href="tel:0789179033" style="color:#045668; text-decoration:none;">0789179033</a>
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8; margin-top:25px;">
+                            Một lần nữa, cảm ơn bạn đã lựa chọn PowerGym. Chúc bạn có những trải nghiệm tuyệt vời và đạt được mục tiêu sức khỏe của mình!
+                        </p>
+                        <p style="text-align:left; color:#2d3748; font-weight:600; margin-top:30px;">
+                            Trân trọng,<br>
+                            <span style="color:#045668;">PowerGym Team</span>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
+""", fullName, transactionId, serviceName, amount, paymentTime);
+
+        sendEmail(to, "Xác nhận thanh toán thành công - PowerGym", stringContent);
+    }
+
+    // ================= COUNTER REGISTRATION EMAIL ================= (SYNC - for internal use)
+    public void sendCounterRegistrationEmail(String to, String fullName, String registrationId, String serviceName, String amount) throws IOException {
+
+        String stringContent = String.format("""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background:#f4f6f8; font-family:Segoe UI,Arial,sans-serif;">
+<table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8; padding:40px 0;">
+    <tr>
+        <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0"
+                   style="background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.08);">
+                <tr>
+                    <td style="background:linear-gradient(135deg,#045668,#00b4ff); padding:40px; text-align:center;">
+                        <h1 style="margin:0; color:white; font-size:32px;">PowerGym</h1>
+                        <p style="margin:10px 0 0 0; color:rgba(255,255,255,0.9); font-size:16px;">
+                            Xác nhận đăng ký dịch vụ
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:45px 40px;">
+                        <h2 style="text-align:center; color:#1a202c; margin-bottom:10px;">
+                            Xin chào %s!
+                        </h2>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8;">
+                            Cảm ơn bạn đã đăng ký sử dụng dịch vụ tại PowerGym.
+                        </p>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8;">
+                            Chúng tôi đã ghi nhận yêu cầu đăng ký của bạn với thông tin như sau:
+                        </p>
+                        <table width="100%%" cellpadding="0" cellspacing="0" style="margin:30px 0;">
+                            <tr>
+                                <td>
+                                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:25px;">
+                                        <table width="100%%" cellpadding="8" cellspacing="0">
+                                            <tr>
+                                                <td style="color:#718096; font-size:14px; padding:8px 0;">
+                                                    <strong>Mã đăng ký:</strong>
+                                                </td>
+                                                <td style="color:#2d3748; font-size:14px; text-align:right; padding:8px 0;">
+                                                    %s
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#718096; font-size:14px; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    <strong>Dịch vụ:</strong>
+                                                </td>
+                                                <td style="color:#2d3748; font-size:14px; text-align:right; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    %s
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#718096; font-size:14px; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    <strong>Số tiền cần thanh toán:</strong>
+                                                </td>
+                                                <td style="color:#045668; font-size:18px; font-weight:700; text-align:right; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    %s VNĐ
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#718096; font-size:14px; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    <strong>Hình thức thanh toán:</strong>
+                                                </td>
+                                                <td style="color:#2d3748; font-size:14px; text-align:right; padding:8px 0; border-top:1px solid #e2e8f0;">
+                                                    Thanh toán tại quầy
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        <table width="100%%" style="background:#fff5f5; border-left:4px solid #ff6b6b; border-radius:6px; margin:20px 0;">
+                            <tr>
+                                <td style="padding:18px;">
+                                    <p style="margin:0 0 8px 0; font-size:15px; color:#742a2a; font-weight:600;">
+                                        🔔 Lưu ý quan trọng:
+                                    </p>
+                                    <p style="margin:0; font-size:14px; color:#742a2a; line-height:1.6;">
+                                        Vui lòng đến trực tiếp phòng tập PowerGym để hoàn tất thanh toán trong vòng <strong>3 ngày</strong> kể từ thời điểm đăng ký.
+                                    </p>
+                                    <p style="margin:8px 0 0 0; font-size:14px; color:#742a2a; line-height:1.6;">
+                                        Sau thời hạn trên, nếu bạn chưa hoàn tất thanh toán, hệ thống sẽ tự động hủy đăng ký của bạn.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8; margin-top:20px;">
+                            Chúng tôi khuyến khích bạn đến sớm để đảm bảo giữ được suất đăng ký và bắt đầu trải nghiệm dịch vụ một cách thuận lợi nhất.
+                        </p>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8; margin-top:25px;">
+                            Nếu bạn cần hỗ trợ hoặc có bất kỳ câu hỏi nào, vui lòng liên hệ:
+                        </p>
+                        <table width="100%%" cellpadding="0" cellspacing="0" style="margin:15px 0;">
+                            <tr>
+                                <td style="padding:8px 0;">
+                                    <p style="margin:0; color:#4a5568; font-size:14px;">
+                                        📧 Email: <a href="mailto:support@powergym.com" style="color:#045668; text-decoration:none;">support@powergym.com</a>
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 0;">
+                                    <p style="margin:0; color:#4a5568; font-size:14px;">
+                                        📞 Hotline: <a href="tel:0789179033" style="color:#045668; text-decoration:none;">0789179033</a>
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="text-align:left; color:#4a5568; line-height:1.8; margin-top:25px;">
+                            Rất mong được chào đón bạn tại PowerGym!
+                        </p>
+                        <p style="text-align:left; color:#2d3748; font-weight:600; margin-top:30px;">
+                            Trân trọng,<br>
+                            <span style="color:#045668;">PowerGym Team</span>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
+""", fullName, registrationId, serviceName, amount);
+
+        sendEmail(to, "Xác nhận đăng ký dịch vụ - PowerGym", stringContent);
     }
 }

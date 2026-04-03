@@ -9,6 +9,7 @@ import com.example.project_backend04.enums.RegistrationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -17,37 +18,27 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegistration, Long> {
+public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegistration, Long>, JpaSpecificationExecutor<ServiceRegistration> {
     
 
-    /**
-     * Lấy registrations theo user với JOIN FETCH để tránh lazy loading
-     */
-    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.gymService WHERE sr.user = :user ORDER BY sr.registrationDate DESC")
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "JOIN FETCH sr.gymService gs " +
+           "JOIN FETCH gs.category " +
+           "LEFT JOIN FETCH sr.trainer " +
+           "WHERE sr.user = :user " +
+           "ORDER BY sr.registrationDate DESC")
     List<ServiceRegistration> findByUserWithGymServiceOrderByRegistrationDateDesc(@Param("user") User user);
-    
-    /**
-     * Lấy registrations theo service với JOIN FETCH để tránh lazy loading
-     */
+  
     @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user WHERE sr.gymService = :gymService ORDER BY sr.registrationDate DESC")
     List<ServiceRegistration> findByGymServiceWithUserOrderByRegistrationDateDesc(@Param("gymService") GymService gymService);
-    
-    /**
-     * Lấy registrations theo service với pagination và JOIN FETCH
-     */
+  
     @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user WHERE sr.gymService = :gymService ORDER BY sr.registrationDate DESC")
     Page<ServiceRegistration> findByGymServiceWithUser(@Param("gymService") GymService gymService, Pageable pageable);
-    
-    /**
-     * Lấy tất cả registrations với JOIN FETCH
-     */
-    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user JOIN FETCH sr.gymService ORDER BY sr.registrationDate DESC")
+   
+    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user JOIN FETCH sr.gymService LEFT JOIN FETCH sr.trainer ORDER BY sr.registrationDate DESC")
     List<ServiceRegistration> findAllWithUserAndGymService();
-    
-    /**
-     * Lấy tất cả registrations với pagination và JOIN FETCH
-     */
-    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user JOIN FETCH sr.gymService ORDER BY sr.registrationDate DESC")
+ 
+    @Query("SELECT sr FROM ServiceRegistration sr JOIN FETCH sr.user JOIN FETCH sr.gymService LEFT JOIN FETCH sr.trainer ORDER BY sr.registrationDate DESC")
     Page<ServiceRegistration> findAllWithUserAndGymService(Pageable pageable);
     
 
@@ -56,21 +47,14 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
     
     boolean existsByUserAndGymServiceAndStatus(User user, GymService gymService, RegistrationStatus status);
     
-    // NEW METHODS for trainer integration
-    
-    /**
-     * Find registrations by user that have a trainer assigned
-     */
+   
+    Optional<ServiceRegistration> findByUserAndGymServiceAndStatus(User user, GymService gymService, RegistrationStatus status);
+
     List<ServiceRegistration> findByUserIdAndTrainerIsNotNull(Long userId);
     
-    /**
-     * Find registrations by trainer and status
-     */
+ 
     List<ServiceRegistration> findByTrainerIdAndStatus(Long trainerId, RegistrationStatus status);
-    
-    /**
-     * Find registrations by user and status with trainer and service info
-     */
+
     @Query("SELECT sr FROM ServiceRegistration sr " +
            "LEFT JOIN FETCH sr.trainer t " +
            "JOIN FETCH sr.gymService gs " +
@@ -78,20 +62,14 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
     List<ServiceRegistration> findByUserIdAndStatusWithTrainerAndService(
         @Param("userId") Long userId, 
         @Param("status") RegistrationStatus status);
-    
-    /**
-     * Find registration with its trainer bookings
-     */
+
     @Query("SELECT sr FROM ServiceRegistration sr " +
            "LEFT JOIN FETCH sr.trainerBookings tb " +
            "WHERE sr.id = :registrationId AND (tb.status IN :statuses OR tb IS NULL)")
     Optional<ServiceRegistration> findByIdWithBookings(
         @Param("registrationId") Long registrationId,
         @Param("statuses") List<BookingStatus> statuses);
-    
-    /**
-     * Count active registrations by trainer
-     */
+
     @Query("SELECT COUNT(sr) FROM ServiceRegistration sr " +
            "WHERE sr.trainer.id = :trainerId AND sr.status = 'ACTIVE'")
     Long countActiveRegistrationsByTrainer(@Param("trainerId") Long trainerId);
@@ -129,4 +107,34 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
      * Find registrations by user and status
      */
     List<ServiceRegistration> findByUserAndStatusOrderByRegistrationDateDesc(User user, RegistrationStatus status);
+    
+    /**
+     * Find all with filters using EntityGraph to fetch trainer
+     */
+    @Query("SELECT DISTINCT sr FROM ServiceRegistration sr " +
+           "JOIN FETCH sr.user u " +
+           "JOIN FETCH sr.gymService gs " +
+           "LEFT JOIN FETCH sr.trainer t")
+    Page<ServiceRegistration> findAllWithFullDetails(Pageable pageable);
+
+    /**
+     * Find expired counter registrations that haven't been paid
+     * Used by scheduler to auto-cancel unpaid counter registrations after 3 days
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "WHERE sr.registrationType = :registrationType " +
+           "AND sr.status = :status " +
+           "AND sr.registrationDate < :expiryThreshold " +
+           "AND NOT EXISTS (" +
+           "  SELECT po FROM PaymentOrder po " +
+           "  WHERE po.user = sr.user " +
+           "  AND po.itemType = 'SERVICE' " +
+           "  AND po.itemId = CAST(sr.gymService.id AS string) " +
+           "  AND po.status = 'SUCCESS'" +
+           ")")
+    List<ServiceRegistration> findExpiredCounterRegistrations(
+        @Param("expiryThreshold") java.time.LocalDateTime expiryThreshold,
+        @Param("registrationType") com.example.project_backend04.enums.RegistrationType registrationType,
+        @Param("status") RegistrationStatus status
+    );
 }

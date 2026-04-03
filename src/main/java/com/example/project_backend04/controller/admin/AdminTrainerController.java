@@ -126,6 +126,18 @@ public class AdminTrainerController {
                 .body(response);
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<TrainerResponse>>> searchTrainers(
+            @RequestParam String searchTerm,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        ApiResponse<Page<TrainerResponse>> response = trainerService.searchTrainers(searchTerm, page, size);
+        return ResponseEntity
+                .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
     @GetMapping("/specialty/{specialty}")
     public ResponseEntity<ApiResponse<List<TrainerResponse>>> getTrainersBySpecialty(
             @PathVariable String specialty) {

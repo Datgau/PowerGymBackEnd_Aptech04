@@ -2,6 +2,7 @@ package com.example.project_backend04.entity;
 
 import com.example.project_backend04.enums.BookingStatus;
 import com.example.project_backend04.enums.RegistrationStatus;
+import com.example.project_backend04.enums.RegistrationType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -38,7 +39,7 @@ public class ServiceRegistration {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     private LocalDateTime registrationDate;
 
     @Column
@@ -49,6 +50,10 @@ public class ServiceRegistration {
 
     @Column
     private String cancellationReason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "registration_type")
+    private RegistrationType registrationType = RegistrationType.ONLINE;
 
     // NEW FIELDS for trainer integration
     @ManyToOne(fetch = FetchType.LAZY)

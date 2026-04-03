@@ -15,26 +15,14 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
-    
-    // Tìm users theo role và trạng thái active
-    Page<User> findByRoleAndIsActiveTrue(Role role, Pageable pageable);
-    
+
     // Tìm tất cả users theo role (bao gồm cả inactive)
     Page<User> findByRole(Role role, Pageable pageable);
     
-    // Tìm tất cả users theo role
-    List<User> findByRoleAndIsActiveTrue(Role role);
-    
+
     // Tìm tất cả users theo role với ordering
     List<User> findByRoleAndIsActiveTrueOrderByCreateDateDesc(Role role);
-    
-    // Đếm số users theo role
-    long countByRoleAndIsActiveTrue(Role role);
-    
-    // Tìm users theo role name
-    @Query("SELECT u FROM User u WHERE u.role.name = :roleName AND u.isActive = true")
-    List<User> findByRoleNameAndIsActiveTrue(@Param("roleName") String roleName);
-    
+
     // Tìm users theo multiple role names với pagination
     @Query("SELECT u FROM User u WHERE u.role.name IN :roleNames ORDER BY u.createDate DESC")
     Page<User> findByRoleNameIn(@Param("roleNames") List<String> roleNames, Pageable pageable);

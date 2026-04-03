@@ -2,7 +2,9 @@ package com.example.project_backend04.dto.response.Service;
 
 import com.example.project_backend04.dto.response.User.UserResponse;
 import com.example.project_backend04.entity.ServiceRegistration;
+import com.example.project_backend04.enums.PaymentStatus;
 import com.example.project_backend04.enums.RegistrationStatus;
+import com.example.project_backend04.enums.RegistrationType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,4 +26,7 @@ public class ServiceRegistrationResponse {
     private LocalDateTime expirationDate;
     private LocalDateTime cancelledDate;
     private String cancellationReason;
+    private PaymentStatus paymentStatus;
+    private String trainerName;
+    private RegistrationType registrationType;
 }

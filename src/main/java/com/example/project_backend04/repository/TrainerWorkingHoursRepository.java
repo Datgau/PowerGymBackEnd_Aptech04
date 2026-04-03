@@ -68,7 +68,6 @@ public interface TrainerWorkingHoursRepository extends JpaRepository<TrainerWork
         @Param("trainerId") Long trainerId,
         @Param("dayOfWeek") DayOfWeek dayOfWeek);
 
-    // ── Tìm slot cụ thể ───────────────────────────────────────────────────────
 
     /** Tìm slot cụ thể của trainer theo ngày và slotIndex (để tránh duplicate). */
     @Query("SELECT twh FROM TrainerWorkingHours twh "
@@ -80,11 +79,8 @@ public interface TrainerWorkingHoursRepository extends JpaRepository<TrainerWork
         @Param("dayOfWeek")  DayOfWeek dayOfWeek,
         @Param("slotIndex")  Integer slotIndex);
 
-    // ── Truy vấn theo danh sách trainer ───────────────────────────────────────
-
     /**
      * Lấy lịch làm việc của nhiều trainer cùng lúc.
-     * Dùng khi hiển thị trang "Chọn trainer" cho user.
      */
     @Query("SELECT twh FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id IN :trainerIds "

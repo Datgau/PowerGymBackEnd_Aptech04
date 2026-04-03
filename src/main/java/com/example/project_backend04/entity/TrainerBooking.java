@@ -50,10 +50,6 @@ public class TrainerBooking {
     @Column(columnDefinition = "TEXT")
     private String sessionType;
 
-//    @Enumerated(EnumType.STRING)
-//    @Column(nullable = false, columnDefinition = "VARCHAR(20) CHECK (status IN ('PENDING','CONFIRMED','REJECTED','CANCELLED','COMPLETED','NO_SHOW','RESCHEDULED'))")
-//    private BookingStatus status = BookingStatus.PENDING;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private BookingStatus status = BookingStatus.PENDING;
@@ -184,16 +180,8 @@ public class TrainerBooking {
                 }
             }
         }
-        
-        // Fallback: Check payment through ServiceRegistration
-        if (serviceRegistration != null && serviceRegistration.getGymService() != null) {
-            // If service registration exists and is ACTIVE, assume service was paid
-            if (serviceRegistration.getStatus() == com.example.project_backend04.enums.RegistrationStatus.ACTIVE) {
-                return "PAID";
-            }
-        }
-        
-        return "UNPAID";
+
+        return "PENDING";
     }
 
     public Long getServiceRegistrationId() {
