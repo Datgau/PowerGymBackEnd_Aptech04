@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -59,6 +60,12 @@ public class TrainerService implements ITrainerService {
                 }
             }
             
+            // Calculate total experience years from specialties (SUM of all years)
+            Integer calculatedTotalExperience = request.getSpecialties().stream()
+                    .map(CreateTrainerRequest.TrainerSpecialtyRequest::getExperienceYears)
+                    .filter(years -> years != null && years > 0)
+                    .reduce(0, Integer::sum);
+            
             String randomPassword = generateRandomPassword();
             
             // Create trainer user
@@ -67,7 +74,7 @@ public class TrainerService implements ITrainerService {
             trainer.setFullName(request.getFullName());
             trainer.setPhoneNumber(request.getPhoneNumber());
             trainer.setBio(request.getBio());
-            trainer.setTotalExperienceYears(request.getTotalExperienceYears());
+            trainer.setTotalExperienceYears(calculatedTotalExperience); // Use calculated value
             trainer.setEducation(request.getEducation());
             trainer.setEmergencyContact(request.getEmergencyContact());
             trainer.setEmergencyPhone(request.getEmergencyPhone());
@@ -325,11 +332,24 @@ public class TrainerService implements ITrainerService {
                 return new ApiResponse<>(false, "Không tìm thấy trainer", null, 404);
             }
 
+            // Validate all specialties exist before processing
+            for (CreateTrainerRequest.TrainerSpecialtyRequest spec : request.getSpecialties()) {
+                if (!serviceCategoryRepository.existsById(spec.getSpecialtyId())) {
+                    return new ApiResponse<>(false, "Specialty không tồn tại với ID: " + spec.getSpecialtyId(), null, 400);
+                }
+            }
+
+            // Calculate total experience years from specialties (SUM of all years)
+            Integer calculatedTotalExperience = request.getSpecialties().stream()
+                    .map(CreateTrainerRequest.TrainerSpecialtyRequest::getExperienceYears)
+                    .filter(years -> years != null && years > 0)
+                    .reduce(0, Integer::sum);
+
             // Cập nhật thông tin cơ bản
             trainer.setFullName(request.getFullName());
             trainer.setPhoneNumber(request.getPhoneNumber());
             trainer.setBio(request.getBio());
-            trainer.setTotalExperienceYears(request.getTotalExperienceYears());
+            trainer.setTotalExperienceYears(calculatedTotalExperience); // Use calculated value
             trainer.setEducation(request.getEducation());
             trainer.setEmergencyContact(request.getEmergencyContact());
             trainer.setEmergencyPhone(request.getEmergencyPhone());
@@ -340,16 +360,17 @@ public class TrainerService implements ITrainerService {
             List<TrainerSpecialty> oldSpecialties = trainerSpecialtyRepository
                     .findByUserAndIsActiveTrueOrderBySpecialtyAsc(trainer);
 
-            // Deactivate old specialties
-            oldSpecialties.forEach(spec -> spec.setIsActive(false));
-            trainerSpecialtyRepository.saveAll(oldSpecialties);
+            // Hard delete old specialties to avoid unique constraint violation
+            if (!oldSpecialties.isEmpty()) {
+                trainerSpecialtyRepository.deleteAll(oldSpecialties);
+                trainerSpecialtyRepository.flush(); // Force delete before insert
+            }
 
             // Add new specialties
             List<TrainerSpecialty> newSpecialties = request.getSpecialties().stream()
                     .map(spec -> {
-                        // Tìm ServiceCategory theo specialtyId
-                        ServiceCategory serviceCategory = serviceCategoryRepository.findById(spec.getSpecialtyId())
-                                .orElseThrow(() -> new RuntimeException("Specialty không tồn tại với ID: " + spec.getSpecialtyId()));
+                        // Tìm ServiceCategory theo specialtyId (đã validate ở trên nên không cần orElseThrow)
+                        ServiceCategory serviceCategory = serviceCategoryRepository.findById(spec.getSpecialtyId()).get();
                         
                         TrainerSpecialty specialty = new TrainerSpecialty();
                         specialty.setUser(updatedTrainer);
@@ -364,11 +385,17 @@ public class TrainerService implements ITrainerService {
                     .collect(Collectors.toList());
 
             trainerSpecialtyRepository.saveAll(newSpecialties);
+            trainerSpecialtyRepository.flush(); // Ensure specialties are persisted
 
-            TrainerResponse response = mapToTrainerResponse(updatedTrainer);
+            // Refresh trainer to get updated data with new specialties
+            User refreshedTrainer = userRepository.findById(trainerId).orElse(updatedTrainer);
+            
+            TrainerResponse response = mapToTrainerResponse(refreshedTrainer);
             return new ApiResponse<>(true, "Cập nhật trainer thành công", response, 200);
 
         } catch (Exception e) {
+            System.err.println("Error updating trainer: " + e.getMessage());
+            e.printStackTrace();
             return new ApiResponse<>(false, "Lỗi khi cập nhật trainer: " + e.getMessage(), null, 500);
         }
     }

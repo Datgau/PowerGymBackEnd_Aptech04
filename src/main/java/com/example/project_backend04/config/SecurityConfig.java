@@ -74,6 +74,8 @@ public class SecurityConfig {
                     auth
                             .requestMatchers("/api/auth/**").permitAll()
                             .requestMatchers("/ws/**").permitAll()
+                            // AI CHATBOT - PUBLIC ACCESS
+                            .requestMatchers("/api/chat/**").permitAll()
                             // ADMIN ONLY (Must be before public GET rules)
                             .requestMatchers("/api/admin/**").hasRole("ADMIN")
                             .requestMatchers("/api/stories/admin/**").hasRole("ADMIN")

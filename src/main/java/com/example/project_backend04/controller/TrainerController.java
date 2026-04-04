@@ -2,10 +2,12 @@ package com.example.project_backend04.controller;
 
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.Trainer.TrainerResponse;
+import com.example.project_backend04.security.CustomUserDetails;
 import com.example.project_backend04.service.TrainerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +27,29 @@ public class TrainerController {
                     true,
                     "Active trainers retrieved successfully",
                     trainers,
+                    HttpStatus.OK.value()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse<>(
+                    false,
+                    e.getMessage(),
+                    null,
+                    HttpStatus.BAD_REQUEST.value()
+            ));
+        }
+    }
+    
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<TrainerResponse>> getCurrentTrainerProfile(Authentication authentication) {
+        try {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            Long trainerId = userDetails.getId();
+            
+            TrainerResponse trainer = trainerService.getTrainerById(trainerId).getData();
+            return ResponseEntity.ok(new ApiResponse<>(
+                    true,
+                    "Current trainer profile retrieved successfully",
+                    trainer,
                     HttpStatus.OK.value()
             ));
         } catch (Exception e) {
