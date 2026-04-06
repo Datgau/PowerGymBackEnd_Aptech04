@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Invoice</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            padding: 20px;
+            color: #333;
+            background: white;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        .invoice-container {
+            max-width: 750px;
+            margin: 0 auto;
+            background: white;
+        }
+        
+        /* Header - Dùng table thay vì flexbox */
+        .header {
+            width: 100%;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #045668;
+        }
+        
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .header-table td {
+            vertical-align: top;
+            padding: 5px;
+        }
+        
+        .header-table td:first-child {
+            width: 60%;
+        }
+        
+        .header-table td:last-child {
+            width: 40%;
+            text-align: right;
+        }
+        
+        .company-info h1 {
+            color: #045668;
+            font-size: 24px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .company-info p {
+            color: #666;
+            font-size: 11px;
+            line-height: 1.5;
+            margin: 2px 0;
+        }
+        
+        .invoice-info h2 {
+            color: #045668;
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .invoice-info p {
+            font-size: 11px;
+            color: #666;
+            margin: 3px 0;
+        }
+        
+        /* Details Section - Dùng table */
+        .details-section {
+            width: 100%;
+            margin-bottom: 30px;
+        }
+        
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .details-table td {
+            vertical-align: top;
+            padding: 5px;
+        }
+        
+        .details-table td:first-child {
+            width: 50%;
+            padding-right: 15px;
+        }
+        
+        .details-table td:last-child {
+            width: 50%;
+            padding-left: 15px;
+        }
+        
+        .section-title {
+            color: #045668;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-row {
+            margin-bottom: 6px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .info-label {
+            color: #666;
+            display: inline-block;
+            width: 100px;
+        }
+        
+        .info-value {
+            color: #333;
+            font-weight: 500;
+        }
+        
+        /* Items Table */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        
+        .items-table thead {
+            background-color: #045668 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        .items-table th {
+            padding: 12px 10px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: white !important;
+            background-color: #045668 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        .items-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #ddd;
+            font-size: 12px;
+        }
+        
+        .items-table tbody tr {
+            background: white;
+        }
+        
+        /* Total Section - Dùng table */
+        .total-section {
+            width: 100%;
+            margin-top: 25px;
+        }
+        
+        .total-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .total-table td {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+        
+        .total-table td:first-child {
+            text-align: right;
+            color: #666;
+            width: 70%;
+        }
+        
+        .total-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+            width: 30%;
+        }
+        
+        .grand-total-row {
+            border-top: 2px solid #045668;
+        }
+        
+        .grand-total-row td {
+            padding-top: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #045668 !important;
+        }
+        
+        .grand-total-row td:last-child {
+            font-size: 18px;
+        }
+        
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        .status-completed {
+            background-color: #d4edda !important;
+            color: #155724 !important;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-pending {
+            background-color: #fff3cd !important;
+            color: #856404 !important;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status-failed {
+            background-color: #f8d7da !important;
+            color: #721c24 !important;
+            border: 1px solid #f5c6cb;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #999;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+        
+        .footer p {
+            margin: 3px 0;
+        }
+        
+        /* Promotion Info */
+        .promotion-info {
+            background-color: #f0f9ff !important;
+            border-left: 4px solid #00b4ff;
+            padding: 12px;
+            margin: 15px 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        .promotion-info p {
+            margin: 4px 0;
+            font-size: 12px;
+        }
+        
+        .promotion-code {
+            color: #045668;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* Print-specific styles */
+        @media print {
+            body {
+                padding: 10px;
+            }
+            
+            .invoice-container {
+                max-width: 100%;
+            }
+            
+            /* Force backgrounds to print */
+            .items-table thead,
+            .items-table th,
+            .status-badge,
+            .promotion-info {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+        }
+        
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+    </style>
+</head>
+<body>
+<div class="invoice-container">
+    <!-- Header -->
+    <div class="header">
+        <table class="header-table">
+            <tr>
+                <td>
+                    <div class="company-info">
+                        <h1 >PowerGym Fitness Center</h1>
+                        <p >37 Nguyen Van Ba, Truong Tho, Ho Chi Minh City</p>
+                        <p>Phone: <span>+84 789 179 033</span></p>
+                        <p>Email: <span>dattn12042001@powergym.vn</span></p>
+                    </div>
+                </td>
+                <td>
+                    <div class="invoice-info">
+                        <h2>INVOICE</h2>
+                        <p><strong>Invoice #:</strong> <span th:text="${invoice.invoiceNumber}">INV-001</span></p>
+                        <p><strong>Date:</strong> <span th:text="${invoice.invoiceDate}">01/01/2024</span></p>
+                        <p th:if="${invoice.paymentStatus == 'COMPLETED'}">
+                            <span class="status-badge status-completed" th:text="${invoice.paymentStatus}">SUCCESS</span>
+                        </p>
+                        <p th:if="${invoice.paymentStatus == 'PENDING'}">
+                            <span class="status-badge status-pending" th:text="${invoice.paymentStatus}">PENDING</span>
+                        </p>
+                        <p th:if="${invoice.paymentStatus != 'COMPLETED' and invoice.paymentStatus != 'PENDING'}">
+                            <span class="status-badge status-failed" th:text="${invoice.paymentStatus}">FAILED</span>
+                        </p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Customer & Payment Details -->
+    <div class="details-section">
+        <table class="details-table">
+            <tr>
+                <td>
+                    <div class="customer-info">
+                        <div class="section-title">BILL TO</div>
+                        <div class="info-row">
+                            <span class="info-label">Name:</span>
+                            <span class="info-value" th:text="${invoice.customerName}">Customer Name</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Email:</span>
+                            <span class="info-value" th:text="${invoice.customerEmail}">customer@email.com</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Phone:</span>
+                            <span class="info-value" th:text="${invoice.customerPhone}">+84 123 456 789</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="payment-info">
+                        <div class="section-title">PAYMENT DETAILS</div>
+                        <div class="info-row">
+                            <span class="info-label">Method:</span>
+                            <span class="info-value" th:text="${invoice.paymentMethod}">COUNTER</span>
+                        </div>
+                        <div class="info-row" th:if="${invoice.transactionRef}">
+                            <span class="info-label">Transaction Ref:</span>
+                            <span class="info-value" th:text="${invoice.transactionRef}">TXN123456</span>
+                        </div>
+                        <div class="info-row" th:if="${invoice.momoTransId}">
+                            <span class="info-label">MoMo Trans ID:</span>
+                            <span class="info-value" th:text="${invoice.momoTransId}">MOMO123456</span>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Items Table -->
+    <table class="items-table">
+        <thead>
+        <tr>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Item ID</th>
+            <th style="text-align: right;">Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                <strong th:text="${invoice.itemName}">Service Name</strong>
+                <br/>
+                <small th:text="${invoice.content}" style="color: #999;">Payment description</small>
+            </td>
+            <td th:text="${invoice.itemType}">SERVICE</td>
+            <td th:text="${invoice.itemId}">123</td>
+            <td style="text-align: right;" th:text="${invoice.amountFormatted}">1,000,000 VNĐ</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Total Section -->
+    <div class="total-section">
+        <table class="total-table">
+            <tr class="grand-total-row">
+                <td>TOTAL AMOUNT:</td>
+                <td th:text="${invoice.amountFormatted}">2,500 VN</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>Thank you for your business!</p>
+        <p>This is a computer-generated invoice and does not require a signature.</p>
+        <p th:if="${invoice.createdAt}">Generated on: <span th:text="${invoice.createdAt}">01/01/2024 10:00:00</span></p>
+    </div>
+</div>
+</body>
+</html>

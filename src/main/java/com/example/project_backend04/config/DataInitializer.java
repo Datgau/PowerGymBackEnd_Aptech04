@@ -70,26 +70,4 @@ public class DataInitializer {
         };
     }
 
-//    private void initializeServiceCategories() {
-//        createCategoryIfNotExists("PERSONAL_TRAINER", "Personal Trainer", "One-on-one personal training sessions", "", "#FF6B35", 1);
-//        createCategoryIfNotExists("BOXING", "Boxing", "Boxing training and classes", "", "#E74C3C", 2);
-//        createCategoryIfNotExists("YOGA", "Yoga", "Yoga classes and meditation", "", "#27AE60", 3);
-//        createCategoryIfNotExists("CARDIO", "Cardio", "Cardiovascular training and exercises", "", "#F39C12", 4);
-//        createCategoryIfNotExists("OTHER", "Other", "Other fitness services", "", "#9B59B6", 5);
-//    }
-
-//    private void createCategoryIfNotExists(String name, String displayName, String description, String icon, String color, int sortOrder) {
-//        if (!serviceCategoryRepository.existsByNameIgnoreCase(name)) {
-//            ServiceCategory category = new ServiceCategory();
-//            category.setName(name);
-//            category.setDisplayName(displayName);
-//            category.setDescription(description);
-//            category.setIcon(icon);
-//            category.setColor(color);
-//            category.setSortOrder(sortOrder);
-//            category.setIsActive(true);
-//            serviceCategoryRepository.save(category);
-//            System.out.println("Created service category: " + displayName);
-//        }
-//    }
 }

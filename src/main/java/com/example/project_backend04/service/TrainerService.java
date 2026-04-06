@@ -355,21 +355,15 @@ public class TrainerService implements ITrainerService {
             trainer.setEmergencyPhone(request.getEmergencyPhone());
 
             User updatedTrainer = userRepository.save(trainer);
-
-            // Cập nhật specialties (xóa cũ, thêm mới)
             List<TrainerSpecialty> oldSpecialties = trainerSpecialtyRepository
                     .findByUserAndIsActiveTrueOrderBySpecialtyAsc(trainer);
 
-            // Hard delete old specialties to avoid unique constraint violation
             if (!oldSpecialties.isEmpty()) {
                 trainerSpecialtyRepository.deleteAll(oldSpecialties);
                 trainerSpecialtyRepository.flush(); // Force delete before insert
             }
-
-            // Add new specialties
             List<TrainerSpecialty> newSpecialties = request.getSpecialties().stream()
                     .map(spec -> {
-                        // Tìm ServiceCategory theo specialtyId (đã validate ở trên nên không cần orElseThrow)
                         ServiceCategory serviceCategory = serviceCategoryRepository.findById(spec.getSpecialtyId()).get();
                         
                         TrainerSpecialty specialty = new TrainerSpecialty();
@@ -386,8 +380,6 @@ public class TrainerService implements ITrainerService {
 
             trainerSpecialtyRepository.saveAll(newSpecialties);
             trainerSpecialtyRepository.flush(); // Ensure specialties are persisted
-
-            // Refresh trainer to get updated data with new specialties
             User refreshedTrainer = userRepository.findById(trainerId).orElse(updatedTrainer);
             
             TrainerResponse response = mapToTrainerResponse(refreshedTrainer);

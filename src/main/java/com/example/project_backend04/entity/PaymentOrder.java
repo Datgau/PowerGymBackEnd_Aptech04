@@ -48,6 +48,9 @@ public class PaymentOrder {
     private String itemType;
     private String itemId;
     private String itemName;
+    
+    private Long promotionId; // ID of promotion used (if any)
+    private String promotionCode; // Code of promotion used (if any)
 
     @PrePersist
     public void prePersist() {

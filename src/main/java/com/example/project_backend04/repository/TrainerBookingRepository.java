@@ -20,6 +20,9 @@ public interface TrainerBookingRepository extends JpaRepository<TrainerBooking, 
     // Find bookings by user
     List<TrainerBooking> findByUserOrderByBookingDateDescStartTimeDesc(User user);
 
+    // Find by bookingId (String field, not primary key)
+    Optional<TrainerBooking> findByBookingId(String bookingId);
+
     // Find bookings by trainer
     List<TrainerBooking> findByTrainerOrderByBookingDateDescStartTimeDesc(User trainer);
 
@@ -137,7 +140,8 @@ AND (tb.startTime < :endTime AND tb.endTime > :startTime)
         @Param("date")             LocalDate date,
         @Param("startTime")        LocalTime startTime,
         @Param("endTime")          LocalTime endTime,
-        @Param("excludeBookingId") Long excludeBookingId);
+        @Param("excludeBookingId") Long excludeBookingId,
+        @Param("statuses")         List<BookingStatus> statuses);
     
 
     @Query("SELECT tb FROM TrainerBooking tb "

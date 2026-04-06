@@ -109,10 +109,6 @@ public class AiToolsConfig {
         };
     }
 
-    /**
-     * AI Tool for searching gym services
-     * Filters by keyword and categoryName
-     */
     @Bean
     @Description("Tìm kiếm các dịch vụ gym (lớp học, dịch vụ) theo tên hoặc danh mục. " +
             "Sử dụng tool này khi khách hàng hỏi về các lớp học, dịch vụ như yoga, boxing, personal training.")
@@ -184,10 +180,6 @@ public class AiToolsConfig {
         };
     }
 
-    /**
-     * AI Tool for searching trainers
-     * Filters by specialtyName
-     */
     @Bean
     @Description("Tìm kiếm trainer theo chuyên môn. " +
             "Sử dụng tool này khi khách hàng hỏi về huấn luyện viên, PT, hoặc trainer.")
@@ -364,10 +356,6 @@ public class AiToolsConfig {
         };
     }
 
-    /**
-     * ChatClient bean configured with system prompt and default functions
-     * This is the main AI chatbot client
-     */
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder) {
         return builder

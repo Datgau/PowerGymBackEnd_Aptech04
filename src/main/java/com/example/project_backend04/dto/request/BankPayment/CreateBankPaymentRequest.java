@@ -20,4 +20,8 @@ public class CreateBankPaymentRequest {
     private String itemType;
     
     private Long bookingId;
+    
+    private String promotionCode; // Promotion code for discount
+    
+    private Long amount; // Override amount (for discounted price)
 }

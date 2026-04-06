@@ -201,26 +201,6 @@ public class TrainerManagementService {
             .collect(Collectors.toList());
     }
 
-//    @Transactional
-//    public int bulkRespondToBookings(List<Long> bookingIds, String action, String reason) {
-//        int processedCount = 0;
-//
-//        for (Long bookingId : bookingIds) {
-//            try {
-//                if ("CONFIRM".equalsIgnoreCase(action)) {
-//                    integratedBookingService.confirmBooking(bookingId, reason);
-//                } else if ("REJECT".equalsIgnoreCase(action)) {
-//                    integratedBookingService.rejectBooking(bookingId, reason);
-//                }
-//                processedCount++;
-//            } catch (Exception e) {
-//                log.error("Failed to process booking {}: {}", bookingId, e.getMessage());
-//            }
-//        }
-//
-//        return processedCount;
-//    }
-
     public List<TrainerStatisticsResponse> getWorkloadSummary(LocalDate fromDate, LocalDate toDate) {
         Role trainerRole = roleRepository.findRoleByName("TRAINER")
             .orElseThrow(() -> new RuntimeException("TRAINER role not found"));

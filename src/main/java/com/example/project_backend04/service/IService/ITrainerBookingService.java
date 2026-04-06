@@ -45,7 +45,7 @@ public interface ITrainerBookingService {
      * - Chỉ xác nhận được booking ở trạng thái PENDING.
      * - Kiểm tra lại trùng lịch trước khi xác nhận (race-condition guard).
      */
-    TrainerBookingResponse acceptBooking(Long trainerId, Long bookingId, String trainerNotes);
+    TrainerBookingResponse acceptBooking(Long trainerId, String bookingId, String trainerNotes);
 
     /**
      * Trainer từ chối booking.
@@ -53,7 +53,7 @@ public interface ITrainerBookingService {
      * - Lý do là bắt buộc.
      * - Media (hình/file) là tùy chọn, upload qua Cloudinary trước khi gọi method này.
      */
-    TrainerBookingResponse rejectBooking(Long trainerId, Long bookingId, RejectBookingRequest request);
+    TrainerBookingResponse rejectBooking(Long trainerId, String bookingId, RejectBookingRequest request);
 
     /**
      * Lấy tất cả PENDING booking mà trainer cần xác nhận.

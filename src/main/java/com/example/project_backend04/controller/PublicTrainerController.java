@@ -2,7 +2,7 @@ package com.example.project_backend04.controller;
 
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.Trainer.TrainerForBookingResponse;
-import com.example.project_backend04.service.TrainerForBookingService;
+import com.example.project_backend04.service.TrainerBookingService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,12 +16,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PublicTrainerController {
 
-    private final TrainerForBookingService trainerForBookingService;
+    private final TrainerBookingService trainerForBookingService;
 
-    /**
-     * GET /api/public/trainers/specialty-category/{serviceId}
-     * Lấy danh sách trainer phù hợp với service để hiển thị trong TrainerStep.
-     */
+
     @GetMapping("/specialty-category/{serviceId}")
     public ResponseEntity<ApiResponse<List<TrainerForBookingResponse>>> getTrainersByService(
             @PathVariable Long serviceId

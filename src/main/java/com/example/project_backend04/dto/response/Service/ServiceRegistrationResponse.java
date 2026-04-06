@@ -29,4 +29,5 @@ public class ServiceRegistrationResponse {
     private PaymentStatus paymentStatus;
     private String trainerName;
     private RegistrationType registrationType;
+    private String paymentOrderId;
 }

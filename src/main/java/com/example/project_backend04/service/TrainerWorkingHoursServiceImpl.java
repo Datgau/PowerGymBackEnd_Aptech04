@@ -103,8 +103,6 @@ public class TrainerWorkingHoursServiceImpl implements ITrainerWorkingHoursServi
         workingHoursRepo.save(slot);
     }
 
-    // ── Frontend booking picker ───────────────────────────────────────────────────
-
     @Override
     @Transactional(readOnly = true)
     public TrainerScheduleResponse getDailyAvailability(Long trainerId, LocalDate date) {
@@ -114,8 +112,6 @@ public class TrainerWorkingHoursServiceImpl implements ITrainerWorkingHoursServi
         // Load working hours cho ngày đó
         List<TrainerWorkingHours> workSlots =
                 workingHoursRepo.findSlotsByTrainerAndDay(trainerId, dow);
-
-        // Load bookings cho ngày đó (PENDING + CONFIRMED)
         List<TrainerBooking> dayBookings = bookingRepo.findByTrainerIdAndDateRangeAndStatuses(
                 trainerId, date, date,
                 List.of(BookingStatus.PENDING,
@@ -134,7 +130,6 @@ public class TrainerWorkingHoursServiceImpl implements ITrainerWorkingHoursServi
                         .build();
             }
 
-            // Kiểm tra có booking nào lấp vào slot này không
             TrainerBooking overlap = dayBookings.stream()
                     .filter(b -> ws.getStartTime() != null
                             && b.getStartTime().isBefore(ws.getEndTime())
@@ -172,31 +167,26 @@ public class TrainerWorkingHoursServiceImpl implements ITrainerWorkingHoursServi
                 .collect(Collectors.toList());
     }
 
-    // ── Validation ────────────────────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
     public boolean isWithinWorkingHours(Long trainerId, LocalDate date,
                                          LocalTime startTime, LocalTime endTime) {
-        // Nếu trainer chưa config lịch → mặc định cho phép (linh hoạt)
         if (workingHoursRepo.countActiveSlotsByTrainer(trainerId) == 0) {
             return true;
         }
 
         DayOfWeek dow = date.getDayOfWeek();
 
-        // Kiểm tra ngày nghỉ
         if (workingHoursRepo.isTrainerDayOff(trainerId, dow)) {
             return false;
         }
 
-        // Kiểm tra có slot cover khoảng giờ đó không
         List<TrainerWorkingHours> covering = workingHoursRepo
                 .findCoveringSlots(trainerId, dow, startTime, endTime);
         return !covering.isEmpty();
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────────
 
     private User loadTrainer(Long trainerId) {
         return userRepo.findById(trainerId)
@@ -207,8 +197,6 @@ public class TrainerWorkingHoursServiceImpl implements ITrainerWorkingHoursServi
     private TrainerScheduleResponse buildWeeklyResponse(User trainer,
                                                           List<TrainerWorkingHours> slots) {
         Map<DayOfWeek, List<SlotInfo>> weeklyMap = new EnumMap<>(DayOfWeek.class);
-
-        // Khởi tạo tất cả ngày trong tuần
         for (DayOfWeek dow : DayOfWeek.values()) {
             weeklyMap.put(dow, new ArrayList<>());
         }

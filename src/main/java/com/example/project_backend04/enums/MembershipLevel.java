@@ -1,9 +1,9 @@
 package com.example.project_backend04.enums;
 
 public enum MembershipLevel {
-    SILVER(0, 4999, "Bạc"),
-    GOLD(5000, 9999, "Vàng"),
-    PLATINUM(10000, Integer.MAX_VALUE, "Bạch Kim");
+    SILVER(0, 4999, "SILVER"),
+    GOLD(5000, 9999, "GOLD"),
+    PLATINUM(10000, Integer.MAX_VALUE, "PLATINUM");
 
     private final int minPoints;
     private final int maxPoints;

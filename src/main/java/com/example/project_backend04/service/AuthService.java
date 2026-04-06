@@ -354,7 +354,10 @@ public class AuthService implements IAuthService {
                 user.getEmail(),
                 user.getFullName(),
                 user.getAvatar(),
-                jwtResponse
+                jwtResponse,
+                user.getPhoneNumber(),
+                user.getBio(),
+                user.getDateOfBirth()
         );
 
         return new ApiResponse<>(
@@ -599,7 +602,10 @@ public class AuthService implements IAuthService {
                 user.getEmail(),
                 user.getFullName(),
                 user.getAvatar(),
-                jwtResponse
+                jwtResponse,
+                user.getPhoneNumber(),
+                user.getBio(),
+                user.getDateOfBirth()
         );
 
         return new ApiResponse<>(

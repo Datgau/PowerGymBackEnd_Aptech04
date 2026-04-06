@@ -35,7 +35,7 @@ public class EnhancedServiceRegistrationService {
     private final GymServiceRepository gymServiceRepository;
     private final ITrainerSelectionService trainerSelectionService;
     private final NotificationService notificationService;
-    private final TrainerForBookingService trainerForBookingService;
+    private final  TrainerBookingService trainerBookingService;
     private final PaymentOrderRepository paymentOrderRepository;
     
     @Transactional
@@ -43,18 +43,12 @@ public class EnhancedServiceRegistrationService {
             ServiceRegistrationWithTrainerRequest request) {
         log.info("Registering service with trainer for user {} and service {}", 
                 request.getUserId(), request.getServiceId());
-        
-        // Validate request
         validateServiceRegistrationRequest(request);
-        
-        // Get user and service
         User user = userRepository.findById(request.getUserId())
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
         
         GymService gymService = gymServiceRepository.findById(request.getServiceId())
             .orElseThrow(() -> new EntityNotFoundException("Service not found"));
-        
-        // Check if user already has active registration for this service
         boolean hasActiveRegistration = serviceRegistrationRepository
             .existsByUserAndGymServiceAndStatus(user, gymService, RegistrationStatus.ACTIVE);
         
@@ -89,7 +83,7 @@ public class EnhancedServiceRegistrationService {
         if (!gymServiceRepository.existsById(serviceId)) {
             throw new EntityNotFoundException("Service not found with id: " + serviceId);
         }
-        return trainerForBookingService.getTrainersByServiceId(serviceId);
+        return trainerBookingService.getTrainersByServiceId(serviceId);
     }
     
     @Transactional
@@ -274,20 +268,12 @@ public class EnhancedServiceRegistrationService {
         if (registration.getRegistrationType() != RegistrationType.COUNTER) {
             throw new IllegalStateException("Can only confirm payment for counter registrations");
         }
-        
-        // Update registration date to current time (when payment is confirmed)
-        // This ensures the service starts from the payment confirmation date
         LocalDateTime now = LocalDateTime.now();
         registration.setRegistrationDate(now);
         
-        // Recalculate expiration date based on service duration
         if (registration.getGymService() != null && registration.getGymService().getDuration() != null) {
             registration.setExpirationDate(now.plusDays(registration.getGymService().getDuration()));
         }
-        
-        serviceRegistrationRepository.save(registration);
-        
-        // Create a PaymentOrder with SUCCESS status
         PaymentOrder paymentOrder = new PaymentOrder();
         paymentOrder.setId("COUNTER_" + registrationId + "_" + System.currentTimeMillis());
         paymentOrder.setUser(registration.getUser());
@@ -300,7 +286,11 @@ public class EnhancedServiceRegistrationService {
         paymentOrder.setPaymentMethod("COUNTER");
         paymentOrder.setCreatedAt(now);
         
-        paymentOrderRepository.save(paymentOrder);
+        PaymentOrder savedPaymentOrder = paymentOrderRepository.save(paymentOrder);
+        
+        // Link payment order to registration
+        registration.setPaymentOrder(savedPaymentOrder);
+        serviceRegistrationRepository.save(registration);
         
         log.info("Successfully confirmed counter payment for registration {} - Service start date: {}, expiration date: {}", 
             registrationId, registration.getRegistrationDate(), registration.getExpirationDate());

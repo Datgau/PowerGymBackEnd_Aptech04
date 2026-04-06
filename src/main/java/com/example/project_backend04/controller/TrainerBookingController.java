@@ -19,13 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.DayOfWeek;
 import java.util.List;
 
-/**
- * Controller cho Trainer:
- * - Xem / chấp nhận / từ chối booking (có thể đính kèm file ảnh khi từ chối)
- * - Quản lý lịch làm việc (working hours)
- *
- * Base path: /api/trainer
- */
 @RestController
 @RequestMapping("/api/trainer")
 @RequiredArgsConstructor
@@ -62,7 +55,7 @@ public class TrainerBookingController {
     @PutMapping("/{trainerId}/bookings/{bookingId}/accept")
     public ResponseEntity<ApiResponse<TrainerBookingResponse>> acceptBooking(
             @PathVariable Long trainerId,
-            @PathVariable Long bookingId,
+            @PathVariable String bookingId,
             @RequestParam(required = false) String notes) {
         try {
             return ok(bookingService.acceptBooking(trainerId, bookingId, notes),
@@ -80,7 +73,7 @@ public class TrainerBookingController {
                  consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<TrainerBookingResponse>> rejectBookingJson(
             @PathVariable Long trainerId,
-            @PathVariable Long bookingId,
+            @PathVariable String bookingId,
             @Valid @RequestBody RejectBookingRequest request) {
         try {
             return ok(bookingService.rejectBooking(trainerId, bookingId, request),
@@ -98,7 +91,7 @@ public class TrainerBookingController {
                  consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<TrainerBookingResponse>> rejectBookingWithFile(
             @PathVariable Long trainerId,
-            @PathVariable Long bookingId,
+            @PathVariable String bookingId,
             @RequestParam("reason") String reason,
             @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
@@ -177,7 +170,6 @@ public class TrainerBookingController {
         }
     }
 
-    // ── Helpers ──────────────────────────────────
 
     private static <T> ResponseEntity<ApiResponse<T>> ok(T data, String msg) {
         return ResponseEntity.ok(new ApiResponse<>(true, msg, data, 200));

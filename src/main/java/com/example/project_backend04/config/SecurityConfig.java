@@ -79,6 +79,7 @@ public class SecurityConfig {
                             // ADMIN ONLY (Must be before public GET rules)
                             .requestMatchers("/api/admin/**").hasRole("ADMIN")
                             .requestMatchers("/api/stories/admin/**").hasRole("ADMIN")
+                            .requestMatchers("/api/admin/rewards/**").hasRole("ADMIN")
                             // PUBLIC GET ENDPOINTS
                             .requestMatchers(HttpMethod.GET, "/api/gym/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/service-registrations/**").permitAll()
@@ -105,6 +106,16 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.POST, "/api/equipment-categories/**").hasRole("ADMIN")
                             .requestMatchers(HttpMethod.PUT, "/api/equipment-categories/**").hasRole("ADMIN")
                             .requestMatchers(HttpMethod.DELETE, "/api/equipment-categories/**").hasRole("ADMIN")
+                            
+                            // PROMOTIONS - FEATURED ONLY PUBLIC, REST REQUIRES AUTH
+                            .requestMatchers(HttpMethod.GET, "/api/promotions/featured").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/promotions/active").authenticated()
+                            .requestMatchers(HttpMethod.POST, "/api/promotions/apply").authenticated()
+                            .requestMatchers("/api/promotions/**").hasRole("ADMIN") // Admin management
+                            
+                            // REWARDS - AUTHENTICATED ONLY (USER-SPECIFIC DATA)
+                            .requestMatchers("/api/rewards/**").authenticated()
+                            
                             // AUTHENTICATED ENDPOINTS
                             .requestMatchers("/api/payment/**").authenticated()
                             .requestMatchers(HttpMethod.POST, "/api/payment/momo/ipn").permitAll() // MoMo IPN callback doesn't need auth
@@ -113,6 +124,9 @@ public class SecurityConfig {
                             .requestMatchers("/api/bank-payments/create").authenticated()
                             .requestMatchers("/api/bank-payments/status/**").authenticated()
                             .requestMatchers(HttpMethod.POST, "/api/bank-payments/webhook").permitAll() // SePay webhook - secured by WebhookAuthenticationFilter
+
+                            // INVOICE ENDPOINTS
+                            .requestMatchers("/api/invoices/**").authenticated()
 
                             .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
                             .requestMatchers(HttpMethod.POST, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")

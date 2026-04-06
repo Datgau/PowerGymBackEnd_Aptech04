@@ -1,7 +1,9 @@
 package com.example.project_backend04.service;
 
 import com.example.project_backend04.config.BankPaymentConfig;
+import com.example.project_backend04.dto.request.ApplyPromotionRequest;
 import com.example.project_backend04.dto.request.BankPayment.SepayWebhookRequest;
+import com.example.project_backend04.dto.response.ApplyPromotionResponse;
 import com.example.project_backend04.dto.response.BankPayment.CreateBankPaymentResponse;
 import com.example.project_backend04.dto.response.BankPayment.PaymentStatusResponse;
 import com.example.project_backend04.dto.response.Service.GymServiceResponse;
@@ -28,6 +30,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
+
+import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +58,9 @@ public class BankPaymentService {
         private final UserMapper userMapper;
         private final MembershipPackageRepository membershipPackageRepository;
         private final com.example.project_backend04.repository.MembershipRepository membershipRepository;
+        private final PromotionService promotionService;
+        private final RewardService rewardService;
+        private final com.example.project_backend04.mapper.ServiceRegistrationMapper serviceRegistrationMapper;
 
         @Transactional
         public CreateBankPaymentResponse createBankPayment(Long userId, Long serviceId) {
@@ -67,13 +74,13 @@ public class BankPaymentService {
 
         @Transactional
         public CreateBankPaymentResponse createBankPayment(Long userId, Long serviceId, Long packageId, String itemType, Long bookingId) {
-            // Audit log: Payment creation attempt
-            log.info("AUDIT_LOG - PAYMENT_CREATION_ATTEMPT - UserId: {}, ServiceId: {}, PackageId: {}, ItemType: {}, Timestamp: {}",
-                userId, serviceId, packageId, itemType, LocalDateTime.now());
+            return createBankPayment(userId, serviceId, packageId, itemType, bookingId, null);
+        }
 
+        @Transactional
+        public CreateBankPaymentResponse createBankPayment(Long userId, Long serviceId, Long packageId, String itemType, Long bookingId, String promotionCode) {
             try {
                 if (userId == null || userId <= 0) {
-                    log.error("Invalid userId provided: {}", userId);
                     throw new BankPaymentException("Invalid user ID", "INVALID_USER_ID");
                 }
 
@@ -82,8 +89,6 @@ public class BankPaymentService {
                         .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId)),
                     "findUserById"
                 );
-                log.debug("User found - ID: {}, Name: {}", user.getId(), user.getFullName());
-
                 Long amount;
                 String itemName;
                 Long itemId;
@@ -94,23 +99,18 @@ public class BankPaymentService {
                             .orElseThrow(() -> new EntityNotFoundException("Membership package not found with ID: " + packageId)),
                         "findMembershipPackageById"
                     );
-                    log.debug("Membership package found - ID: {}, Name: {}, Price: {}, Active: {}",
-                        membershipPackage.getId(), membershipPackage.getName(), membershipPackage.getPrice(), membershipPackage.getIsActive());
 
                     if (!membershipPackage.getIsActive()) {
-                        log.warn("Attempted to create payment for inactive membership package - PackageId: {}", packageId);
                         throw new BankPaymentException("Membership package is not active", "PACKAGE_NOT_ACTIVE");
                     }
                     
                     itemId = packageId;
                     itemName = membershipPackage.getName();
                     amount = membershipPackage.getPrice().longValue();
-                    
-                    log.debug("Processing membership payment - PackageId: {}, Amount: {}", packageId, amount);
+
                 } else {
                     // Handle service payment
                     if (serviceId == null || serviceId <= 0) {
-                        log.error("Invalid serviceId provided: {}", serviceId);
                         throw new BankPaymentException("Invalid service ID", "INVALID_SERVICE_ID");
                     }
                     
@@ -119,34 +119,51 @@ public class BankPaymentService {
                             .orElseThrow(() -> new EntityNotFoundException("Service not found with ID: " + serviceId)),
                         "findServiceById"
                     );
-                    log.debug("Service found - ID: {}, Name: {}, Price: {}, Active: {}",
-                        service.getId(), service.getName(), service.getPrice(), service.getIsActive());
 
                     if (!service.getIsActive()) {
-                        log.warn("Attempted to create payment for inactive service - ServiceId: {}", serviceId);
                         throw new ServiceNotActiveException(serviceId);
                     }
-                    
+
                     itemId = serviceId;
                     itemName = service.getName();
                     amount = service.getPrice().longValue();
                 }
 
+                // Apply promotion discount if promotionCode is provided
+                Long originalAmount = amount;
+                Long promotionId = null;
+                if (promotionCode != null && !promotionCode.trim().isEmpty()) {
+                    try {
+                        ApplyPromotionRequest promotionRequest = new ApplyPromotionRequest();
+                        promotionRequest.setPromotionCode(promotionCode);
+                        promotionRequest.setOrderAmount(BigDecimal.valueOf(amount));
+                        
+                        ApplyPromotionResponse promotionResponse = promotionService.validateAndCalculatePromotion(userId, promotionRequest);
+                        
+                        if (promotionResponse.getSuccess()) {
+                            amount = promotionResponse.getFinalAmount().longValue();
+                            promotionId = promotionResponse.getPromotionId();
+
+                        } else {
+                            log.warn("Promotion validation failed - Code: {}, Reason: {}", promotionCode, promotionResponse.getMessage());
+                            // Don't throw error, just proceed with original amount
+                        }
+                    } catch (Exception e) {
+                        log.error("Error applying promotion - Code: {}, Error: {}", promotionCode, e.getMessage());
+                        // Don't throw error, just proceed with original amount
+                    }
+                }
+
                 long timestamp = System.currentTimeMillis();
                 String content = "GYM_" + userId + "_" + timestamp;
-                log.debug("Generated payment content: {}", content);
 
                 String qrUrl;
                 try {
                     qrUrl = generateVietQRUrl(amount, content);
-                    log.debug("Generated VietQR URL: {}", qrUrl);
                 } catch (Exception e) {
-                    log.error("Failed to generate VietQR URL - Amount: {}, Content: {}",
-                        amount, content, e);
+
                     throw new BankPaymentException("Failed to generate QR code", "QR_GENERATION_FAILED", e);
                 }
-
-                // Set expiredAt từ config
                 LocalDateTime now = LocalDateTime.now();
                 int expiryMinutes = bankPaymentConfig.paymentExpiryMinutes() != null
                     ? bankPaymentConfig.paymentExpiryMinutes() : 15;
@@ -171,9 +188,9 @@ public class BankPaymentService {
                         // Update existing payment order with new QR code and content
                         order = booking.getPaymentOrder();
                         orderId = order.getId();
-                        
+
                         log.info("Updating existing PaymentOrder {} for booking {}", orderId, bookingId);
-                        
+
                         // Update QR code and content
                         order.setContent(content);
                         order.setQrCodeUrl(qrUrl);
@@ -194,6 +211,8 @@ public class BankPaymentService {
                         order.setItemType("TRAINER_BOOKING");
                         order.setCreatedAt(now);
                         order.setExpiredAt(now.plusMinutes(expiryMinutes));
+                        order.setPromotionId(promotionId);
+                        order.setPromotionCode(promotionCode);
                         
                         booking.setPaymentOrder(order);
                         DatabaseRetryUtil.executeWithRetry(
@@ -218,6 +237,8 @@ public class BankPaymentService {
                     order.setItemType(itemType != null ? itemType : "SERVICE");
                     order.setCreatedAt(now);
                     order.setExpiredAt(now.plusMinutes(expiryMinutes));
+                    order.setPromotionId(promotionId);
+                    order.setPromotionCode(promotionCode);
                 }
 
                 // Save PaymentOrder with retry logic
@@ -398,10 +419,40 @@ public class BankPaymentService {
                         "updateSuccessfulPaymentOrder"
                     );
 
+                    // Update promotion usage count if promotion was used
+                    if (updatedOrder.getPromotionId() != null) {
+                        try {
+                            log.info("Incrementing usage count for promotion ID: {}", updatedOrder.getPromotionId());
+                            promotionService.incrementUsageCount(updatedOrder.getPromotionId(), updatedOrder.getUser().getId());
+                            log.info("Promotion usage count incremented successfully for promotion ID: {}", updatedOrder.getPromotionId());
+                        } catch (Exception e) {
+                            log.error("Failed to increment promotion usage count for promotion ID: {} - continuing with payment processing", 
+                                updatedOrder.getPromotionId(), e);
+                        }
+                    }
+
                     // Activate service for user
                     try {
                         activateService(updatedOrder);
-                                                sendPaymentConfirmationEmail(updatedOrder, payload);
+                        sendPaymentConfirmationEmail(updatedOrder, payload);
+                        
+                        // Earn reward points for the payment
+                        try {
+                            Long userId = updatedOrder.getUser().getId();
+                            BigDecimal amount = BigDecimal.valueOf(updatedOrder.getAmount());
+                            String paymentId = updatedOrder.getId();
+                            
+                            log.info("Earning reward points for payment - UserId: {}, Amount: {}, PaymentId: {}", 
+                                userId, amount, paymentId);
+                            
+                            rewardService.earnPoints(userId, amount, paymentId);
+                            
+                            log.info("Reward points earned successfully for payment {}", paymentId);
+                            
+                        } catch (Exception e) {
+                            log.error("Failed to earn reward points for payment {} - continuing", 
+                                updatedOrder.getId(), e);
+                        }
 
                     } catch (Exception e) {
                         log.error("Failed to activate service for payment order {} - continuing with payment processing",
@@ -582,6 +633,7 @@ public class BankPaymentService {
                     ServiceRegistration registration = pendingReg.get();
                     registration.setStatus(RegistrationStatus.ACTIVE);
                     registration.setNotes("Activated via bank transfer payment. OrderId: " + order.getId());
+                    registration.setPaymentOrder(order); // Link payment order
                     
                     activatedRegistration = DatabaseRetryUtil.executeWithRetry(
                         () -> serviceRegistrationRepository.save(registration),
@@ -608,6 +660,7 @@ public class BankPaymentService {
                     registration.setStatus(RegistrationStatus.ACTIVE);
                     registration.setRegistrationType(RegistrationType.ONLINE);
                     registration.setNotes("Activated via bank transfer payment. OrderId: " + order.getId());
+                    registration.setPaymentOrder(order); // Link payment order
 
                     activatedRegistration = DatabaseRetryUtil.executeWithRetry(
                         () -> serviceRegistrationRepository.save(registration),
@@ -635,8 +688,6 @@ public class BankPaymentService {
                 throw new BankPaymentException("Service activation failed", "SERVICE_ACTIVATION_FAILED", e);
             }
         }
-
-        // Send payment confirmation email after successful payment
         private void sendPaymentConfirmationEmail(PaymentOrder order, SepayWebhookRequest payload) {
             try {
                 String userEmail = order.getUser().getEmail();
@@ -678,23 +729,7 @@ public class BankPaymentService {
         
         // Map ServiceRegistration to ServiceRegistrationResponse
         private ServiceRegistrationResponse mapToResponse(ServiceRegistration registration) {
-            UserResponse userResponse = userMapper.toResponse(registration.getUser());
-            GymServiceResponse serviceResponse = gymServiceService.getServiceById(registration.getGymService().getId());
-
-            return ServiceRegistrationResponse.builder()
-                    .id(registration.getId())
-                    .user(userResponse)
-                    .service(serviceResponse)
-                    .status(registration.getActualStatus())
-                    .notes(registration.getNotes())
-                    .registrationDate(registration.getRegistrationDate())
-                    .expirationDate(registration.getExpirationDate())
-                    .cancelledDate(registration.getCancelledDate())
-                    .cancellationReason(registration.getCancellationReason())
-                    .paymentStatus(PaymentStatus.SUCCESS)
-                    .trainerName(registration.getTrainer() != null ? registration.getTrainer().getFullName() : null)
-                    .registrationType(registration.getRegistrationType())
-                    .build();
+            return serviceRegistrationMapper.toResponse(registration);
         }
 
 

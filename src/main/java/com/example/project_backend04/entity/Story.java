@@ -38,7 +38,7 @@ public class Story {
     @Column(length = 50)
     private String tag;
 
-    @Column(columnDefinition = "VARCHAR(500)")
+    @Column(columnDefinition = "VARCHAR(1100)")
     private String content;
 
     @Column(nullable = false)

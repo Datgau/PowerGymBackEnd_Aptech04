@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -165,20 +166,23 @@ public class ConflictDetectionService implements IConflictDetectionService {
     @Override
     public boolean hasTimeConflictExcluding(Long trainerId, LocalDate date, LocalTime startTime, 
                                           LocalTime endTime, Long excludeBookingId) {
+        List<BookingStatus> statuses = Arrays.asList(BookingStatus.PENDING, BookingStatus.CONFIRMED);
         List<TrainerBooking> conflictingBookings = trainerBookingRepository
-            .findConflictingBookingsExcluding(trainerId, date, startTime, endTime, excludeBookingId);
+            .findConflictingBookingsExcluding(trainerId, date, startTime, endTime, excludeBookingId, statuses);
         
         return !conflictingBookings.isEmpty();
     }
     
     private List<TrainerBooking> findConflictingBookings(CreateBookingRequest request) {
         if (request.getExcludeBookingId() != null) {
+            List<BookingStatus> statuses = Arrays.asList(BookingStatus.PENDING, BookingStatus.CONFIRMED);
             return trainerBookingRepository.findConflictingBookingsExcluding(
                 request.getTrainerId(),
                 request.getBookingDate(),
                 request.getStartTime(),
                 request.getEndTime(),
-                request.getExcludeBookingId()
+                request.getExcludeBookingId(),
+                statuses
             );
         } else {
             // Create a query that uses trainerId directly

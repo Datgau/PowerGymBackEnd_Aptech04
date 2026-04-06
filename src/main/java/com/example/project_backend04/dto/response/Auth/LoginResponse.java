@@ -16,4 +16,7 @@ public class LoginResponse {
     private String fullName;
     private String avatar;
     private JwtResponse token;
+    private String phoneNumber;
+    private String bio;
+    private String dateOfBirth;
 }

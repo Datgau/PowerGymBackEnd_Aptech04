@@ -68,6 +68,7 @@ public class ServiceRegistrationService {
     private final PaymentOrderRepository paymentOrderRepository;
     private final TrainerSpecialtyRepository trainerSpecialtyRepository;
     private final EmailService emailService;
+    private final com.example.project_backend04.mapper.ServiceRegistrationMapper serviceRegistrationMapper;
 
     @Transactional
     public ServiceRegistrationResponse registerService(ServiceRegistrationRequest request) {
@@ -375,61 +376,7 @@ public class ServiceRegistrationService {
     }
 
     private ServiceRegistrationResponse mapToResponse(ServiceRegistration registration) {
-        UserResponse userResponse = userMapper.toResponse(registration.getUser());
-        GymServiceResponse serviceResponse = gymServiceService.getServiceById(registration.getGymService().getId());
-
-        // Populate paymentStatus from associated PaymentOrder
-        // Note: PaymentOrder uses itemType="SERVICE" and itemId=serviceId
-        // We need to filter by user to get the correct payment for this specific registration
-        // If multiple payments exist, prioritize SUCCESS status, then get the latest one
-        PaymentStatus paymentStatus = null;
-        List<PaymentOrder> paymentOrders = paymentOrderRepository.findByUserAndItemTypeAndItemIdOrderByCreatedAtDesc(
-            registration.getUser(),
-            "SERVICE", 
-            registration.getGymService().getId().toString()
-        );
-        
-        if (!paymentOrders.isEmpty()) {
-            // First try to find a SUCCESS payment
-            PaymentOrder successPayment = paymentOrders.stream()
-                .filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
-                .findFirst()
-                .orElse(null);
-            
-            if (successPayment != null) {
-                paymentStatus = successPayment.getStatus();
-            } else {
-                // If no SUCCESS payment, use the latest one
-                paymentStatus = paymentOrders.get(0).getStatus();
-            }
-        } else {
-            // Nếu không có PaymentOrder → đăng ký tại quầy, set PENDING
-            paymentStatus = PaymentStatus.PENDING;
-        }
-
-        // Populate trainerName from assigned trainer
-        String trainerName = null;
-        if (registration.getTrainer() != null) {
-            trainerName = registration.getTrainer().getFullName();
-        }
-
-        // Populate registrationType from entity
-        RegistrationType registrationType = registration.getRegistrationType();
-
-        return ServiceRegistrationResponse.builder()
-                .id(registration.getId())
-                .user(userResponse)
-                .service(serviceResponse)
-                .status(registration.getActualStatus()) // Sử dụng getActualStatus() để auto check expired
-                .notes(registration.getNotes())
-                .registrationDate(registration.getRegistrationDate())
-                .expirationDate(registration.getExpirationDate())
-                .cancelledDate(registration.getCancelledDate())
-                .cancellationReason(registration.getCancellationReason())
-                .paymentStatus(paymentStatus)
-                .trainerName(trainerName)
-                .registrationType(registrationType)
-                .build();
+        return serviceRegistrationMapper.toResponse(registration);
     }
 
     // Send counter registration email notification

@@ -120,23 +120,15 @@ public class WebhookAuthenticationFilter implements Filter {
         
         return currentCount <= bankPaymentConfig.webhook().rateLimitPerMinute();
     }
-    
-    /**
-     * Clean up rate limiting entries older than 2 minutes to prevent memory leaks
-     */
+
     private void cleanupOldEntries(LocalDateTime currentMinute) {
         LocalDateTime cutoff = currentMinute.minusMinutes(2);
         
         lastResetTime.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
-        
-        // Remove corresponding request counts
-        requestCounts.entrySet().removeIf(entry -> 
+        requestCounts.entrySet().removeIf(entry ->
             !lastResetTime.containsKey(entry.getKey()));
     }
-    
-    /**
-     * Extract client IP address from request, considering proxy headers
-     */
+
     private String getClientIP(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
@@ -151,39 +143,26 @@ public class WebhookAuthenticationFilter implements Filter {
         
         return request.getRemoteAddr();
     }
-    
-    /**
-     * Log webhook attempt with basic request information for audit purposes
-     */
+
     private void logWebhookAttempt(HttpServletRequest request, String clientIP) {
         String userAgent = request.getHeader("User-Agent");
         String contentType = request.getContentType();
-        
-        // Structured audit log for webhook attempts
-        log.info("AUDIT_LOG - WEBHOOK_ATTEMPT - IP: {}, Path: {}, Method: {}, User-Agent: {}, Content-Type: {}, Timestamp: {}", 
+        log.info("AUDIT_LOG - WEBHOOK_ATTEMPT - IP: {}, Path: {}, Method: {}, User-Agent: {}, Content-Type: {}, Timestamp: {}",
             clientIP, request.getServletPath(), request.getMethod(), userAgent, contentType, 
-            java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     }
     
-    /**
-     * Log security events with structured format for audit and monitoring
-     */
+
     private void logSecurityEvent(String eventType, String clientIP, String path, String details) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        
-        // Enhanced structured audit log for security events
-        log.warn("AUDIT_LOG - SECURITY_EVENT - Type: {}, IP: {}, Path: {}, Details: {}, Timestamp: {}", 
+        log.warn("AUDIT_LOG - SECURITY_EVENT - Type: {}, IP: {}, Path: {}, Details: {}, Timestamp: {}",
             eventType, clientIP, path, details, timestamp);
     }
-    
-    /**
-     * Send standardized error response
-     */
+
     private void sendErrorResponse(HttpServletResponse response, int statusCode, String message) 
             throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(statusCode);
-        
         ApiResponse<?> apiResponse = new ApiResponse<>(
             false,
             message,

@@ -2,21 +2,16 @@ package com.example.project_backend04.service;
 
 import com.example.project_backend04.dto.request.TrainerBooking.CreateBookingRequest;
 import com.example.project_backend04.dto.request.TrainerBooking.RejectBookingRequest;
+import com.example.project_backend04.dto.response.Trainer.TrainerForBookingResponse;
 import com.example.project_backend04.dto.response.TrainerBooking.TrainerBookingResponse;
 import com.example.project_backend04.dto.response.User.UserResponse;
-import com.example.project_backend04.entity.PaymentOrder;
-import com.example.project_backend04.entity.ServiceRegistration;
-import com.example.project_backend04.entity.TrainerBooking;
-import com.example.project_backend04.entity.User;
+import com.example.project_backend04.entity.*;
 import com.example.project_backend04.enums.BookingStatus;
 import com.example.project_backend04.enums.PaymentStatus;
-import com.example.project_backend04.repository.PaymentOrderRepository;
-import com.example.project_backend04.repository.ServiceRegistrationRepository;
-import com.example.project_backend04.repository.TrainerBookingRepository;
-import com.example.project_backend04.repository.TrainerSpecialtyRepository;
-import com.example.project_backend04.repository.UserRepository;
+import com.example.project_backend04.repository.*;
 import com.example.project_backend04.service.IService.ITrainerBookingService;
 import com.example.project_backend04.service.IService.ITrainerWorkingHoursService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -41,16 +37,13 @@ public class TrainerBookingService implements ITrainerBookingService {
     private final TrainerSpecialtyRepository specialtyRepo;
     private final ITrainerWorkingHoursService workingHoursService;
     private final PaymentOrderRepository paymentOrderRepo;
-
+    private final GymServiceRepository gymServiceRepository;
+    private final TrainerSpecialtyRepository trainerSpecialtyRepository;
 
     @Override
     public TrainerBookingResponse createBooking(Long userId, CreateBookingRequest req) {
-
-        // 1. Load user
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-
-        // 2. Load & validate ServiceRegistration
         ServiceRegistration reg = serviceRegRepo.findById(req.getServiceRegistrationId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "ServiceRegistration not found: " + req.getServiceRegistrationId()));
@@ -231,12 +224,56 @@ public class TrainerBookingService implements ITrainerBookingService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<TrainerForBookingResponse> getTrainersByServiceId(Long serviceId) {
+        GymService service = gymServiceRepository.findById(serviceId)
+                .orElseThrow(() -> new EntityNotFoundException("Service not found: " + serviceId));
 
+        Long categoryId = service.getCategory().getId();
+        log.debug("Loading trainers for service {} (category {})", serviceId, categoryId);
+
+        List<TrainerSpecialty> specialties = trainerSpecialtyRepository
+                .findTrainerSpecialtiesByCategory(categoryId);
+
+        // Group by trainer, map to response
+        return specialties.stream()
+                .collect(Collectors.groupingBy(ts -> ts.getUser().getId()))
+                .values().stream()
+                .filter(trainerSpecialties -> {
+                    var user = trainerSpecialties.get(0).getUser();
+                    return Boolean.TRUE.equals(user.getIsActive());
+                })
+                .map(trainerSpecialties -> {
+                    var user = trainerSpecialties.get(0).getUser();
+                    return TrainerForBookingResponse.builder()
+                            .id(user.getId())
+                            .fullName(user.getFullName())
+                            .email(user.getEmail())
+                            .avatar(user.getAvatar())
+                            .bio(user.getBio())
+                            .totalExperienceYears(user.getTotalExperienceYears())
+                            .isActive(user.getIsActive())
+                            .specialties(trainerSpecialties.stream()
+                                    .map(ts -> TrainerForBookingResponse.SpecialtyInfo.builder()
+                                            .id(ts.getId())
+                                            .specialty(TrainerForBookingResponse.CategoryInfo.builder()
+                                                    .id(ts.getSpecialty().getId())
+                                                    .name(ts.getSpecialty().getName())
+                                                    .displayName(ts.getSpecialty().getDisplayName())
+                                                    .build())
+                                            .experienceYears(ts.getExperienceYears())
+                                            .level(ts.getLevel())
+                                            .build())
+                                    .collect(Collectors.toList()))
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
 
     // ── Trainer actions ───────────────────────────────────────────────────────────
 
     @Override
-    public TrainerBookingResponse acceptBooking(Long trainerId, Long bookingId, String trainerNotes) {
+    public TrainerBookingResponse acceptBooking(Long trainerId, String bookingId, String trainerNotes) {
         TrainerBooking booking = findAndValidateTrainer(bookingId, trainerId);
 
         if (!booking.canTrainerRespond()) {
@@ -245,9 +282,10 @@ public class TrainerBookingService implements ITrainerBookingService {
         }
 
         // Race-condition guard: kiểm tra lại conflict trước khi confirm
+        List<BookingStatus> statuses = Arrays.asList(BookingStatus.PENDING, BookingStatus.CONFIRMED);
         List<TrainerBooking> conflicts = bookingRepo.findConflictingBookingsExcluding(
                 trainerId, booking.getBookingDate(),
-                booking.getStartTime(), booking.getEndTime(), bookingId);
+                booking.getStartTime(), booking.getEndTime(), booking.getId(), statuses);
         if (!conflicts.isEmpty()) {
             throw new IllegalStateException(
                     "Có lịch booking khác đã được xác nhận trong khung giờ này");
@@ -255,13 +293,11 @@ public class TrainerBookingService implements ITrainerBookingService {
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setTrainerNotes(trainerNotes);
-
-        log.info("Trainer {} accepted booking {}", trainerId, booking.getBookingId());
         return toResponse(bookingRepo.save(booking));
     }
 
     @Override
-    public TrainerBookingResponse rejectBooking(Long trainerId, Long bookingId,
+    public TrainerBookingResponse rejectBooking(Long trainerId, String bookingId,
                                                 RejectBookingRequest req) {
         TrainerBooking booking = findAndValidateTrainer(bookingId, trainerId);
 
@@ -420,8 +456,8 @@ public class TrainerBookingService implements ITrainerBookingService {
         return booking;
     }
 
-    private TrainerBooking findAndValidateTrainer(Long bookingId, Long trainerId) {
-        TrainerBooking booking = bookingRepo.findById(bookingId)
+    private TrainerBooking findAndValidateTrainer(String bookingId, Long trainerId) {
+        TrainerBooking booking = bookingRepo.findByBookingId(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking: " + bookingId));
         if (booking.getTrainer() == null || !booking.getTrainer().getId().equals(trainerId)) {
             throw new SecurityException("Bạn không phải trainer được gán cho booking này");

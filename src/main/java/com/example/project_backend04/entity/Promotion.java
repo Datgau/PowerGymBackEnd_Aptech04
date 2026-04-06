@@ -73,7 +73,7 @@ public class Promotion {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     @Builder.Default
     private Boolean isFeatured = false;
 

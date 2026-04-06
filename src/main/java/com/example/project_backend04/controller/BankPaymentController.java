@@ -34,13 +34,13 @@ public class BankPaymentController {
             );
         }
         
-        log.info("AUDIT_LOG - API_REQUEST - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, PackageId: {}, ItemType: {}, BookingId: {}, Timestamp: {}",
-            request.getUserId(), request.getServiceId(), request.getPackageId(), request.getItemType(), request.getBookingId(), java.time.LocalDateTime.now());
+        log.info("AUDIT_LOG - API_REQUEST - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, PackageId: {}, ItemType: {}, BookingId: {}, PromotionCode: {}, Timestamp: {}",
+            request.getUserId(), request.getServiceId(), request.getPackageId(), request.getItemType(), request.getBookingId(), request.getPromotionCode(), java.time.LocalDateTime.now());
         
         try {
             CreateBankPaymentResponse response = bankPaymentService.createBankPayment(
                 request.getUserId(), request.getServiceId(), request.getPackageId(), 
-                request.getItemType(), request.getBookingId());
+                request.getItemType(), request.getBookingId(), request.getPromotionCode());
             return ResponseEntity.ok(ApiResponse.success(response, "Bank payment created successfully"));
             
         } catch (Exception e) {

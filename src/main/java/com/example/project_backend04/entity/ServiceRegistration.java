@@ -69,17 +69,19 @@ public class ServiceRegistration {
     @OneToMany(mappedBy = "serviceRegistration", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<TrainerBooking> trainerBookings = new ArrayList<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_order_id")
+    private PaymentOrder paymentOrder;
+
 
     @PrePersist
     protected void onCreate() {
         this.registrationDate = LocalDateTime.now();
-        // Tự động tính expirationDate dựa trên service duration
         if (this.gymService != null && this.gymService.getDuration() != null) {
             this.expirationDate = this.registrationDate.plusDays(this.gymService.getDuration());
         }
     }
-    
-    // NEW HELPER METHODS
+
     public boolean isExpired() {
         return expirationDate != null && expirationDate.isBefore(LocalDateTime.now());
     }

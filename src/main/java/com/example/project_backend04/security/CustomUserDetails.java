@@ -18,7 +18,6 @@ public class CustomUserDetails implements UserDetails {
         this.authorities = authorities;
     }
 
-    // Getter for User entity
     public User getUser() {
         return user;
     }
