@@ -21,7 +21,7 @@ target/
 *.tar.gz
 *.rar
 *.md
-.idea\
+*.idea\
 *.kiro\
 *.iml
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
@@ -32,3 +32,4 @@ replay_pid*
 .env
 *.env
 gg_cloud_storage4.json
+
