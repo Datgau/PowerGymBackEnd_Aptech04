@@ -24,7 +24,7 @@ public class TrainerBooking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 50)
     private String bookingId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -63,7 +63,7 @@ public class TrainerBooking {
     @Column
     private LocalDateTime cancelledAt;
 
-    @Column
+    @Column(length = 255)
     private String cancellationReason;
 
 
@@ -73,7 +73,7 @@ public class TrainerBooking {
     @Column(columnDefinition = "TEXT")
     private String rejectionReason;
 
-    @Column
+    @Column(length = 500)
     private String rejectionMediaUrl;
 
 

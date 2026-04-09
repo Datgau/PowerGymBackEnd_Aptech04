@@ -28,16 +28,15 @@ public class TrainerSpecialty {
     private ServiceCategory specialty;
 
     @Column(columnDefinition = "TEXT")
-    private String description; // Mô tả về chuyên môn của trainer trong bộ môn nàyx`
-
+    private String description;
     @Column
-    private Integer experienceYears; // Số năm kinh nghiệm trong bộ môn này
+    private Integer experienceYears;
 
     @Column(columnDefinition = "TEXT")
-    private String certifications; // Các chứng chỉ liên quan đến bộ môn này
+    private String certifications;
 
-    @Column
-    private String level; // Trình độ: BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+    @Column(length = 50)
+    private String level;
 
     @Column(nullable = false)
     private Boolean isActive = true;

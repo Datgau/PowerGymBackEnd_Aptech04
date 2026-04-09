@@ -18,6 +18,7 @@ import com.example.project_backend04.service.IService.ITrainerSelectionService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,7 @@ public class EnhancedServiceRegistrationService {
     private final NotificationService notificationService;
     private final  TrainerBookingService trainerBookingService;
     private final PaymentOrderRepository paymentOrderRepository;
+    private final TrainerSalaryService trainerSalaryService;
     
     @Transactional
     public ServiceRegistrationWithTrainerResponse registerServiceWithTrainer(
@@ -97,7 +99,7 @@ public class EnhancedServiceRegistrationService {
             throw new IllegalStateException("Can only assign trainer to active registrations");
         }
         
-        // Use trainer selection service to assign trainer
+        // Use trainer selection service to assign trainer (this will also add salary if payment is SUCCESS)
         trainerSelectionService.assignTrainerToServiceRegistration(registrationId, trainerId, notes);
         
         // Reload registration with trainer info
@@ -290,9 +292,26 @@ public class EnhancedServiceRegistrationService {
         
         // Link payment order to registration
         registration.setPaymentOrder(savedPaymentOrder);
-        serviceRegistrationRepository.save(registration);
+        ServiceRegistration savedRegistration = serviceRegistrationRepository.save(registration);
         
         log.info("Successfully confirmed counter payment for registration {} - Service start date: {}, expiration date: {}", 
             registrationId, registration.getRegistrationDate(), registration.getExpirationDate());
+        
+        // Add salary if trainer is already assigned
+        if (savedRegistration.getTrainer() != null) {
+            try {
+                Long trainerId = savedRegistration.getTrainer().getId();
+                Long serviceId = savedRegistration.getGymService().getId();
+                
+                log.info("Trainer already assigned, adding salary to trainer {} for service {} (paymentAmount={})", 
+                    trainerId, serviceId, amount);
+                
+                trainerSalaryService.addSalaryToTrainer(trainerId, serviceId, amount);
+                
+                log.info("Salary added successfully to trainer {} after counter payment confirmation", trainerId);
+            } catch (Exception e) {
+                log.error("Failed to add salary to trainer after counter payment - continuing", e);
+            }
+        }
     }
 }

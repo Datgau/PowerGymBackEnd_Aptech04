@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,41 +21,44 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column
+    @Column(length = 255)
     private String password;
 
-    @Column(unique = true)
+    @Column(unique = true, length = 255)
     private String email;
 
-    @Column
+    @Column(length = 255)
     private String fullName;
 
-    @Column
+    @Column(length = 50)
     private String phoneNumber;
 
-    @Column
+    @Column(length = 50)
     private String dateOfBirth;
 
-    @Column
+    @Column(length = 500)
     private String avatar;
 
     @Column(columnDefinition = "TEXT")
     private String bio;
 
-    @Column
+    @Column(length = 500)
     private String coverPhoto;
     
     @Column
     private Integer totalExperienceYears;
     
-    @Column
+    @Column(length = 255)
     private String education;
     
-    @Column
+    @Column(length = 255)
     private String emergencyContact;
     
-    @Column
+    @Column(length = 50)
     private String emergencyPhone;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal salaryBalance = BigDecimal.ZERO;
 
     @Column(length = 512)
     private String refreshToken;
@@ -87,7 +91,6 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Notification> notifications;
 
-    // PowerGym specific relationships
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Membership> memberships;
 
@@ -100,17 +103,20 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ServiceRegistration> serviceRegistrations;
 
-    // Trainer specialties (only for users with TRAINER role)
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrainerSpecialty> trainerSpecialties;
 
-    // Trainer documents (only for users with TRAINER role)
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrainerDocument> trainerDocuments;
 
-    // Trainer working hours (only for users with TRAINER role)
     @OneToMany(mappedBy = "trainer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrainerWorkingHours> workingHours;
+
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ImportReceipt> importReceipts;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductOrder> productOrders;
 
     @PrePersist
     protected void onCreate() {

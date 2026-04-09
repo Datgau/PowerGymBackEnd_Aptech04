@@ -29,7 +29,7 @@ public class RewardTransaction {
     @Column(nullable = false)
     private Integer points;
     
-    @Column(name = "payment_order_id")
+    @Column(name = "payment_order_id", length = 100)
     private String paymentOrderId;
     
     @Column(columnDefinition = "TEXT")

@@ -56,31 +56,23 @@ public class CloudinaryService implements ICloudinaryService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Invalid file");
         }
-
-        // Generate unique filename
         String publicId = folderName + "/" + UUID.randomUUID() + "_" + 
                           file.getOriginalFilename().replaceAll("\\s+", "_");
 
-        // Upload to Cloudinary with optimization
         Map uploadResult = cloudinary.uploader().upload(file.getBytes(), 
             ObjectUtils.asMap(
                 "public_id", publicId,
                 "folder", folderName,
-                "resource_type", "auto", // auto-detect file type
-                "quality", "auto:good", // auto optimize quality
-                "fetch_format", "auto", // auto convert to WebP if supported
-                "flags", "progressive" // progressive loading
+                "resource_type", "auto",
+                "quality", "auto:good",
+                "fetch_format", "auto",
+                "flags", "progressive"
             )
         );
 
-        // Return secure URL
         return (String) uploadResult.get("secure_url");
     }
 
-    /**
-     * Upload với transformation cụ thể (resize, crop, optimize)
-     * Dùng cho avatar, thumbnails, etc.
-     */
     public String uploadWithTransformation(MultipartFile file, String folderName, 
                                           int width, int height, String cropMode) throws IOException {
         if (file == null || file.isEmpty()) {

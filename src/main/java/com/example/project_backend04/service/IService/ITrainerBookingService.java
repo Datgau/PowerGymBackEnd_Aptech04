@@ -5,6 +5,7 @@ import com.example.project_backend04.dto.request.TrainerBooking.RejectBookingReq
 import com.example.project_backend04.dto.response.TrainerBooking.TrainerBookingResponse;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Interface cho luồng đặt lịch với Trainer mới:
@@ -108,4 +109,12 @@ public interface ITrainerBookingService {
      */
     boolean checkTrainerTimeSlotConflict(Long trainerId, java.time.LocalDate date,
                                         java.time.LocalTime startTime, java.time.LocalTime endTime);
+
+    /**
+     * Get list of dates in a month that have bookings for a trainer
+     * Returns two lists:
+     * - fullyBooked: dates with all 14 slots booked (should be disabled)
+     * - partiallyBooked: dates with 1-13 slots booked (should be highlighted)
+     */
+    Map<String, List<java.time.LocalDate>> getTrainerBookedDatesInMonth(Long trainerId, int year, int month);
 }

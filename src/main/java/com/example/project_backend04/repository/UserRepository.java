@@ -37,7 +37,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // Search users theo email hoặc phone trong tất cả roles (USER, STAFF)
     @Query("SELECT u FROM User u WHERE u.role.name IN :roleNames AND " +
-           "(LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "(u.email LIKE CONCAT('%', :searchTerm, '%') OR " +
            "u.phoneNumber LIKE CONCAT('%', :searchTerm, '%')) " +
            "ORDER BY u.createDate DESC")
     Page<User> searchByEmailOrPhoneInRoles(@Param("roleNames") List<String> roleNames, 
@@ -46,7 +46,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // Search users theo email hoặc phone trong single role
     @Query("SELECT u FROM User u WHERE u.role.name = :roleName AND " +
-           "(LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "(u.email LIKE CONCAT('%', :searchTerm, '%') OR " +
            "u.phoneNumber LIKE CONCAT('%', :searchTerm, '%')) " +
            "ORDER BY u.createDate DESC")
     Page<User> searchByEmailOrPhoneInRole(@Param("roleName") String roleName, 

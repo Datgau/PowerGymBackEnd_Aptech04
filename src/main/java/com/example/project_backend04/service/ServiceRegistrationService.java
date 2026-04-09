@@ -31,6 +31,7 @@ import com.example.project_backend04.service.EnhancedServiceRegistrationService;
 import com.example.project_backend04.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -105,6 +106,9 @@ public class ServiceRegistrationService {
         }
 
         ServiceRegistration saved = registrationRepository.save(registration);
+        
+
+        
         ServiceRegistrationResponse response = mapToResponse(saved);
         eventPublisher.publishEvent(
             new EntityChangedEvent(this, "SERVICE_REGISTRATION", "REGISTERED", response, saved.getId())
@@ -124,15 +128,12 @@ public class ServiceRegistrationService {
         
         ServiceRegistration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new RuntimeException("Registration not found"));
-
         if (!registration.getUser().getId().equals(currentUser.getId())) {
             throw new RuntimeException("You can only cancel your own registration");
         }
-
         if (registration.getStatus() != RegistrationStatus.ACTIVE) {
             throw new RuntimeException("Registration is not active");
         }
-
         registration.setStatus(RegistrationStatus.CANCELLED);
         registration.setCancelledDate(LocalDateTime.now());
         registrationRepository.save(registration);
@@ -413,4 +414,5 @@ public class ServiceRegistrationService {
             // Don't fail the registration if email fails
         }
     }
+
 }

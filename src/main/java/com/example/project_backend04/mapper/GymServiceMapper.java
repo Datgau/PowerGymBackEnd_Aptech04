@@ -29,6 +29,7 @@ public class GymServiceMapper {
         dto.setDuration(service.getDuration());
         dto.setMaxParticipants(service.getMaxParticipants());
         dto.setIsActive(service.getIsActive());
+        dto.setTrainerPercentage(service.getTrainerPercentage());
         dto.setCategory(mapCategoryToDto(service));
         dto.setImages(mapImagesToUrls(service));
         dto.setRegistrationCount(countActiveRegistrations(service));

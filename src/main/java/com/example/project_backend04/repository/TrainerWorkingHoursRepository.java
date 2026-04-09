@@ -15,19 +15,16 @@ import java.util.Optional;
 @Repository
 public interface TrainerWorkingHoursRepository extends JpaRepository<TrainerWorkingHours, Long> {
 
-    /** Lấy tất cả slot đang active của trainer (để hiển thị lịch trên frontend). */
     @Query("SELECT twh FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id = :trainerId AND twh.isActive = true "
          + "ORDER BY twh.dayOfWeek, twh.slotIndex")
     List<TrainerWorkingHours> findActiveSlotsByTrainer(@Param("trainerId") Long trainerId);
 
-    /** Lấy toàn bộ slot của trainer (kể cả inactive, dùng cho admin quản lý). */
     @Query("SELECT twh FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id = :trainerId "
          + "ORDER BY twh.dayOfWeek, twh.slotIndex")
     List<TrainerWorkingHours> findAllSlotsByTrainer(@Param("trainerId") Long trainerId);
 
-    /** Lấy tất cả slot của trainer theo ngày trong tuần. */
     @Query("SELECT twh FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id = :trainerId "
          + "AND twh.dayOfWeek = :dayOfWeek "
@@ -37,12 +34,6 @@ public interface TrainerWorkingHoursRepository extends JpaRepository<TrainerWork
         @Param("trainerId")  Long trainerId,
         @Param("dayOfWeek")  DayOfWeek dayOfWeek);
 
-
-    /**
-     * Kiểm tra xem trainer có slot active cover khoảng giờ [startTime, endTime]
-     * vào ngày dayOfWeek không.
-     * Dùng khi validate booking: đảm bảo khách chỉ đặt trong giờ trainer làm việc.
-     */
     @Query("SELECT twh FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id = :trainerId "
          + "AND twh.dayOfWeek = :dayOfWeek "
@@ -56,9 +47,6 @@ public interface TrainerWorkingHoursRepository extends JpaRepository<TrainerWork
         @Param("startTime")  LocalTime startTime,
         @Param("endTime")    LocalTime endTime);
 
-    /**
-     * Kiểm tra trainer có ngày nghỉ vào dayOfWeek không.
-     */
     @Query("SELECT COUNT(twh) > 0 FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id = :trainerId "
          + "AND twh.dayOfWeek = :dayOfWeek "
@@ -68,8 +56,6 @@ public interface TrainerWorkingHoursRepository extends JpaRepository<TrainerWork
         @Param("trainerId") Long trainerId,
         @Param("dayOfWeek") DayOfWeek dayOfWeek);
 
-
-    /** Tìm slot cụ thể của trainer theo ngày và slotIndex (để tránh duplicate). */
     @Query("SELECT twh FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id = :trainerId "
          + "AND twh.dayOfWeek = :dayOfWeek "
@@ -79,9 +65,6 @@ public interface TrainerWorkingHoursRepository extends JpaRepository<TrainerWork
         @Param("dayOfWeek")  DayOfWeek dayOfWeek,
         @Param("slotIndex")  Integer slotIndex);
 
-    /**
-     * Lấy lịch làm việc của nhiều trainer cùng lúc.
-     */
     @Query("SELECT twh FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id IN :trainerIds "
          + "AND twh.isActive = true "
@@ -90,13 +73,11 @@ public interface TrainerWorkingHoursRepository extends JpaRepository<TrainerWork
     List<TrainerWorkingHours> findActiveSlotsByTrainers(
         @Param("trainerIds") List<Long> trainerIds);
 
-    /** Số slot active của trainer (dùng cho dashboard). */
     @Query("SELECT COUNT(twh) FROM TrainerWorkingHours twh "
          + "WHERE twh.trainer.id = :trainerId "
          + "AND twh.isActive = true "
          + "AND twh.isDayOff = false")
     Long countActiveSlotsByTrainer(@Param("trainerId") Long trainerId);
 
-    /** Xóa tất cả slot của trainer (dùng khi reset lịch). */
     void deleteByTrainer(User trainer);
 }

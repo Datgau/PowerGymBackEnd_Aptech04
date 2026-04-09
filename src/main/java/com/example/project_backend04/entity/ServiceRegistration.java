@@ -48,7 +48,7 @@ public class ServiceRegistration {
     @Column
     private LocalDateTime cancelledDate;
 
-    @Column
+    @Column(length = 255)
     private String cancellationReason;
 
     @Enumerated(EnumType.STRING)

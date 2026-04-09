@@ -17,6 +17,7 @@ public class GymServiceResponse {
     private Integer maxParticipants;
     private Boolean isActive;
     private Long registrationCount; // Số lượng người đăng ký
+    private BigDecimal trainerPercentage; // Phần trăm lương cho trainer
     
     @Data
     public static class ServiceCategoryDto {

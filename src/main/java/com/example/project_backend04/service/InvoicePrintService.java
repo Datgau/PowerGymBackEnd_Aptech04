@@ -16,9 +16,6 @@ public class InvoicePrintService {
 
     private final TemplateEngine templateEngine;
 
-    /**
-     * Generate PDF from HTML template
-     */
     public byte[] generateInvoicePdf(Object data) {
         try {
             // 1. Bind data to template
@@ -43,9 +40,30 @@ public class InvoicePrintService {
         }
     }
 
-    /**
-     * Print PDF directly to default printer
-     */
+    public byte[] generateProductOrderInvoicePdf(Object orderData) {
+        try {
+            // 1. Bind data to template
+            Context context = new Context();
+            context.setVariable("order", orderData);
+
+            // 2. Render HTML with UTF-8 encoding
+            String html = templateEngine.process("product-order-invoice-template", context);
+
+            // 3. Convert HTML → PDF
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            ITextRenderer renderer = new ITextRenderer();
+
+            renderer.setDocumentFromString(html, null);
+            renderer.layout();
+            renderer.createPDF(outputStream);
+
+            return outputStream.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating product order invoice PDF: " + e.getMessage(), e);
+        }
+    }
+
     public void printPdf(byte[] pdfBytes) {
         try {
             PrintService printService = PrintServiceLookup.lookupDefaultPrintService();
@@ -69,9 +87,7 @@ public class InvoicePrintService {
         }
     }
 
-    /**
-     * Full flow: generate + print
-     */
+
     public void generateAndPrint(Object data) {
         byte[] pdf = generateInvoicePdf(data);
         printPdf(pdf);

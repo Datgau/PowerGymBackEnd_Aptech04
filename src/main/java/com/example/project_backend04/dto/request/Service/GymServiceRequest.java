@@ -18,4 +18,5 @@ public class GymServiceRequest {
     private Integer maxParticipants;
     private List<MultipartFile> images;
     private Boolean isActive;
+    private BigDecimal trainerPercentage;
 }

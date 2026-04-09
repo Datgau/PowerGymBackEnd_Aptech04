@@ -102,7 +102,7 @@ class ServiceRegistrationServiceFilterTest {
         // Setup mock payment order - itemType="SERVICE" and itemId=serviceId
         mockPaymentOrder = new PaymentOrder();
         mockPaymentOrder.setId("payment-1");
-        mockPaymentOrder.setStatus(PaymentStatus.SUCCESS);
+        mockPaymentOrder.setStatus(com.example.project_backend04.enums.PaymentStatus.SUCCESS);
         mockPaymentOrder.setItemType("SERVICE");
         mockPaymentOrder.setItemId("1");
         mockPaymentOrder.setUser(mockUser);

@@ -28,10 +28,10 @@ public class ServiceCategory {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column
+    @Column(length = 100)
     private String icon;
 
-    @Column
+    @Column(length = 50)
     private String color;
 
     @Column(nullable = false)

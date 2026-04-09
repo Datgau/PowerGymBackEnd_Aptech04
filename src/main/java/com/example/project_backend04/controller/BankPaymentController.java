@@ -28,19 +28,20 @@ public class BankPaymentController {
     public ResponseEntity<ApiResponse<CreateBankPaymentResponse>> createBankPayment(
             @RequestBody @Valid CreateBankPaymentRequest request) {
         
-        if (request.getServiceId() == null && request.getPackageId() == null) {
+        if (request.getServiceId() == null && request.getPackageId() == null && !"PRODUCT".equals(request.getItemType())) {
             return ResponseEntity.badRequest().body(
-                ApiResponse.error("Either serviceId or packageId must be provided", HttpStatus.BAD_REQUEST.value())
+                ApiResponse.error("Either serviceId, packageId, or itemType=PRODUCT must be provided", HttpStatus.BAD_REQUEST.value())
             );
         }
         
-        log.info("AUDIT_LOG - API_REQUEST - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, PackageId: {}, ItemType: {}, BookingId: {}, PromotionCode: {}, Timestamp: {}",
-            request.getUserId(), request.getServiceId(), request.getPackageId(), request.getItemType(), request.getBookingId(), request.getPromotionCode(), java.time.LocalDateTime.now());
+        log.info("AUDIT_LOG - API_REQUEST - Endpoint: /api/bank-payments/create, UserId: {}, ServiceId: {}, PackageId: {}, ItemType: {}, BookingId: {}, PromotionCode: {}, Amount: {}, ItemName: {}, Timestamp: {}",
+            request.getUserId(), request.getServiceId(), request.getPackageId(), request.getItemType(), request.getBookingId(), request.getPromotionCode(), request.getAmount(), request.getItemName(), java.time.LocalDateTime.now());
         
         try {
             CreateBankPaymentResponse response = bankPaymentService.createBankPayment(
                 request.getUserId(), request.getServiceId(), request.getPackageId(), 
-                request.getItemType(), request.getBookingId(), request.getPromotionCode());
+                request.getItemType(), request.getBookingId(), request.getPromotionCode(),
+                request.getAmount(), request.getItemName());
             return ResponseEntity.ok(ApiResponse.success(response, "Bank payment created successfully"));
             
         } catch (Exception e) {

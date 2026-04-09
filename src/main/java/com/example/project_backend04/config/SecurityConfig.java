@@ -30,6 +30,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService customUserDetailsService;
     private final WebhookAuthenticationFilter webhookAuthenticationFilter;
+    private final ObjectMapper objectMapper;
 
     @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
     private String allowedOrigins;
@@ -91,6 +92,26 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/bookings/trainers/**").permitAll()
 
+                            // STATISTICS - ADMIN ONLY (Must be before /api/products/**)
+                            .requestMatchers("/api/statistics/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.GET, "/api/products/statistics").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.GET, "/api/product-orders/statistics").hasRole("ADMIN")
+
+                            // PRODUCTS - PUBLIC GET, ADMIN WRITE
+                            .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                            .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+
+                            // PRODUCT ORDERS - AUTHENTICATED USERS
+                            .requestMatchers(HttpMethod.GET, "/api/product-orders/**").authenticated()
+                            .requestMatchers(HttpMethod.POST, "/api/product-orders").authenticated()
+                            .requestMatchers(HttpMethod.PUT, "/api/product-orders/*/payment-status").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.PUT, "/api/product-orders/*/delivery-status").hasRole("ADMIN")
+
+                            // IMPORT RECEIPTS - ADMIN ONLY
+                            .requestMatchers("/api/import-receipts/**").hasRole("ADMIN")
+
                             // MEMBERSHIP PACKAGES - ADMIN ONLY FOR WRITE OPERATIONS
                             .requestMatchers(HttpMethod.GET, "/api/membership-packages/**").hasAnyRole("ADMIN","STAFF")
                             .requestMatchers(HttpMethod.POST, "/api/membership-packages/**").hasRole("ADMIN")
@@ -128,6 +149,9 @@ public class SecurityConfig {
                             // INVOICE ENDPOINTS
                             .requestMatchers("/api/invoices/**").authenticated()
 
+                            // TRAINER SALARY ENDPOINTS - Method-level security via @PreAuthorize
+                            .requestMatchers("/api/trainers/*/salary").authenticated()
+
                             .requestMatchers(HttpMethod.POST, "/api/stories").hasAnyRole("ADMIN", "USER", "STAFF")
                             .requestMatchers(HttpMethod.POST, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
                             .requestMatchers(HttpMethod.PUT, "/api/gym/**").hasAnyRole("ADMIN", "STAFF")
@@ -148,7 +172,7 @@ public class SecurityConfig {
                                     null,
                                     HttpServletResponse.SC_UNAUTHORIZED
                             );
-                            new ObjectMapper().writeValue(response.getWriter(), apiResponse);
+                            objectMapper.writeValue(response.getWriter(), apiResponse);
                         })
 
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
@@ -162,7 +186,7 @@ public class SecurityConfig {
                                     HttpServletResponse.SC_FORBIDDEN
                             );
 
-                            new ObjectMapper().writeValue(response.getWriter(), apiResponse);
+                            objectMapper.writeValue(response.getWriter(), apiResponse);
                         })
                 );
 

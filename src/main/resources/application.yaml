@@ -29,6 +29,12 @@ spring:
         options:
           model: ${OPENAI_MODEL:gpt-4}
           temperature: ${OPENAI_TEMPERATURE:0.7}
+  # Cache Configuration
+  cache:
+    type: simple
+    cache-names: trainerSalary
+    caffeine:
+      spec: expireAfterWrite=300s
 jwt:
   signerKey: ${JWT_SIGNER_KEY}
   valid-duration: 1800

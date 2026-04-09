@@ -150,6 +150,11 @@ public class GymServiceService implements IGymService {
         service.setDuration(request.getDuration());
         service.setMaxParticipants(request.getMaxParticipants());
         service.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        
+        // Set trainer percentage (default to 0.30 if not provided)
+        if (request.getTrainerPercentage() != null) {
+            service.setTrainerPercentage(request.getTrainerPercentage());
+        }
 
         GymService savedService = gymServiceRepository.save(service);
 
@@ -214,6 +219,10 @@ public class GymServiceService implements IGymService {
 
         if (request.getIsActive() != null)
             service.setIsActive(request.getIsActive());
+        
+        // Update trainer percentage if provided
+        if (request.getTrainerPercentage() != null)
+            service.setTrainerPercentage(request.getTrainerPercentage());
 
         // Handle image updates
         if (request.getDeletedImages() != null && !request.getDeletedImages().isEmpty()) {

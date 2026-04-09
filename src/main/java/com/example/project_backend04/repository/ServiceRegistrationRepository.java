@@ -137,4 +137,48 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
         @Param("registrationType") com.example.project_backend04.enums.RegistrationType registrationType,
         @Param("status") RegistrationStatus status
     );
+
+    /**
+     * Find active registrations by trainer ID
+     * Used for trainer salary calculation
+     * Filters by trainerId, status = 'ACTIVE', and non-expired registrations
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "WHERE sr.trainer.id = :trainerId " +
+           "AND sr.status = 'ACTIVE' " +
+           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP)")
+    List<ServiceRegistration> findActiveRegistrationsByTrainerId(
+        @Param("trainerId") Long trainerId
+    );
+
+    /**
+     * Find active registrations by trainer and service
+     * Used for trainer salary calculation per service
+     * Includes LEFT JOIN FETCH for paymentOrder and gymService to avoid N+1 queries
+     * Filters by trainerId, serviceId, status = 'ACTIVE', and non-expired registrations
+     */
+    @Query("SELECT sr FROM ServiceRegistration sr " +
+           "LEFT JOIN FETCH sr.paymentOrder " +
+           "LEFT JOIN FETCH sr.gymService " +
+           "WHERE sr.trainer.id = :trainerId " +
+           "AND sr.gymService.id = :serviceId " +
+           "AND sr.status = 'ACTIVE' " +
+           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP)")
+    List<ServiceRegistration> findActiveRegistrationsByTrainerAndService(
+        @Param("trainerId") Long trainerId,
+        @Param("serviceId") Long serviceId
+    );
+
+    /**
+     * Find distinct gym services by trainer ID
+     * Used for trainer salary calculation to get all services a trainer teaches
+     * Filters by trainerId, status = 'ACTIVE', and non-expired registrations
+     */
+    @Query("SELECT DISTINCT sr.gymService FROM ServiceRegistration sr " +
+           "WHERE sr.trainer.id = :trainerId " +
+           "AND sr.status = 'ACTIVE' " +
+           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP)")
+    List<GymService> findDistinctServicesByTrainerId(
+        @Param("trainerId") Long trainerId
+    );
 }

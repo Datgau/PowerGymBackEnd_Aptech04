@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Controller cho User — đặt lịch, hủy, xem lịch của mình,
@@ -137,6 +138,23 @@ public class UserBookingController {
         try {
             TrainerScheduleResponse schedule = workingHoursService.getWeeklySchedule(trainerId);
             return ok(schedule, "Lấy lịch tuần trainer thành công");
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
+        }
+    }
+
+    /**
+     * Get list of dates in a month that have bookings for a trainer
+     * Used to disable dates in date picker
+     */
+    @GetMapping("/trainers/{trainerId}/booked-dates")
+    public ResponseEntity<ApiResponse<Map<String, List<LocalDate>>>> getTrainerBookedDates(
+            @PathVariable Long trainerId,
+            @RequestParam int year,
+            @RequestParam int month) {
+        try {
+            Map<String, List<LocalDate>> result = bookingService.getTrainerBookedDatesInMonth(trainerId, year, month);
+            return ok(result, "Lấy danh sách ngày đã có lịch thành công");
         } catch (Exception e) {
             return badRequest(e.getMessage());
         }

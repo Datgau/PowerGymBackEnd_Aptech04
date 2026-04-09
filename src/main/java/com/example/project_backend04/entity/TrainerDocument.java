@@ -27,13 +27,13 @@ public class TrainerDocument {
     @Column(nullable = false)
     private DocumentType documentType;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String fileName;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String fileUrl;
 
-    @Column
+    @Column(length = 500)
     private String description;
 
     @Column

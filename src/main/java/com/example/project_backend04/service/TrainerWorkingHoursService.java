@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional
-public class TrainerWorkingHoursServiceImpl implements ITrainerWorkingHoursService {
+public class TrainerWorkingHoursService implements ITrainerWorkingHoursService {
 
     private final TrainerWorkingHoursRepository workingHoursRepo;
     private final TrainerBookingRepository bookingRepo;

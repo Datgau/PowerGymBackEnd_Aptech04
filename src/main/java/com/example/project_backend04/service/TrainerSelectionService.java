@@ -32,6 +32,7 @@ public class TrainerSelectionService implements ITrainerSelectionService {
     private final GymServiceRepository gymServiceRepository;
     private final UserRepository userRepository;
     private final IConflictDetectionService conflictDetectionService;
+    private final TrainerSalaryService trainerSalaryService;
 
     @Override
     @Transactional(readOnly = true)
@@ -81,9 +82,27 @@ public class TrainerSelectionService implements ITrainerSelectionService {
         registration.setTrainer(trainer);
         registration.setTrainerSelectedAt(LocalDateTime.now());
         registration.setTrainerSelectionNotes(notes);
-        serviceRegistrationRepository.save(registration);
+        ServiceRegistration savedRegistration = serviceRegistrationRepository.save(registration);
 
         log.info("Assigned trainer {} to registration {}", trainerId, registrationId);
+        
+        // Add salary if payment is already SUCCESS
+        if (savedRegistration.getPaymentOrder() != null && 
+            savedRegistration.getPaymentOrder().getStatus() == com.example.project_backend04.enums.PaymentStatus.SUCCESS) {
+            try {
+                Long serviceId = savedRegistration.getGymService().getId();
+                Long paymentAmount = savedRegistration.getPaymentOrder().getAmount();
+                
+                log.info("Payment already SUCCESS, adding salary to trainer {} for service {} (paymentAmount={})", 
+                    trainerId, serviceId, paymentAmount);
+                
+                trainerSalaryService.addSalaryToTrainer(trainerId, serviceId, paymentAmount);
+                
+                log.info("Salary added successfully to trainer {} after assignment", trainerId);
+            } catch (Exception e) {
+                log.error("Failed to add salary to trainer {} after assignment - continuing", trainerId, e);
+            }
+        }
     }
 
     @Override

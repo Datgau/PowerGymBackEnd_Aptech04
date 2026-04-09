@@ -44,6 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.out.println("JWT Filter: No Authorization header or invalid format for path: " + path);
             filterChain.doFilter(request, response);
             return;
         }
@@ -51,6 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             final String jwt = authHeader.substring(7);
             final String username = jwtService.extractUsername(jwt);
+            System.out.println("JWT Filter: Extracted username: " + username + " for path: " + path);
 
             if (username != null &&
                     SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -72,12 +74,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     SecurityContextHolder.getContext()
                             .setAuthentication(authToken);
+                    System.out.println("JWT Filter: Authentication set successfully for user: " + username);
+                } else {
+                    System.out.println("JWT Filter: Token is invalid for user: " + username);
                 }
             }
 
         } catch (Exception e) {
             // Log error but don't block request
             System.err.println("JWT authentication error: " + e.getMessage());
+            e.printStackTrace();
         }
 
         filterChain.doFilter(request, response);

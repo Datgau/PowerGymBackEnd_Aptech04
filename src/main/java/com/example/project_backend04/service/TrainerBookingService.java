@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -270,7 +271,6 @@ public class TrainerBookingService implements ITrainerBookingService {
                 .collect(Collectors.toList());
     }
 
-    // ── Trainer actions ───────────────────────────────────────────────────────────
 
     @Override
     public TrainerBookingResponse acceptBooking(Long trainerId, String bookingId, String trainerNotes) {
@@ -329,8 +329,6 @@ public class TrainerBookingService implements ITrainerBookingService {
         return bookingRepo.findUpcomingConfirmedForTrainer(trainerId, LocalDate.now())
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
-
-    // ── Admin actions ─────────────────────────────────────────────────────────────
 
     @Override
     public TrainerBookingResponse assignTrainerByAdmin(Long adminId, Long bookingId, Long trainerId) {
@@ -417,8 +415,6 @@ public class TrainerBookingService implements ITrainerBookingService {
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // ── Validation helpers ────────────────────────────────────────────────────────
-
     @Override
     @Transactional(readOnly = true)
     public List<TrainerBookingResponse> getBookingsByServiceRegistration(Long serviceRegistrationId) {
@@ -443,6 +439,49 @@ public class TrainerBookingService implements ITrainerBookingService {
             trainerId, date, startTime, endTime,
             List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED));
         return !conflicts.isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, List<LocalDate>> getTrainerBookedDatesInMonth(Long trainerId, int year, int month) {
+        LocalDate startOfMonth = LocalDate.of(year, month, 1);
+        LocalDate endOfMonth = startOfMonth.withDayOfMonth(startOfMonth.lengthOfMonth());
+        
+        List<TrainerBooking> bookings = bookingRepo.findByTrainerIdAndBookingDateBetween(
+            trainerId, startOfMonth, endOfMonth);
+        
+        // Total slots per day (8:00 to 22:00 = 14 slots)
+        final int TOTAL_SLOTS_PER_DAY = 14;
+        
+        // Group bookings by date and count slots
+        Map<LocalDate, Long> bookingCountByDate = bookings.stream()
+            .collect(Collectors.groupingBy(
+                TrainerBooking::getBookingDate,
+                Collectors.counting()
+            ));
+        
+        // Separate dates into fully booked (14+ bookings) and partially booked (1-13 bookings)
+        List<LocalDate> fullyBooked = new java.util.ArrayList<>();
+        List<LocalDate> partiallyBooked = new java.util.ArrayList<>();
+        
+        for (Map.Entry<LocalDate, Long> entry : bookingCountByDate.entrySet()) {
+            if (entry.getValue() >= TOTAL_SLOTS_PER_DAY) {
+                fullyBooked.add(entry.getKey());
+            } else {
+                partiallyBooked.add(entry.getKey());
+            }
+        }
+        
+        // Sort both lists
+        java.util.Collections.sort(fullyBooked);
+        java.util.Collections.sort(partiallyBooked);
+        
+        // Return map with both lists
+        Map<String, List<LocalDate>> result = new java.util.HashMap<>();
+        result.put("fullyBooked", fullyBooked);
+        result.put("partiallyBooked", partiallyBooked);
+        
+        return result;
     }
 
 

@@ -21,7 +21,7 @@ public class GymService {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String name;
 
     @Column(columnDefinition = "TEXT")
@@ -50,6 +50,9 @@ public class GymService {
     @Column(nullable = false)
     private Boolean isActive = true;
 
+    @Column(precision = 3, scale = 2, nullable = false)
+    private BigDecimal trainerPercentage = new BigDecimal("0.30");
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createDate;
 
@@ -68,10 +71,23 @@ public class GymService {
     protected void onCreate() {
         this.createDate = LocalDateTime.now();
         this.updateDate = LocalDateTime.now();
+        validateTrainerPercentage();
     }
 
     @PreUpdate
     protected void onUpdate() {
         this.updateDate = LocalDateTime.now();
+        validateTrainerPercentage();
+    }
+
+    protected void validateTrainerPercentage() {
+        if (trainerPercentage != null) {
+            if (trainerPercentage.compareTo(BigDecimal.ZERO) < 0 || 
+                trainerPercentage.compareTo(BigDecimal.ONE) > 0) {
+                throw new IllegalArgumentException(
+                    "Trainer percentage must be between 0.0 and 1.0"
+                );
+            }
+        }
     }
 }

@@ -73,25 +73,19 @@ public class RewardService {
     public void earnPoints(Long userId, BigDecimal orderAmount, String paymentOrderId) {
         UserReward userReward = userRewardRepository.findByUserIdWithLock(userId)
             .orElseGet(() -> createUserReward(userId));
-        
-        // Calculate points: 1000 VND = 1 point
         int pointsEarned = orderAmount.divide(BigDecimal.valueOf(1000), 0, BigDecimal.ROUND_DOWN).intValue();
-        
         if (pointsEarned > 0) {
             userReward.addPoints(pointsEarned);
             userRewardRepository.save(userReward);
-            
-            // Record transaction
             RewardTransaction transaction = RewardTransaction.builder()
                 .userId(userId)
                 .transactionType(TransactionType.EARN)
                 .points(pointsEarned)
                 .paymentOrderId(paymentOrderId)
-                .description("Tích điểm từ đơn hàng #" + paymentOrderId)
+                .description("Earn points from orders #" + paymentOrderId)
                 .build();
-            
+
             rewardTransactionRepository.save(transaction);
-            log.info("User {} earned {} points from order {}", userId, pointsEarned, paymentOrderId);
         }
     }
     

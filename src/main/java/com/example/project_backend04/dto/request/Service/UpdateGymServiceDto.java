@@ -17,4 +17,5 @@ public class UpdateGymServiceDto {
     private List<MultipartFile> images;
     private List<String> deletedImages;
     private Boolean isActive;
+    private BigDecimal trainerPercentage;
 }

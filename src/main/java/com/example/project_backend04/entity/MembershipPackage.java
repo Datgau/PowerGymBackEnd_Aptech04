@@ -22,7 +22,7 @@ public class MembershipPackage {
     private Long id;
 
     @Column(unique = true)
-    private String packageId; // sẽ được tự động generate
+    private String packageId;
 
     @Column(nullable = false)
     private String name;

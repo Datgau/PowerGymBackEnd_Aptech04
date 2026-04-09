@@ -1,5 +1,6 @@
 package com.example.project_backend04.repository;
 
+import com.example.project_backend04.entity.PaymentOrder;
 import com.example.project_backend04.entity.TrainerBooking;
 import com.example.project_backend04.entity.User;
 import com.example.project_backend04.enums.BookingStatus;
@@ -237,5 +238,18 @@ AND (tb.startTime < :endTime AND tb.endTime > :startTime)
     List<TrainerBooking> findByUserIdAndOptionalStatus(
         @Param("userId") Long userId,
         @Param("status") BookingStatus status);
+
+    /**
+     * Find bookings by payment order
+     */
+    List<TrainerBooking> findByPaymentOrder(PaymentOrder paymentOrder);
+
+    /**
+     * Find bookings by trainer in date range (for getting booked dates in month)
+     */
+    List<TrainerBooking> findByTrainerIdAndBookingDateBetween(
+        Long trainerId, 
+        LocalDate startDate, 
+        LocalDate endDate);
 
   }

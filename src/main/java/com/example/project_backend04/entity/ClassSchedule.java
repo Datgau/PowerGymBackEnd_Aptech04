@@ -60,8 +60,6 @@ public class ClassSchedule {
     @Column
     private LocalDateTime updateDate;
 
-    @OneToMany(mappedBy = "classSchedule", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Booking> bookings;
 
     public enum ScheduleStatus {
         SCHEDULED,

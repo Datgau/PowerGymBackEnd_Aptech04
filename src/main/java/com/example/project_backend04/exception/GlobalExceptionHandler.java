@@ -304,6 +304,174 @@ public class GlobalExceptionHandler {
                 .build());
     }
 
+    /**
+     * Handle trainer not found exceptions
+     */
+    @ExceptionHandler(TrainerNotFoundException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleTrainerNotFoundException(
+            TrainerNotFoundException ex, HttpServletRequest request) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("trainerId", ex.getTrainerId());
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse.<Map<String, Object>>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .data(details)
+                .status(HttpStatus.NOT_FOUND.value())
+                .errorCode("TRAINER_NOT_FOUND")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build());
+    }
+
+    /**
+     * Handle invalid role exceptions
+     */
+    @ExceptionHandler(InvalidRoleException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleInvalidRoleException(
+            InvalidRoleException ex, HttpServletRequest request) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", ex.getUserId());
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.<Map<String, Object>>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .data(details)
+                .status(HttpStatus.BAD_REQUEST.value())
+                .errorCode("INVALID_ROLE")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build());
+    }
+
+    /**
+     * Handle invalid percentage exceptions
+     */
+    @ExceptionHandler(InvalidPercentageException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidPercentageException(
+            InvalidPercentageException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.<Void>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .errorCode("INVALID_PERCENTAGE")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build());
+    }
+
+    /**
+     * Handle product not found exceptions
+     */
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleProductNotFoundException(
+            ProductNotFoundException ex, HttpServletRequest request) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("productId", ex.getProductId());
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse.<Map<String, Object>>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .data(details)
+                .status(HttpStatus.NOT_FOUND.value())
+                .errorCode("PRODUCT_NOT_FOUND")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build());
+    }
+
+    /**
+     * Handle product order not found exceptions
+     */
+    @ExceptionHandler(ProductOrderNotFoundException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleProductOrderNotFoundException(
+            ProductOrderNotFoundException ex, HttpServletRequest request) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", ex.getOrderId());
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse.<Map<String, Object>>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .data(details)
+                .status(HttpStatus.NOT_FOUND.value())
+                .errorCode("ORDER_NOT_FOUND")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build());
+    }
+
+    /**
+     * Handle insufficient stock exceptions
+     */
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleInsufficientStockException(
+            InsufficientStockException ex, HttpServletRequest request) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("productId", ex.getProductId());
+        details.put("productName", ex.getProductName());
+        details.put("requestedQuantity", ex.getRequestedQuantity());
+        details.put("availableStock", ex.getAvailableStock());
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ApiResponse.<Map<String, Object>>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .data(details)
+                .status(HttpStatus.CONFLICT.value())
+                .errorCode("INSUFFICIENT_STOCK")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build());
+    }
+
+    /**
+     * Handle invalid status transition exceptions
+     */
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleInvalidStatusTransitionException(
+            InvalidStatusTransitionException ex, HttpServletRequest request) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("currentStatus", ex.getCurrentStatus());
+        details.put("requestedStatus", ex.getRequestedStatus());
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ApiResponse.<Map<String, Object>>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .data(details)
+                .status(HttpStatus.CONFLICT.value())
+                .errorCode("INVALID_STATUS_TRANSITION")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build());
+    }
+
+    /**
+     * Handle import receipt not found exceptions
+     */
+    @ExceptionHandler(ImportReceiptNotFoundException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleImportReceiptNotFoundException(
+            ImportReceiptNotFoundException ex, HttpServletRequest request) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("importReceiptId", ex.getImportReceiptId());
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse.<Map<String, Object>>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .data(details)
+                .status(HttpStatus.NOT_FOUND.value())
+                .errorCode("IMPORT_RECEIPT_NOT_FOUND")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleGlobalException(
             Exception ex, 
