@@ -77,10 +77,10 @@ public class SecurityConfig {
                             .requestMatchers("/ws/**").permitAll()
                             // AI CHATBOT - PUBLIC ACCESS
                             .requestMatchers("/api/chat/**").permitAll()
-                            // ADMIN ONLY (Must be before public GET rules)
-                            .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                            .requestMatchers("/api/stories/admin/**").hasRole("ADMIN")
-                            .requestMatchers("/api/admin/rewards/**").hasRole("ADMIN")
+                            // ADMIN & STAFF ONLY (Must be before public GET rules)
+                            .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers("/api/stories/admin/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers("/api/admin/rewards/**").hasAnyRole("ADMIN", "STAFF")
                             // PUBLIC GET ENDPOINTS
                             .requestMatchers(HttpMethod.GET, "/api/gym/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/service-registrations/**").permitAll()
@@ -92,47 +92,47 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/bookings/trainers/**").permitAll()
 
-                            // STATISTICS - ADMIN ONLY (Must be before /api/products/**)
-                            .requestMatchers("/api/statistics/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.GET, "/api/products/statistics").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.GET, "/api/product-orders/statistics").hasRole("ADMIN")
+                            // STATISTICS - ADMIN & STAFF ONLY (Must be before /api/products/**)
+                            .requestMatchers("/api/statistics/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.GET, "/api/products/statistics").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.GET, "/api/product-orders/statistics").hasAnyRole("ADMIN", "STAFF")
 
-                            // PRODUCTS - PUBLIC GET, ADMIN WRITE
+                            // PRODUCTS - PUBLIC GET, ADMIN & STAFF WRITE
                             .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                            .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.POST, "/api/products/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyRole("ADMIN", "STAFF")
 
                             // PRODUCT ORDERS - AUTHENTICATED USERS
                             .requestMatchers(HttpMethod.GET, "/api/product-orders/**").authenticated()
                             .requestMatchers(HttpMethod.POST, "/api/product-orders").authenticated()
-                            .requestMatchers(HttpMethod.PUT, "/api/product-orders/*/payment-status").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.PUT, "/api/product-orders/*/delivery-status").hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.PUT, "/api/product-orders/*/payment-status").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.PUT, "/api/product-orders/*/delivery-status").hasAnyRole("ADMIN", "STAFF")
 
-                            // IMPORT RECEIPTS - ADMIN ONLY
-                            .requestMatchers("/api/import-receipts/**").hasRole("ADMIN")
+                            // IMPORT RECEIPTS - ADMIN & STAFF ONLY
+                            .requestMatchers("/api/import-receipts/**").hasAnyRole("ADMIN", "STAFF")
 
-                            // MEMBERSHIP PACKAGES - ADMIN ONLY FOR WRITE OPERATIONS
-                            .requestMatchers(HttpMethod.GET, "/api/membership-packages/**").hasAnyRole("ADMIN","STAFF")
-                            .requestMatchers(HttpMethod.POST, "/api/membership-packages/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.PUT, "/api/membership-packages/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.DELETE, "/api/membership-packages/**").hasRole("ADMIN")
+                            // MEMBERSHIP PACKAGES - ADMIN & STAFF FOR WRITE OPERATIONS
+                            .requestMatchers(HttpMethod.GET, "/api/membership-packages/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.POST, "/api/membership-packages/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.PUT, "/api/membership-packages/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.DELETE, "/api/membership-packages/**").hasAnyRole("ADMIN", "STAFF")
 
-                            // EQUIPMENTS - ADMIN ONLY FOR WRITE OPERATIONS
-                            .requestMatchers(HttpMethod.POST, "/api/equipments/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.PUT, "/api/equipments/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.DELETE, "/api/equipments/**").hasRole("ADMIN")
+                            // EQUIPMENTS - ADMIN & STAFF FOR WRITE OPERATIONS
+                            .requestMatchers(HttpMethod.POST, "/api/equipments/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.PUT, "/api/equipments/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.DELETE, "/api/equipments/**").hasAnyRole("ADMIN", "STAFF")
 
-                            // EQUIPMENT CATEGORIES - ADMIN ONLY FOR WRITE OPERATIONS
-                            .requestMatchers(HttpMethod.POST, "/api/equipment-categories/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.PUT, "/api/equipment-categories/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.DELETE, "/api/equipment-categories/**").hasRole("ADMIN")
+                            // EQUIPMENT CATEGORIES - ADMIN & STAFF FOR WRITE OPERATIONS
+                            .requestMatchers(HttpMethod.POST, "/api/equipment-categories/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.PUT, "/api/equipment-categories/**").hasAnyRole("ADMIN", "STAFF")
+                            .requestMatchers(HttpMethod.DELETE, "/api/equipment-categories/**").hasAnyRole("ADMIN", "STAFF")
                             
                             // PROMOTIONS - FEATURED ONLY PUBLIC, REST REQUIRES AUTH
                             .requestMatchers(HttpMethod.GET, "/api/promotions/featured").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/promotions/active").authenticated()
                             .requestMatchers(HttpMethod.POST, "/api/promotions/apply").authenticated()
-                            .requestMatchers("/api/promotions/**").hasRole("ADMIN") // Admin management
+                            .requestMatchers("/api/promotions/**").hasAnyRole("ADMIN", "STAFF") // Admin & Staff management
                             
                             // REWARDS - AUTHENTICATED ONLY (USER-SPECIFIC DATA)
                             .requestMatchers("/api/rewards/**").authenticated()

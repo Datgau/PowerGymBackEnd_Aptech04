@@ -1,6 +1,9 @@
 package com.example.project_backend04.controller;
 
 import com.example.project_backend04.dto.request.User.ChangePasswordRequest;
+import com.example.project_backend04.dto.request.User.ChangeEmailRequest;
+import com.example.project_backend04.dto.request.User.VerifyEmailOtpRequest;
+import com.example.project_backend04.dto.request.User.VerifyNewEmailOtpRequest;
 import com.example.project_backend04.dto.request.User.UpdateProfileRequest;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.User.UserResponse;
@@ -99,6 +102,74 @@ public class UserController {
                     .orElseThrow(() -> new IllegalArgumentException("User not found"));
             userService.changePassword(user.getId(), request);
             return ok(null, "Password changed successfully");
+        } catch (SecurityException e) {
+            return forbidden(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return badRequest(e.getMessage());
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
+        }
+    }
+
+    /**
+     * Step 1: Request OTP to change email (sends OTP to current email)
+     */
+    @PostMapping("/email/request-change")
+    public ResponseEntity<ApiResponse<Void>> requestEmailChange(
+            Authentication authentication,
+            @Valid @RequestBody ChangeEmailRequest request) {
+        try {
+            String currentEmail = authentication.getName();
+            User user = userService.findByEmail(currentEmail)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            userService.sendEmailChangeOtp(user.getId(), request.getNewEmail());
+            return ok(null, "OTP sent to your current email address");
+        } catch (IllegalArgumentException e) {
+            return badRequest(e.getMessage());
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
+        }
+    }
+
+    /**
+     * Step 2: Verify current email OTP (sends OTP to new email)
+     */
+    @PostMapping("/email/verify-current")
+    public ResponseEntity<ApiResponse<Void>> verifyCurrentEmailOtp(
+            Authentication authentication,
+            @Valid @RequestBody VerifyEmailOtpRequest request) {
+        try {
+            String currentEmail = authentication.getName();
+            User user = userService.findByEmail(currentEmail)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            userService.verifyCurrentEmailOtp(user.getId(), request.getOtp());
+            return ok(null, "Current email verified. OTP sent to new email address");
+        } catch (SecurityException e) {
+            return forbidden(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return badRequest(e.getMessage());
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
+        }
+    }
+
+    /**
+     * Step 3: Verify new email OTP and complete email change
+     */
+    @PostMapping("/email/verify-new")
+    public ResponseEntity<ApiResponse<UserResponse>> verifyNewEmailOtp(
+            Authentication authentication,
+            @Valid @RequestBody VerifyNewEmailOtpRequest request) {
+        try {
+            String currentEmail = authentication.getName();
+            User user = userService.findByEmail(currentEmail)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            UserResponse updated = userService.verifyNewEmailOtpAndChangeEmail(
+                user.getId(), 
+                request.getNewEmail(), 
+                request.getOtp()
+            );
+            return ok(updated, "Email changed successfully");
         } catch (SecurityException e) {
             return forbidden(e.getMessage());
         } catch (IllegalArgumentException e) {

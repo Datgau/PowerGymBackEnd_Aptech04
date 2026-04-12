@@ -94,7 +94,7 @@ public class ServiceRegistrationController {
     }
 
     @GetMapping("/service/{serviceId}/paginated")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Page<ServiceRegistrationResponse>>> getServiceRegistrationsPaginated(
             @PathVariable Long serviceId,
             @RequestParam(defaultValue = "0") int page,
@@ -109,7 +109,7 @@ public class ServiceRegistrationController {
     }
 
     @GetMapping("/service/{serviceId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<ServiceRegistrationResponse>>> getServiceRegistrations(
             @PathVariable Long serviceId
     ) {
@@ -122,7 +122,7 @@ public class ServiceRegistrationController {
     }
 
     @GetMapping("/all/paginated")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Page<ServiceRegistrationResponse>>> getAllRegistrationsPaginated(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -148,7 +148,7 @@ public class ServiceRegistrationController {
     }
 
     @GetMapping("/{id}/available-trainers")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<AvailableTrainerResponse>>> getAvailableTrainers(
             @PathVariable Long id
     ) {
@@ -167,7 +167,7 @@ public class ServiceRegistrationController {
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<ServiceRegistrationResponse>>> getAllRegistrations() {
         try {
             return ResponseEntity.ok(ApiResponse.success(registrationService.getAllRegistrations()));
@@ -178,7 +178,7 @@ public class ServiceRegistrationController {
     }
 
     @PutMapping("/{registrationId}/assign-trainer")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Void>> assignTrainer(
             @PathVariable Long registrationId,
             @RequestParam Long trainerId,
@@ -199,7 +199,7 @@ public class ServiceRegistrationController {
     }
 
     @PostMapping("/{registrationId}/confirm-payment")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Void>> confirmCounterPayment(
             @PathVariable Long registrationId,
             @RequestParam Long amount

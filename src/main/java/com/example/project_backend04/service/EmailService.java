@@ -202,8 +202,6 @@ public class EmailService {
 
                     <table width="600" cellpadding="0" cellspacing="0"
                            style="background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.08);">
-
-                        <!-- HEADER -->
                         <tr>
                             <td style="background:linear-gradient(135deg,#045668,#00b4ff); padding:40px; text-align:center;">
                                 <h1 style="margin:0; color:white; font-size:32px;">PowerGym</h1>
@@ -212,8 +210,6 @@ public class EmailService {
                                 </p>
                             </td>
                         </tr>
-
-                        <!-- CONTENT -->
                         <tr>
                             <td style="padding:45px 40px;">
 
@@ -225,8 +221,6 @@ public class EmailService {
                                     We received a request to reset your password.
                                     Click the button below to set a new password.
                                 </p>
-
-                                <!-- BUTTON -->
                                 <table width="100%%" cellpadding="0" cellspacing="0" style="margin:30px 0;">
                                     <tr>
                                         <td align="center">
@@ -660,5 +654,90 @@ font-size:15px;">
 """, fullName, registrationId, serviceName, amount);
 
         sendEmail(to, "Xác nhận đăng ký dịch vụ - PowerGym", stringContent);
+    }
+
+    // ================= EMAIL CHANGE OTP ================= (SYNC - for internal use)
+    public void sendOtpEmail(String to, String otp, String fullName) throws IOException {
+
+        String stringContent = String.format("""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background:#f4f6f8; font-family:Segoe UI,Arial,sans-serif;">
+<table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8; padding:40px 0;">
+    <tr>
+        <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0"
+                   style="background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.08);">
+                <tr>
+                    <td style="background:linear-gradient(135deg,#045668,#00b4ff); padding:40px; text-align:center;">
+                        <h1 style="margin:0; color:white; font-size:32px;">PowerGym</h1>
+                        <p style="margin:10px 0 0 0; color:rgba(255,255,255,0.9); font-size:16px;">
+                            Xác thực thay đổi email
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:45px 40px;">
+                        <h2 style="text-align:center; color:#1a202c; margin-bottom:10px;">
+                            Xin chào %s!
+                        </h2>
+                        <p style="text-align:center; color:#4a5568; line-height:1.6;">
+                            Bạn đã yêu cầu thay đổi địa chỉ email cho tài khoản PowerGym của mình.
+                        </p>
+                        <p style="text-align:center; color:#4a5568; line-height:1.6;">
+                            Vui lòng sử dụng mã OTP bên dưới để xác thực email mới:
+                        </p>
+                        <!-- OTP BOX -->
+                        <table width="100%%" cellpadding="0" cellspacing="0" style="margin:30px 0;">
+                            <tr>
+                                <td align="center">
+                                    <div style="background:#f8fafc;
+                                                border:2px solid #0066ff;
+                                                border-radius:12px;
+                                                padding:25px 40px;
+                                                display:inline-block;">
+                                        <p style="font-size:36px;
+                                                   font-weight:700;
+                                                   letter-spacing:10px;
+                                                   margin:0;
+                                                   color:#045668;
+                                                   font-family:Courier New,monospace;">
+                                            %s
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        <table width="100%%" style="background:#fff5f5; border-left:4px solid #ff6b6b; border-radius:6px; margin:20px 0;">
+                            <tr>
+                                <td style="padding:14px;">
+                                    <p style="margin:0; font-size:14px; color:#742a2a;">
+                                        <strong>Lưu ý:</strong> Mã OTP này sẽ hết hạn sau <strong>10 phút</strong>.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="text-align:center; color:#718096; font-size:14px; margin-top:20px;">
+                            Nếu bạn không yêu cầu thay đổi email, vui lòng bỏ qua email này và liên hệ với chúng tôi ngay lập tức.
+                        </p>
+                        <p style="text-align:center; color:#2d3748; font-weight:600; margin-top:30px;">
+                            Trân trọng,<br>
+                            <span style="color:#045668;">PowerGym Team</span>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
+""", fullName, otp);
+
+        sendEmail(to, "Xác thực thay đổi email - PowerGym", stringContent);
     }
 }

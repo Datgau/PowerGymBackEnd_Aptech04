@@ -113,7 +113,7 @@ public class GymServiceController {
     // ===================== CREATE =====================
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<GymServiceResponse>> createService(
             @ModelAttribute GymServiceRequest request
     ) {
@@ -131,7 +131,7 @@ public class GymServiceController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<GymServiceResponse>> updateService(
             @PathVariable Long id,
             @ModelAttribute UpdateGymServiceDto request
@@ -143,7 +143,7 @@ public class GymServiceController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Void>> deleteService(
             @PathVariable Long id
     ) {

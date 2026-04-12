@@ -80,7 +80,7 @@ public class ProductOrderController {
     }
 
     @GetMapping("/statistics")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<OrderStatisticsResponse>> getOrderStatistics(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate endDate
@@ -202,7 +202,7 @@ public class ProductOrderController {
      * @return Updated product order
      */
     @PutMapping("/{id}/payment-status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<ProductOrderResponse>> updatePaymentStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdatePaymentStatusRequest request
@@ -222,7 +222,7 @@ public class ProductOrderController {
      * @return Updated product order
      */
     @PutMapping("/{id}/delivery-status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<ProductOrderResponse>> updateDeliveryStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateDeliveryStatusRequest request

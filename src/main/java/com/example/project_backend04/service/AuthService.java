@@ -374,10 +374,10 @@ public class AuthService implements IAuthService {
 
         User user = authRepository.findByEmail(email).orElse(null);
         if (user == null) {
-            return new ApiResponse<>(true, "If email exists, reset link sent.", null, 200);
+            return new ApiResponse<>(false, "No account found with this email address.", null, 404);
         }
         if (user.getProviders() != null && !user.getProviders().isEmpty()) {
-            return new ApiResponse<>(false, "Account uses social login.", null, 400);
+            return new ApiResponse<>(false, "This account uses social login. Please sign in with Google or Facebook.", null, 400);
         }
 
         String rawToken = UUID.randomUUID().toString();
@@ -385,7 +385,7 @@ public class AuthService implements IAuthService {
         PasswordResetToken token = PasswordResetToken.builder()
                 .userId(user.getId())
                 .tokenHash(tokenHash)
-                .expiryTime(LocalDateTime.now().plusMinutes(15))
+                .expiryTime(LocalDateTime.now().plusMinutes(10))
                 .isUsed(false)
                 .build();
 
@@ -394,10 +394,12 @@ public class AuthService implements IAuthService {
         try {
             String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
             emailService.sendResetPasswordEmail(user.getEmail(), resetLink);
+            log.info("Password reset email sent to: {}", email);
         } catch (IOException e) {
             log.error("Failed to send reset password email: {}", e.getMessage());
+            return new ApiResponse<>(false, "Failed to send reset email. Please try again.", null, 500);
         }
-        return new ApiResponse<>(true, "If email exists, reset link sent.", null, 200);
+        return new ApiResponse<>(true, "Password reset link has been sent to your email.", null, 200);
     }
 
     @Transactional

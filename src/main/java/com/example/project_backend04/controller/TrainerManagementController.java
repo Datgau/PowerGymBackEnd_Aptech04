@@ -28,7 +28,7 @@ public class TrainerManagementController {
      * Get trainer's schedule for a specific date range
      */
     @GetMapping("/trainer/{trainerId}/schedule")
-    @PreAuthorize("hasRole('ADMIN') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
     public ResponseEntity<ApiResponse<TrainerScheduleResponse>> getTrainerSchedule(
             @PathVariable Long trainerId,
             @RequestParam(required = false) 
@@ -65,7 +65,7 @@ public class TrainerManagementController {
      * Get pending booking requests for a trainer
      */
     @GetMapping("/trainer/{trainerId}/pending-requests")
-    @PreAuthorize("hasRole('ADMIN') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
     public ResponseEntity<ApiResponse<List<TrainerBookingResponse>>> getPendingBookingRequests(
             @PathVariable Long trainerId) {
         
@@ -100,7 +100,7 @@ public class TrainerManagementController {
      * Get trainer statistics
      */
     @GetMapping("/trainer/{trainerId}/statistics")
-    @PreAuthorize("hasRole('ADMIN') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
     public ResponseEntity<ApiResponse<TrainerStatisticsResponse>> getTrainerStatistics(
             @PathVariable Long trainerId,
             @RequestParam(required = false) 
@@ -138,7 +138,7 @@ public class TrainerManagementController {
      * Get all trainers with their current status (for admin overview)
      */
     @GetMapping("/overview")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<TrainerScheduleResponse>>> getTrainersOverview(
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -172,7 +172,7 @@ public class TrainerManagementController {
      * Get trainer workload summary (for admin resource planning)
      */
     @GetMapping("/workload-summary")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<TrainerStatisticsResponse>>> getWorkloadSummary(
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,

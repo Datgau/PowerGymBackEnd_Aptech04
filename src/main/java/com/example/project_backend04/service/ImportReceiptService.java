@@ -263,9 +263,6 @@ public class ImportReceiptService {
             log.debug("Restored stock for product {} by {}", product.getName(), oldItem.getQuantity());
         }
         
-        // Clear old items
-        importReceipt.getItems().clear();
-        
         // Update basic info
         importReceipt.setSupplierName(request.getSupplierName());
         importReceipt.setNotes(request.getNotes());
@@ -278,8 +275,14 @@ public class ImportReceiptService {
             products.add(product);
         }
         
+        // Remove old items properly
+        List<ImportReceiptItem> oldItems = new ArrayList<>(importReceipt.getItems());
+        importReceipt.getItems().clear();
+        
+        // Flush to ensure orphan removal happens
+        importReceiptRepository.flush();
+        
         // Create new items and increase stock
-        List<ImportReceiptItem> newItems = new ArrayList<>();
         for (int i = 0; i < request.getItems().size(); i++) {
             ImportReceiptItemRequest itemRequest = request.getItems().get(i);
             Product product = products.get(i);
@@ -292,7 +295,7 @@ public class ImportReceiptService {
             item.setUnitPrice(itemRequest.getUnitPrice());
             item.setSubtotal(itemRequest.getUnitPrice().multiply(new BigDecimal(itemRequest.getQuantity())));
             
-            newItems.add(item);
+            importReceipt.getItems().add(item);
             
             // Increase product stock
             product.setStock(product.getStock() + itemRequest.getQuantity());
@@ -301,7 +304,6 @@ public class ImportReceiptService {
             log.debug("Increased stock for product {} by {}", product.getName(), itemRequest.getQuantity());
         }
         
-        importReceipt.setItems(newItems);
         importReceipt.calculateTotalCost();
         
         ImportReceipt savedReceipt = importReceiptRepository.save(importReceipt);

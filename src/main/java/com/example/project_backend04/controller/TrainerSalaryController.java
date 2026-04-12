@@ -18,7 +18,7 @@ public class TrainerSalaryController {
     private final TrainerSalaryService trainerSalaryService;
     
     @GetMapping("/{trainerId}/salary")
-    @PreAuthorize("hasRole('ADMIN') or (hasRole('TRAINER') and #trainerId == authentication.principal.id)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF') or (hasRole('TRAINER') and #trainerId == authentication.principal.id)")
     public ResponseEntity<TrainerSalaryResponse> getTrainerSalary(
             @PathVariable Long trainerId
     ) {

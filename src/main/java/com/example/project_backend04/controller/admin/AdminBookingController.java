@@ -30,7 +30,7 @@ import java.util.List;
 @RestController
 @RequestMapping("api/admin/bookings")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
 public class AdminBookingController {
 
     private final ITrainerBookingService bookingService;

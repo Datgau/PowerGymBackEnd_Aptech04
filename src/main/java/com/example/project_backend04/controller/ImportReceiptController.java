@@ -30,7 +30,7 @@ public class ImportReceiptController {
     private final ImportReceiptService importReceiptService;
     
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Page<ImportReceiptResponse>>> getAllImportReceipts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -46,7 +46,7 @@ public class ImportReceiptController {
     }
    
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<ImportReceiptDetailResponse>> getImportReceiptById(@PathVariable Long id) {        
         ImportReceiptDetailResponse receipt = importReceiptService.getImportReceiptById(id);
         return ResponseEntity.ok(ApiResponse.success(receipt, "Import receipt retrieved successfully"));
@@ -54,7 +54,7 @@ public class ImportReceiptController {
     
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<ImportReceiptResponse>> createImportReceipt(
             @Valid @RequestBody CreateImportReceiptRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -79,7 +79,7 @@ public class ImportReceiptController {
      * ADMIN only
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<ImportReceiptResponse>> updateImportReceipt(
             @PathVariable Long id,
             @Valid @RequestBody UpdateImportReceiptRequest request,
@@ -110,7 +110,7 @@ public class ImportReceiptController {
      * ADMIN only
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Void>> deleteImportReceipt(
             @PathVariable Long id,
             @Valid @RequestBody PasswordVerificationRequest request,

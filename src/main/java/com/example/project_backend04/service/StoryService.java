@@ -164,7 +164,8 @@ public class StoryService implements IStoryService {
 
         boolean isOwner = story.getUser().getId().equals(user.getId());
         boolean isAdmin = user.getRole() != null &&
-                user.getRole().getName().equals("ROLE_ADMIN");
+                (user.getRole().getName().equals("ROLE_ADMIN") || 
+                 user.getRole().getName().equals("ROLE_STAFF"));
 
         if (!isOwner && !isAdmin) {
             throw new RuntimeException("You don't have permission to delete this story");

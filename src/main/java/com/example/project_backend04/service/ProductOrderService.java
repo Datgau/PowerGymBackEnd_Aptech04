@@ -55,7 +55,8 @@ public class ProductOrderService {
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        boolean isAdmin = user.getRole().getName().equals("ADMIN");
+        boolean isAdmin = user.getRole().getName().equals("ADMIN") || 
+                          user.getRole().getName().equals("STAFF");
 
         Specification<ProductOrder> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -95,7 +96,8 @@ public class ProductOrderService {
     public ProductOrderDetailResponse getProductOrderById(Long orderId, User user) {
         ProductOrder order = productOrderRepository.findById(orderId)
             .orElseThrow(() -> new ProductOrderNotFoundException(orderId));
-        boolean isAdmin = user.getRole().getName().equals("ADMIN");
+        boolean isAdmin = user.getRole().getName().equals("ADMIN") || 
+                          user.getRole().getName().equals("STAFF");
         if (!isAdmin && (order.getUser() == null || !order.getUser().getId().equals(user.getId()))) {
             throw new AccessDeniedException("You don't have permission to access this order");
         }

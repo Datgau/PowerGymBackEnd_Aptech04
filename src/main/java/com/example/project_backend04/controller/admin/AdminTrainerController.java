@@ -21,7 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/trainers")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
 public class AdminTrainerController {
 
     private final ITrainerService trainerService;

@@ -94,9 +94,10 @@ public class StoryCommentService {
         StoryComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comment not found"));
 
-        // Check if user owns the comment or is admin
+        // Check if user owns the comment or is admin/staff
         if (!comment.getUser().getId().equals(currentUser.getId()) && 
-            !currentUser.getRole().getName().equals("ADMIN")) {
+            !currentUser.getRole().getName().equals("ADMIN") &&
+            !currentUser.getRole().getName().equals("STAFF")) {
             throw new RuntimeException("You can only delete your own comments");
         }
 

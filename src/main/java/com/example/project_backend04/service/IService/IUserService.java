@@ -31,6 +31,21 @@ public interface IUserService {
     void changePassword(Long userId, ChangePasswordRequest request);
     
     /**
+     * Send OTP to new email for email change verification
+     */
+    void sendEmailChangeOtp(Long userId, String newEmail);
+    
+    /**
+     * Verify OTP from current email (Step 1)
+     */
+    void verifyCurrentEmailOtp(Long userId, String otp);
+    
+    /**
+     * Verify OTP from new email and change email (Step 2)
+     */
+    UserResponse verifyNewEmailOtpAndChangeEmail(Long userId, String newEmail, String otp);
+    
+    /**
      * Toggle user active status (Admin only)
      */
     UserResponse toggleUserStatus(Long userId);
