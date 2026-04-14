@@ -83,6 +83,19 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
            "LEFT JOIN FETCH sr.trainer t " +
            "WHERE sr.id = :registrationId")
     Optional<ServiceRegistration> findByIdWithFullDetails(@Param("registrationId") Long registrationId);
+
+    /**
+     * Find user registrations with gym service, trainer AND bookings eagerly loaded.
+     * Used by mobile API to avoid LazyInitializationException.
+     */
+    @Query("SELECT DISTINCT sr FROM ServiceRegistration sr " +
+           "JOIN FETCH sr.gymService gs " +
+           "LEFT JOIN FETCH sr.trainer t " +
+           "LEFT JOIN FETCH sr.trainerBookings tb " +
+           "WHERE sr.user.id = :userId AND sr.status = :status")
+    List<ServiceRegistration> findByUserIdAndStatusWithBookings(
+        @Param("userId") Long userId,
+        @Param("status") RegistrationStatus status);
     
     /**
      * Find registrations by service category that have trainers

@@ -20,6 +20,8 @@ public class ServiceRegistrationWithTrainerResponse {
     private Long id;
     private Long userId;
     private String userName;
+    private String userEmail;
+    private String userAvatar;
     private Long serviceId;
     private String serviceName;
     private String serviceDescription;

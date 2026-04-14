@@ -10,7 +10,6 @@ import com.example.project_backend04.repository.UserRepository;
 import com.example.project_backend04.service.IService.ITrainerSalaryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +28,6 @@ public class TrainerSalaryService implements ITrainerSalaryService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "trainerSalary", key = "#trainerId")
     public TrainerSalaryResponse calculateTotalSalary(Long trainerId) {
         // Validate trainer exists using UserRepository
         User trainer = userRepository.findById(trainerId)
@@ -57,89 +55,81 @@ public class TrainerSalaryService implements ITrainerSalaryService {
     @Override
     @Transactional(readOnly = true)
     public BigDecimal calculateSalaryForService(Long trainerId, Long serviceId) {
-        // Query active registrations using findActiveRegistrationsByTrainerAndService
         List<com.example.project_backend04.entity.ServiceRegistration> registrations = 
             serviceRegistrationRepository.findActiveRegistrationsByTrainerAndService(trainerId, serviceId);
         
-        // Return 0.00 if no registrations found
         if (registrations.isEmpty()) {
             return BigDecimal.ZERO.setScale(2, java.math.RoundingMode.HALF_UP);
         }
-        
-        // Count students (size of registrations list)
-        int studentCount = registrations.size();
-        
-        // Get trainerPercentage from gymService
-        com.example.project_backend04.entity.GymService gymService = registrations.get(0).getGymService();
-        BigDecimal trainerPercentage = gymService.getTrainerPercentage();
-        
-        // Calculate total price by iterating registrations and summing payment amounts
-        BigDecimal totalPrice = BigDecimal.ZERO;
+
+        BigDecimal totalSalary = BigDecimal.ZERO;
         for (com.example.project_backend04.entity.ServiceRegistration registration : registrations) {
-            // Use paymentOrder.amount if available, otherwise use gymService.price
-            if (registration.getPaymentOrder() != null && registration.getPaymentOrder().getAmount() != null) {
-                totalPrice = totalPrice.add(BigDecimal.valueOf(registration.getPaymentOrder().getAmount()));
-            } else {
-                totalPrice = totalPrice.add(gymService.getPrice());
-            }
+            // Dùng lockedTrainerPercentage nếu có, fallback về gymService.trainerPercentage
+            BigDecimal percentage = registration.getLockedTrainerPercentage() != null
+                ? registration.getLockedTrainerPercentage()
+                : registration.getGymService().getTrainerPercentage();
+
+            BigDecimal amount = (registration.getPaymentOrder() != null && registration.getPaymentOrder().getAmount() != null)
+                ? BigDecimal.valueOf(registration.getPaymentOrder().getAmount())
+                : registration.getGymService().getPrice();
+
+            totalSalary = totalSalary.add(amount.multiply(percentage));
         }
-        
-        // Calculate average price: totalPrice / studentCount
-        BigDecimal averagePrice = totalPrice.divide(BigDecimal.valueOf(studentCount), 2, java.math.RoundingMode.HALF_UP);
-        
-        // Apply formula: salary = averagePrice × trainerPercentage × studentCount
-        BigDecimal salary = averagePrice.multiply(trainerPercentage).multiply(BigDecimal.valueOf(studentCount));
-        
-        // Round result to 2 decimal places using HALF_UP rounding mode
-        return salary.setScale(2, java.math.RoundingMode.HALF_UP);
+
+        return totalSalary.setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ServiceSalaryDetail> calculateSalaryBreakdown(Long trainerId) {
-        // Query distinct services using findDistinctServicesByTrainerId
         List<com.example.project_backend04.entity.GymService> services = 
             serviceRegistrationRepository.findDistinctServicesByTrainerId(trainerId);
         
-        // Build list of ServiceSalaryDetail objects
         List<ServiceSalaryDetail> breakdown = new java.util.ArrayList<>();
         
-        // For each service, call calculateSalaryForService
         for (com.example.project_backend04.entity.GymService service : services) {
-            BigDecimal salaryAmount = calculateSalaryForService(trainerId, service.getId());
+            List<com.example.project_backend04.entity.ServiceRegistration> registrations = 
+                serviceRegistrationRepository.findActiveRegistrationsByTrainerAndService(trainerId, service.getId());
             
-            // Exclude services where salary is zero (no students)
-            if (salaryAmount.compareTo(BigDecimal.ZERO) > 0) {
-                // Get active registrations to count students
-                List<com.example.project_backend04.entity.ServiceRegistration> registrations = 
-                    serviceRegistrationRepository.findActiveRegistrationsByTrainerAndService(trainerId, service.getId());
-                
-                // Calculate average service price
-                BigDecimal totalPrice = BigDecimal.ZERO;
-                for (com.example.project_backend04.entity.ServiceRegistration registration : registrations) {
-                    if (registration.getPaymentOrder() != null && registration.getPaymentOrder().getAmount() != null) {
-                        totalPrice = totalPrice.add(BigDecimal.valueOf(registration.getPaymentOrder().getAmount()));
-                    } else {
-                        totalPrice = totalPrice.add(service.getPrice());
-                    }
-                }
-                BigDecimal averagePrice = totalPrice.divide(BigDecimal.valueOf(registrations.size()), 2, java.math.RoundingMode.HALF_UP);
-                
-                // Build ServiceSalaryDetail object with service info and calculated salary
-                ServiceSalaryDetail detail = ServiceSalaryDetail.builder()
-                    .serviceId(service.getId())
-                    .serviceName(service.getName())
-                    .studentCount(registrations.size())
-                    .servicePrice(averagePrice)
-                    .trainerPercentage(service.getTrainerPercentage())
-                    .salaryAmount(salaryAmount)
-                    .build();
-                
-                breakdown.add(detail);
+            if (registrations.isEmpty()) continue;
+
+            BigDecimal totalSalary = BigDecimal.ZERO;
+            BigDecimal totalAmount = BigDecimal.ZERO;
+
+            for (com.example.project_backend04.entity.ServiceRegistration registration : registrations) {
+                BigDecimal percentage = registration.getLockedTrainerPercentage() != null
+                    ? registration.getLockedTrainerPercentage()
+                    : service.getTrainerPercentage();
+
+                BigDecimal amount = (registration.getPaymentOrder() != null && registration.getPaymentOrder().getAmount() != null)
+                    ? BigDecimal.valueOf(registration.getPaymentOrder().getAmount())
+                    : service.getPrice();
+
+                totalSalary = totalSalary.add(amount.multiply(percentage));
+                totalAmount = totalAmount.add(amount);
             }
+
+            totalSalary = totalSalary.setScale(2, java.math.RoundingMode.HALF_UP);
+            if (totalSalary.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+            BigDecimal averagePrice = totalAmount.divide(
+                BigDecimal.valueOf(registrations.size()), 2, java.math.RoundingMode.HALF_UP);
+
+            // Hiển thị % đại diện (từ registration đầu tiên)
+            BigDecimal displayPercentage = registrations.get(0).getLockedTrainerPercentage() != null
+                ? registrations.get(0).getLockedTrainerPercentage()
+                : service.getTrainerPercentage();
+
+            breakdown.add(ServiceSalaryDetail.builder()
+                .serviceId(service.getId())
+                .serviceName(service.getName())
+                .studentCount(registrations.size())
+                .servicePrice(averagePrice)
+                .trainerPercentage(displayPercentage)
+                .salaryAmount(totalSalary)
+                .build());
         }
         
-        // Return List<ServiceSalaryDetail>
         return breakdown;
     }
     

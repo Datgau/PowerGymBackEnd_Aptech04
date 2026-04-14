@@ -240,15 +240,19 @@ public class EnhancedServiceRegistrationService {
     }
     
     private ServiceRegistrationWithTrainerResponse mapToResponseWithTrainer(ServiceRegistration registration) {
-        // This would use a proper mapper in real implementation
-        // For now, create a basic response
+        var user = registration.getUser();
+        var svc  = registration.getGymService();
+        var trainer = registration.getTrainer();
         return ServiceRegistrationWithTrainerResponse.builder()
             .id(registration.getId())
-            .userId(registration.getUser().getId())
-            .serviceId(registration.getGymService().getId())
-            .serviceName(registration.getGymService().getName())
-            .trainerId(registration.getTrainer() != null ? registration.getTrainer().getId() : null)
-            .trainerName(registration.getTrainer() != null ? registration.getTrainer().getFullName() : null)
+            .userId(user != null ? user.getId() : null)
+            .serviceId(svc != null ? svc.getId() : null)
+            .serviceName(svc != null && svc.getName() != null ? svc.getName() : "")
+            .userName(user != null && user.getFullName() != null ? user.getFullName() : "")
+            .userEmail(user != null && user.getEmail() != null ? user.getEmail() : "")
+            .trainerAvatar(user != null ? user.getAvatar() : null)
+            .trainerId(trainer != null ? trainer.getId() : null)
+            .trainerName(trainer != null ? trainer.getFullName() : null)
             .status(registration.getStatus())
             .registrationDate(registration.getRegistrationDate())
             .trainerSelectedAt(registration.getTrainerSelectedAt())

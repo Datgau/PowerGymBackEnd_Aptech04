@@ -51,7 +51,7 @@ public class GymService {
     private Boolean isActive = true;
 
     @Column(precision = 3, scale = 2, nullable = false)
-    private BigDecimal trainerPercentage = new BigDecimal("0.30");
+    private BigDecimal trainerPercentage = new BigDecimal("0.3");
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createDate;

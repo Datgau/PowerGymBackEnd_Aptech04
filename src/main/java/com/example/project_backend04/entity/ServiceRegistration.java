@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +56,6 @@ public class ServiceRegistration {
     @Column(name = "registration_type")
     private RegistrationType registrationType = RegistrationType.ONLINE;
 
-    // NEW FIELDS for trainer integration
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trainer_id")
     private User trainer;
@@ -73,12 +73,20 @@ public class ServiceRegistration {
     @JoinColumn(name = "payment_order_id")
     private PaymentOrder paymentOrder;
 
+    @Column(name = "locked_trainer_percentage", precision = 3, scale = 2)
+    private BigDecimal lockedTrainerPercentage;
+
 
     @PrePersist
     protected void onCreate() {
         this.registrationDate = LocalDateTime.now();
-        if (this.gymService != null && this.gymService.getDuration() != null) {
-            this.expirationDate = this.registrationDate.plusDays(this.gymService.getDuration());
+        if (this.gymService != null) {
+            if (this.gymService.getDuration() != null) {
+                this.expirationDate = this.registrationDate.plusDays(this.gymService.getDuration());
+            }
+            if (this.lockedTrainerPercentage == null && this.gymService.getTrainerPercentage() != null) {
+                this.lockedTrainerPercentage = this.gymService.getTrainerPercentage();
+            }
         }
     }
 

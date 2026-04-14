@@ -3,6 +3,7 @@ package com.example.project_backend04.controller;
 import com.example.project_backend04.dto.request.Service.ServiceRegistrationFilterRequest;
 import com.example.project_backend04.dto.request.Service.ServiceRegistrationRequest;
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationResponse;
+import com.example.project_backend04.dto.response.Service.ServiceRegistrationWithTrainerResponse;
 import com.example.project_backend04.dto.response.Service.ServiceRegistrationWithTrainerSelectionResponse;
 import com.example.project_backend04.dto.response.Shared.ApiResponse;
 import com.example.project_backend04.dto.response.Trainer.AvailableTrainerResponse;
@@ -90,6 +91,24 @@ public class ServiceRegistrationController {
             log.error("Failed to fetch my registrations", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to fetch registrations: " + e.getMessage()));
+        }
+    }
+
+    /** GET /api/service-registrations/my-clients — trainer lấy danh sách học viên của mình */
+    @GetMapping("/my-clients")
+    @PreAuthorize("hasRole('TRAINER')")
+    public ResponseEntity<ApiResponse<List<ServiceRegistrationWithTrainerResponse>>> getMyClients() {
+        try {
+            var clients = enhancedServiceRegistrationService.getTrainerRegistrations(
+                    ((com.example.project_backend04.security.CustomUserDetails)
+                            org.springframework.security.core.context.SecurityContextHolder
+                                    .getContext().getAuthentication().getPrincipal()).getId()
+            );
+            return ResponseEntity.ok(ApiResponse.success(clients, "Lấy danh sách học viên thành công"));
+        } catch (Exception e) {
+            log.error("Failed to fetch trainer clients", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch clients: " + e.getMessage()));
         }
     }
 
