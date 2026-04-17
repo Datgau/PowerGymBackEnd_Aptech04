@@ -217,14 +217,32 @@ public class ServiceRegistrationController {
         }
     }
 
-    @PostMapping("/{registrationId}/confirm-payment")
+    @GetMapping("/trainer/{trainerId}/schedule")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    public ResponseEntity<ApiResponse<Void>> confirmCounterPayment(
-            @PathVariable Long registrationId,
-            @RequestParam Long amount
+    public ResponseEntity<ApiResponse<java.util.Map<String, java.util.List<String>>>> getTrainerBookedSlots(
+            @PathVariable Long trainerId,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date
     ) {
         try {
-            enhancedServiceRegistrationService.confirmCounterPayment(registrationId, amount);
+            java.util.Map<String, java.util.List<String>> slots =
+                registrationService.getTrainerBookedSlots(trainerId, date);
+            return ResponseEntity.ok(ApiResponse.success(slots));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch trainer schedule: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{registrationId}/confirm-payment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")    public ResponseEntity<ApiResponse<Void>> confirmCounterPayment(
+            @PathVariable Long registrationId,
+            @RequestParam Long amount,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate bookingDate,
+            @RequestParam(required = false) java.time.LocalTime startTime,
+            @RequestParam(required = false) java.time.LocalTime endTime
+    ) {
+        try {
+            enhancedServiceRegistrationService.confirmCounterPayment(registrationId, amount, bookingDate, startTime, endTime);
             return ResponseEntity.ok(ApiResponse.success(null, "Payment confirmed successfully"));
         } catch (RuntimeException e) {
             if (e.getMessage().contains("not found")) {

@@ -80,13 +80,15 @@ public class ServiceRegistration {
     @PrePersist
     protected void onCreate() {
         this.registrationDate = LocalDateTime.now();
-        if (this.gymService != null) {
-            if (this.gymService.getDuration() != null) {
+        // For COUNTER registrations, expirationDate is set later when payment is confirmed
+        // For ONLINE registrations, set it now based on service duration
+        if (this.registrationType != RegistrationType.COUNTER) {
+            if (this.gymService != null && this.gymService.getDuration() != null) {
                 this.expirationDate = this.registrationDate.plusDays(this.gymService.getDuration());
             }
-            if (this.lockedTrainerPercentage == null && this.gymService.getTrainerPercentage() != null) {
-                this.lockedTrainerPercentage = this.gymService.getTrainerPercentage();
-            }
+        }
+        if (this.gymService != null && this.lockedTrainerPercentage == null && this.gymService.getTrainerPercentage() != null) {
+            this.lockedTrainerPercentage = this.gymService.getTrainerPercentage();
         }
     }
 

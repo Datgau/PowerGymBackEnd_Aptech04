@@ -3,10 +3,13 @@ package com.example.project_backend04.service;
 import com.example.project_backend04.dto.response.Trainer.TrainerMatchingResult;
 import com.example.project_backend04.entity.GymService;
 import com.example.project_backend04.entity.ServiceRegistration;
+import com.example.project_backend04.entity.TrainerBooking;
 import com.example.project_backend04.entity.TrainerSpecialty;
 import com.example.project_backend04.entity.User;
+import com.example.project_backend04.enums.BookingStatus;
 import com.example.project_backend04.repository.GymServiceRepository;
 import com.example.project_backend04.repository.ServiceRegistrationRepository;
+import com.example.project_backend04.repository.TrainerBookingRepository;
 import com.example.project_backend04.repository.TrainerSpecialtyRepository;
 import com.example.project_backend04.repository.UserRepository;
 import com.example.project_backend04.service.IService.IConflictDetectionService;
@@ -33,6 +36,7 @@ public class TrainerSelectionService implements ITrainerSelectionService {
     private final UserRepository userRepository;
     private final IConflictDetectionService conflictDetectionService;
     private final TrainerSalaryService trainerSalaryService;
+    private final TrainerBookingRepository trainerBookingRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -103,6 +107,19 @@ public class TrainerSelectionService implements ITrainerSelectionService {
                 log.error("Failed to add salary to trainer {} after assignment - continuing", trainerId, e);
             }
         }
+        
+        // If payment is already SUCCESS and no TrainerBooking exists yet, create a placeholder
+        // so the trainer can see the request in their pending-requests tab
+        if (savedRegistration.getPaymentOrder() != null &&
+            savedRegistration.getPaymentOrder().getStatus() == com.example.project_backend04.enums.PaymentStatus.SUCCESS) {
+            
+            boolean hasExistingBooking = !trainerBookingRepository
+                .findByServiceRegistration_Id(registrationId).isEmpty();
+            
+            if (!hasExistingBooking) {
+                createPendingBookingForServiceRegistration(savedRegistration);
+            }
+        }
     }
 
     @Override
@@ -129,5 +146,33 @@ public class TrainerSelectionService implements ITrainerSelectionService {
                 return Math.min(1.0, score);
             })
             .orElse(0.0);
+    }
+
+    /**
+     * Creates a placeholder TrainerBooking so the trainer can see the service request
+     * in their pending-requests tab. Used when trainer is assigned after payment is confirmed.
+     */
+    private void createPendingBookingForServiceRegistration(ServiceRegistration registration) {
+        java.time.LocalDate placeholderDate = java.time.LocalDate.now().plusDays(1);
+        java.time.LocalTime placeholderStart = java.time.LocalTime.of(9, 0);
+        java.time.LocalTime placeholderEnd   = java.time.LocalTime.of(10, 0);
+
+        TrainerBooking booking = TrainerBooking.builder()
+                .user(registration.getUser())
+                .trainer(registration.getTrainer())
+                .serviceRegistration(registration)
+                .paymentOrder(registration.getPaymentOrder())
+                .bookingDate(placeholderDate)
+                .startTime(placeholderStart)
+                .endTime(placeholderEnd)
+                .notes("Yêu cầu đặt lịch từ đăng ký dịch vụ tại quầy - vui lòng xác nhận hoặc đổi lịch")
+                .sessionType("SERVICE_REGISTRATION")
+                .status(BookingStatus.PENDING)
+                .isAssignedByAdmin(true)
+                .build();
+
+        TrainerBooking saved = trainerBookingRepository.save(booking);
+        log.info("Created placeholder TrainerBooking {} for service registration {} (trainer {})",
+                saved.getBookingId(), registration.getId(), registration.getTrainer().getId());
     }
 }

@@ -28,6 +28,7 @@ public class ServiceRegistrationResponse {
     private String cancellationReason;
     private PaymentStatus paymentStatus;
     private String trainerName;
+    private Long trainerId;
     private RegistrationType registrationType;
     private String paymentOrderId;
 }

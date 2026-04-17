@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * Scheduled job để tự động hủy các đăng ký tại quầy (COUNTER) 
- * chưa thanh toán sau 3 ngày
+ * chưa thanh toán (status = PENDING) sau 3 ngày
  */
 @Component
 @RequiredArgsConstructor
@@ -38,7 +38,7 @@ public class CounterRegistrationCleanupScheduler {
         try {
             LocalDateTime expiryThreshold = LocalDateTime.now().minusDays(EXPIRY_DAYS);
             List<ServiceRegistration> expiredRegistrations = serviceRegistrationRepository
-                .findExpiredCounterRegistrations(expiryThreshold, RegistrationType.COUNTER, RegistrationStatus.ACTIVE);
+                .findExpiredCounterRegistrations(expiryThreshold, RegistrationType.COUNTER, RegistrationStatus.PENDING);
             
             if (expiredRegistrations.isEmpty()) {
                 log.info("No expired counter registrations found");

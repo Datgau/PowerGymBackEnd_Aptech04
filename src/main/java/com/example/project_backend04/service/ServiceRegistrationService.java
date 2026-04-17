@@ -97,13 +97,10 @@ public class ServiceRegistrationService {
             : RegistrationType.ONLINE;
         registration.setRegistrationType(regType);
         
-        // ONLINE registrations start as PENDING (waiting for payment)
-        // COUNTER registrations start as ACTIVE (will be paid at counter)
-        if (regType == RegistrationType.ONLINE) {
-            registration.setStatus(RegistrationStatus.PENDING);
-        } else {
-            registration.setStatus(RegistrationStatus.ACTIVE);
-        }
+        // Both ONLINE and COUNTER registrations start as PENDING (waiting for payment)
+        // ONLINE: activated after online payment succeeds
+        // COUNTER: activated after admin confirms payment at counter
+        registration.setStatus(RegistrationStatus.PENDING);
 
         ServiceRegistration saved = registrationRepository.save(registration);
         
@@ -374,6 +371,25 @@ public class ServiceRegistrationService {
 
     private User getCurrentUser() {
         return SecurityUtils.getCurrentUser();
+    }
+
+    public java.util.Map<String, java.util.List<String>> getTrainerBookedSlots(Long trainerId, java.time.LocalDate date) {
+        List<TrainerBooking> bookings = trainerBookingRepository
+            .findByTrainerIdAndBookingDateAndStatus(trainerId, date, BookingStatus.PENDING);
+        List<TrainerBooking> confirmed = trainerBookingRepository
+            .findByTrainerIdAndBookingDateAndStatus(trainerId, date, BookingStatus.CONFIRMED);
+
+        java.util.List<String> bookedSlots = new java.util.ArrayList<>();
+        for (TrainerBooking b : bookings) {
+            bookedSlots.add(b.getStartTime().toString() + "-" + b.getEndTime().toString());
+        }
+        for (TrainerBooking b : confirmed) {
+            bookedSlots.add(b.getStartTime().toString() + "-" + b.getEndTime().toString());
+        }
+
+        java.util.Map<String, java.util.List<String>> result = new java.util.HashMap<>();
+        result.put("bookedSlots", bookedSlots);
+        return result;
     }
 
     private ServiceRegistrationResponse mapToResponse(ServiceRegistration registration) {

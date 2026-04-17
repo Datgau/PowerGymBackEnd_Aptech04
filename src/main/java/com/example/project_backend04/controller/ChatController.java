@@ -1,12 +1,15 @@
 package com.example.project_backend04.controller;
 
 import com.example.project_backend04.dto.request.Chat.ChatRequest;
+import com.example.project_backend04.dto.response.ChatResponse;
+import com.example.project_backend04.service.GeminiChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -14,32 +17,31 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ChatController {
 
-    private final ChatClient chatClient;
+    private final GeminiChatService geminiChatService;
 
     @PostMapping("/ask")
-    public ResponseEntity<String> askAgent(@RequestBody ChatRequest request) {
+    public ResponseEntity<ChatResponse> askAgent(@RequestBody ChatRequest request) {
         try {
             if (request.message() == null || request.message().trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("Message must not be empty.");
+                return ResponseEntity.badRequest()
+                        .body(ChatResponse.textOnly("Message must not be empty."));
             }
-            String response = chatClient.prompt()
-                    .user(request.message())
-                    .call()
-                    .content();
+            String sessionId = (request.sessionId() != null && !request.sessionId().isBlank())
+                    ? request.sessionId()
+                    : UUID.randomUUID().toString();
 
-            log.info("AI response generated successfully");
+            ChatResponse response = geminiChatService.chat(sessionId, request.message());
+            log.info("Chat OK session={} services={} memberships={} trainers={}",
+                    sessionId,
+                    response.services() != null ? response.services().size() : 0,
+                    response.memberships() != null ? response.memberships().size() : 0,
+                    response.trainers() != null ? response.trainers().size() : 0);
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            if (e.getClass().getName().contains("OpenAi")) {
-                log.error("OpenAI API error: {}", e.getMessage(), e);
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .body("Sorry, something went wrong. Please try again later.");
-            }
-
-            log.error("Unexpected error in chat", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Sorry, something went wrong. Please try again later.");
+            log.error("Error in chat endpoint", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(ChatResponse.textOnly("Dịch vụ AI tạm thời không khả dụng. Vui lòng thử lại sau."));
         }
     }
 }

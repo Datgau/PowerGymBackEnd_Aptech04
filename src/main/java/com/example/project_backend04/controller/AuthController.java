@@ -138,6 +138,35 @@ public class AuthController {
         }
     }
 
+    /**
+     * Mobile-friendly refresh token endpoint — nhận refreshToken qua request body
+     * thay vì HttpOnly cookie (cookie không hoạt động tốt trên mobile HTTP client).
+     */
+    @PostMapping("/refresh-token-mobile")
+    public ResponseEntity<ApiResponse<JwtResponse>> refreshTokenMobile(
+            @RequestBody RefreshTokenRequest request,
+            HttpServletResponse response
+    ) {
+        try {
+            if (request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(false, "Refresh token is required"));
+            }
+            // Cast to AuthService to access mobile-specific method
+            ApiResponse<JwtResponse> apiResponse =
+                    ((com.example.project_backend04.service.AuthService) authService)
+                            .refreshTokenForMobile(request.getRefreshToken(), response);
+            return ResponseEntity
+                    .status(apiResponse.isSuccess() ? HttpStatus.OK : HttpStatus.UNAUTHORIZED)
+                    .body(apiResponse);
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, "Token refresh failed: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/oauth/login")
     public ResponseEntity<ApiResponse<LoginResponse>> oauthLogin(
             @RequestBody OAuthLoginRequest request,

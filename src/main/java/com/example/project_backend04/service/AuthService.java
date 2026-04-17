@@ -357,7 +357,8 @@ public class AuthService implements IAuthService {
                 jwtResponse,
                 user.getPhoneNumber(),
                 user.getBio(),
-                user.getDateOfBirth()
+                user.getDateOfBirth(),
+                refreshToken   // trả về trong body để mobile lưu
         );
 
         return new ApiResponse<>(
@@ -445,6 +446,19 @@ public class AuthService implements IAuthService {
 
     @Override
     public ApiResponse<JwtResponse> refreshToken(String refreshToken, HttpServletResponse response) {
+        return refreshTokenInternal(refreshToken, response, false);
+    }
+
+    /**
+     * Mobile-friendly refresh: trả refreshToken mới trong response body
+     * thay vì chỉ set HttpOnly cookie.
+     */
+    public ApiResponse<JwtResponse> refreshTokenForMobile(String refreshToken, HttpServletResponse response) {
+        return refreshTokenInternal(refreshToken, response, true);
+    }
+
+    private ApiResponse<JwtResponse> refreshTokenInternal(
+            String refreshToken, HttpServletResponse response, boolean includeMobileToken) {
 
         User user = authRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new RuntimeException("Invalid refresh token."));
@@ -466,19 +480,19 @@ public class AuthService implements IAuthService {
             );
         }
 
-        String newAccessToken = jwtService.generateToken(user);
+        String newAccessToken  = jwtService.generateToken(user);
         String newRefreshToken = UUID.randomUUID().toString();
 
         user.setRefreshToken(newRefreshToken);
         user.setRefreshTokenExpiryTime(LocalDateTime.now().plusDays(7));
         authRepository.save(user);
 
+        // Web: set cookie; mobile: cookie sẽ bị ignore nhưng không gây lỗi
         jwtService.addRefreshTokenCookie(response, newRefreshToken);
 
-        JwtResponse jwtResponse = new JwtResponse(
-                newAccessToken,
-                jwtService.getValidDuration()
-        );
+        JwtResponse jwtResponse = includeMobileToken
+                ? new JwtResponse(newAccessToken, jwtService.getValidDuration(), newRefreshToken)
+                : new JwtResponse(newAccessToken, jwtService.getValidDuration());
 
         return new ApiResponse<>(
                 true,
@@ -607,7 +621,8 @@ public class AuthService implements IAuthService {
                 jwtResponse,
                 user.getPhoneNumber(),
                 user.getBio(),
-                user.getDateOfBirth()
+                user.getDateOfBirth(),
+                refreshToken   // trả về trong body để mobile lưu
         );
 
         return new ApiResponse<>(

@@ -21,14 +21,6 @@ spring:
       max-file-size: 10MB
       max-request-size: 50MB
       file-size-threshold: 2KB
-  # Spring AI OpenAI Configuration
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY}
-      chat:
-        options:
-          model: ${OPENAI_MODEL:gpt-4}
-          temperature: ${OPENAI_TEMPERATURE:0.7}
   # Cache Configuration
   cache:
     type: simple
@@ -81,3 +73,13 @@ bank:
       path: ${WEBHOOK_PATH:/api/bank-payments/webhook}
 
 
+
+# Gemini AI Configuration (Google AI Studio - Free API Key)
+gemini:
+  api-key: ${GEMINI_API_KEY}
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
+
+# Logging
+logging:
+  level:
+    com.example.project_backend04.service.GeminiChatService: DEBUG

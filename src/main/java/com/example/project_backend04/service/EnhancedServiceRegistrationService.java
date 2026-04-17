@@ -6,13 +6,16 @@ import com.example.project_backend04.dto.response.Trainer.TrainerForBookingRespo
 import com.example.project_backend04.entity.GymService;
 import com.example.project_backend04.entity.PaymentOrder;
 import com.example.project_backend04.entity.ServiceRegistration;
+import com.example.project_backend04.entity.TrainerBooking;
 import com.example.project_backend04.entity.User;
 import com.example.project_backend04.enums.PaymentStatus;
 import com.example.project_backend04.enums.RegistrationStatus;
 import com.example.project_backend04.enums.RegistrationType;
+import com.example.project_backend04.enums.BookingStatus;
 import com.example.project_backend04.repository.GymServiceRepository;
 import com.example.project_backend04.repository.PaymentOrderRepository;
 import com.example.project_backend04.repository.ServiceRegistrationRepository;
+import com.example.project_backend04.repository.TrainerBookingRepository;
 import com.example.project_backend04.repository.UserRepository;
 import com.example.project_backend04.service.IService.ITrainerSelectionService;
 import jakarta.persistence.EntityNotFoundException;
@@ -36,9 +39,10 @@ public class EnhancedServiceRegistrationService {
     private final GymServiceRepository gymServiceRepository;
     private final ITrainerSelectionService trainerSelectionService;
     private final NotificationService notificationService;
-    private final  TrainerBookingService trainerBookingService;
+    private final TrainerBookingService trainerBookingService;
     private final PaymentOrderRepository paymentOrderRepository;
     private final TrainerSalaryService trainerSalaryService;
+    private final TrainerBookingRepository trainerBookingRepository;
     
     @Transactional
     public ServiceRegistrationWithTrainerResponse registerServiceWithTrainer(
@@ -95,8 +99,14 @@ public class EnhancedServiceRegistrationService {
         ServiceRegistration registration = serviceRegistrationRepository.findById(registrationId)
             .orElseThrow(() -> new EntityNotFoundException("Service registration not found"));
         
-        if (registration.getStatus() != RegistrationStatus.ACTIVE) {
-            throw new IllegalStateException("Can only assign trainer to active registrations");
+        // Allow assignment for ACTIVE registrations (online, already paid)
+        // and PENDING COUNTER registrations (will pay at counter after trainer is assigned)
+        boolean isActive = registration.getStatus() == RegistrationStatus.ACTIVE;
+        boolean isPendingCounter = registration.getStatus() == RegistrationStatus.PENDING
+                && registration.getRegistrationType() == RegistrationType.COUNTER;
+
+        if (!isActive && !isPendingCounter) {
+            throw new IllegalStateException("Can only assign trainer to active registrations or pending counter registrations");
         }
         
         // Use trainer selection service to assign trainer (this will also add salary if payment is SUCCESS)
@@ -265,7 +275,10 @@ public class EnhancedServiceRegistrationService {
     }
 
     @Transactional
-    public void confirmCounterPayment(Long registrationId, Long amount) {
+    public void confirmCounterPayment(Long registrationId, Long amount,
+                                      java.time.LocalDate bookingDate,
+                                      java.time.LocalTime startTime,
+                                      java.time.LocalTime endTime) {
         log.info("Confirming counter payment for registration {} with amount {}", registrationId, amount);
         
         ServiceRegistration registration = serviceRegistrationRepository.findById(registrationId)
@@ -276,6 +289,7 @@ public class EnhancedServiceRegistrationService {
         }
         LocalDateTime now = LocalDateTime.now();
         registration.setRegistrationDate(now);
+        registration.setStatus(RegistrationStatus.ACTIVE); // Activate after payment confirmed at counter
         
         if (registration.getGymService() != null && registration.getGymService().getDuration() != null) {
             registration.setExpirationDate(now.plusDays(registration.getGymService().getDuration()));
@@ -298,6 +312,26 @@ public class EnhancedServiceRegistrationService {
         registration.setPaymentOrder(savedPaymentOrder);
         ServiceRegistration savedRegistration = serviceRegistrationRepository.save(registration);
         
+        // Link payment order to all PENDING TrainerBookings of this registration
+        // (bookings created before payment was confirmed will have paymentOrder = null)
+        List<TrainerBooking> pendingBookings = trainerBookingRepository
+            .findByServiceRegistration_Id(registrationId)
+            .stream()
+            .filter(b -> b.getStatus() == BookingStatus.PENDING && b.getPaymentOrder() == null)
+            .collect(java.util.stream.Collectors.toList());
+        
+        if (!pendingBookings.isEmpty()) {
+            for (TrainerBooking booking : pendingBookings) {
+                booking.setPaymentOrder(savedPaymentOrder);
+            }
+            trainerBookingRepository.saveAll(pendingBookings);
+            log.info("Linked PaymentOrder {} to {} pending TrainerBooking(s) for registration {}",
+                savedPaymentOrder.getId(), pendingBookings.size(), registrationId);
+        } else if (savedRegistration.getTrainer() != null) {
+            // No TrainerBooking exists yet — create one so the trainer can see the request
+            createPendingBookingForServiceRegistration(savedRegistration, savedPaymentOrder, bookingDate, startTime, endTime);
+        }
+        
         log.info("Successfully confirmed counter payment for registration {} - Service start date: {}, expiration date: {}", 
             registrationId, registration.getRegistrationDate(), registration.getExpirationDate());
         
@@ -317,5 +351,38 @@ public class EnhancedServiceRegistrationService {
                 log.error("Failed to add salary to trainer after counter payment - continuing", e);
             }
         }
+    }
+
+    /**
+     * Creates a TrainerBooking with the admin-selected date/time so the trainer can see
+     * the request in their pending-requests tab.
+     */
+    private void createPendingBookingForServiceRegistration(
+            ServiceRegistration registration, PaymentOrder paymentOrder,
+            java.time.LocalDate bookingDate, java.time.LocalTime startTime, java.time.LocalTime endTime) {
+
+        // Fall back to tomorrow 09:00-10:00 only if no date/time was provided
+        java.time.LocalDate date  = bookingDate != null ? bookingDate : java.time.LocalDate.now().plusDays(1);
+        java.time.LocalTime start = startTime  != null ? startTime  : java.time.LocalTime.of(9, 0);
+        java.time.LocalTime end   = endTime    != null ? endTime    : java.time.LocalTime.of(10, 0);
+
+        TrainerBooking booking = TrainerBooking.builder()
+                .user(registration.getUser())
+                .trainer(registration.getTrainer())
+                .serviceRegistration(registration)
+                .paymentOrder(paymentOrder)
+                .bookingDate(date)
+                .startTime(start)
+                .endTime(end)
+                .notes("Yêu cầu đặt lịch từ đăng ký dịch vụ tại quầy - vui lòng xác nhận hoặc đổi lịch")
+                .sessionType("SERVICE_REGISTRATION")
+                .status(BookingStatus.PENDING)
+                .isAssignedByAdmin(true)
+                .build();
+
+        TrainerBooking saved = trainerBookingRepository.save(booking);
+        log.info("Created TrainerBooking {} for service registration {} (trainer {}) on {} {}–{}",
+                saved.getBookingId(), registration.getId(), registration.getTrainer().getId(),
+                date, start, end);
     }
 }

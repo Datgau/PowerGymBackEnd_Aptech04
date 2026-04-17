@@ -14,6 +14,7 @@ import com.example.project_backend04.service.IService.ITrainerWorkingHoursServic
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ public class TrainerBookingService implements ITrainerBookingService {
     private final PaymentOrderRepository paymentOrderRepo;
     private final GymServiceRepository gymServiceRepository;
     private final TrainerSpecialtyRepository trainerSpecialtyRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     public TrainerBookingResponse createBooking(Long userId, CreateBookingRequest req) {
@@ -196,6 +198,20 @@ public class TrainerBookingService implements ITrainerBookingService {
         log.info("Created booking {} for user {} with trainer {}",
                 saved.getBookingId(), userId, req.getTrainerId());
 
+        // Push realtime notification to trainer via WebSocket
+        if (trainer != null) {
+            try {
+                TrainerBookingResponse response = toResponse(saved);
+                messagingTemplate.convertAndSend(
+                        "/topic/trainer/" + trainer.getId() + "/new-booking",
+                        response
+                );
+                log.info("Pushed new-booking WebSocket event to trainer {}", trainer.getId());
+            } catch (Exception e) {
+                log.warn("Failed to push WebSocket notification to trainer {}: {}", trainer.getId(), e.getMessage());
+            }
+        }
+
         return toResponse(saved);
     }
     @Override
@@ -293,7 +309,19 @@ public class TrainerBookingService implements ITrainerBookingService {
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setTrainerNotes(trainerNotes);
-        return toResponse(bookingRepo.save(booking));
+        TrainerBookingResponse response = toResponse(bookingRepo.save(booking));
+
+        // Push realtime update to trainer dashboard
+        try {
+            messagingTemplate.convertAndSend(
+                    "/topic/trainer/" + trainerId + "/booking-updated",
+                    response
+            );
+        } catch (Exception e) {
+            log.warn("Failed to push booking-updated WebSocket event: {}", e.getMessage());
+        }
+
+        return response;
     }
 
     @Override
@@ -313,7 +341,19 @@ public class TrainerBookingService implements ITrainerBookingService {
 
         log.info("Trainer {} rejected booking {}: {}",
                 trainerId, booking.getBookingId(), req.getRejectionReason());
-        return toResponse(bookingRepo.save(booking));
+        TrainerBookingResponse response = toResponse(bookingRepo.save(booking));
+
+        // Push realtime update to trainer dashboard
+        try {
+            messagingTemplate.convertAndSend(
+                    "/topic/trainer/" + trainerId + "/booking-updated",
+                    response
+            );
+        } catch (Exception e) {
+            log.warn("Failed to push booking-updated WebSocket event: {}", e.getMessage());
+        }
+
+        return response;
     }
 
     @Override

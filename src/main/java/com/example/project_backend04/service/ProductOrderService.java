@@ -130,7 +130,10 @@ public class ProductOrderService {
         order.setCustomerAddress(request.getCustomerAddress());
         order.setSaleType(request.getSaleType());
         order.setNotes(request.getNotes());
-        order.setPaymentStatus(PaymentStatus.PENDING);
+        // Counter sales are paid immediately at the counter; online orders start as PENDING
+        order.setPaymentStatus(request.getSaleType() == SaleType.COUNTER
+                ? PaymentStatus.PAID
+                : PaymentStatus.PENDING);
         // deliveryStatus will be set by @PrePersist based on saleType
         
         // Create ProductOrderItem entities
@@ -159,6 +162,11 @@ public class ProductOrderService {
         
         // Save order (cascade will save items)
         ProductOrder savedOrder = productOrderRepository.save(order);
+        
+        // Counter sales are paid immediately — deduct stock right away
+        if (request.getSaleType() == SaleType.COUNTER) {
+            deductStockForOrder(savedOrder);
+        }
         
         // Build and return response
         return buildProductOrderResponse(savedOrder);
