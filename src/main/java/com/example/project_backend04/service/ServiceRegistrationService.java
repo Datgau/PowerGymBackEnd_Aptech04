@@ -83,24 +83,28 @@ public class ServiceRegistrationService {
         }
 
         if (registrationRepository.existsByUserAndGymServiceAndStatus(
-                currentUser, gymService, RegistrationStatus.ACTIVE)) {
+                currentUser, gymService, RegistrationStatus.ACTIVE)
+            || registrationRepository.existsByUserAndGymServiceAndStatus(
+                currentUser, gymService, RegistrationStatus.PENDING)) {
             throw new RuntimeException("You have already registered for this service");
         }
         ServiceRegistration registration = new ServiceRegistration();
         registration.setUser(currentUser);
         registration.setGymService(gymService);
         registration.setNotes(request.getNotes());
-        
-        // Set registrationType từ request, default là ONLINE nếu không có
         RegistrationType regType = request.getRegistrationType() != null 
             ? request.getRegistrationType() 
             : RegistrationType.ONLINE;
         registration.setRegistrationType(regType);
-        
-        // Both ONLINE and COUNTER registrations start as PENDING (waiting for payment)
-        // ONLINE: activated after online payment succeeds
-        // COUNTER: activated after admin confirms payment at counter
+
         registration.setStatus(RegistrationStatus.PENDING);
+
+        if (request.getTrainerId() != null) {
+            User trainer = userRepository.findById(request.getTrainerId())
+                    .orElseThrow(() -> new RuntimeException("Trainer not found"));
+            registration.setTrainer(trainer);
+            registration.setTrainerSelectedAt(java.time.LocalDateTime.now());
+        }
 
         ServiceRegistration saved = registrationRepository.save(registration);
         

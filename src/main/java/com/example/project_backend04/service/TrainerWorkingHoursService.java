@@ -172,16 +172,25 @@ public class TrainerWorkingHoursService implements ITrainerWorkingHoursService {
     @Transactional(readOnly = true)
     public boolean isWithinWorkingHours(Long trainerId, LocalDate date,
                                          LocalTime startTime, LocalTime endTime) {
+        // No working hours configured at all → allow any time
         if (workingHoursRepo.countActiveSlotsByTrainer(trainerId) == 0) {
             return true;
         }
 
         DayOfWeek dow = date.getDayOfWeek();
 
+        // Explicitly marked as day off → deny
         if (workingHoursRepo.isTrainerDayOff(trainerId, dow)) {
             return false;
         }
 
+        // No slots configured for this specific day → allow (trainer hasn't restricted this day)
+        List<TrainerWorkingHours> daySlots = workingHoursRepo.findSlotsByTrainerAndDay(trainerId, dow);
+        if (daySlots.isEmpty()) {
+            return true;
+        }
+
+        // Slots exist for this day → must find a covering slot
         List<TrainerWorkingHours> covering = workingHoursRepo
                 .findCoveringSlots(trainerId, dow, startTime, endTime);
         return !covering.isEmpty();

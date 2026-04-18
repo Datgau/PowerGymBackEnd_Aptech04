@@ -33,9 +33,6 @@ public record BankPaymentConfig(
         @NotNull(message = "Webhook configuration must not be null")
         WebhookConfig webhook
 ) {
-    /**
-     * Nested Webhook Configuration
-     */
     public record WebhookConfig(
             @Min(value = 1, message = "Rate limit per minute must be at least 1")
             Integer rateLimitPerMinute,

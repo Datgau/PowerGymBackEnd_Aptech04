@@ -218,7 +218,7 @@ public class ServiceRegistrationController {
     }
 
     @GetMapping("/trainer/{trainerId}/schedule")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<java.util.Map<String, java.util.List<String>>>> getTrainerBookedSlots(
             @PathVariable Long trainerId,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date

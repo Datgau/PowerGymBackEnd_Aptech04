@@ -52,6 +52,9 @@ public class PaymentOrder {
     private Long promotionId; // ID of promotion used (if any)
     private String promotionCode; // Code of promotion used (if any)
 
+    @Column(name = "registration_id")
+    private Long registrationId; // Link to ServiceRegistration (for SERVICE payments)
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();

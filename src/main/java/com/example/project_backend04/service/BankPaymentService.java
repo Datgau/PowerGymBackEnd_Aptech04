@@ -86,6 +86,11 @@ public class BankPaymentService {
 
         @Transactional
         public CreateBankPaymentResponse createBankPayment(Long userId, Long serviceId, Long packageId, String itemType, Long bookingId, String promotionCode, Long overrideAmount, String itemName) {
+            return createBankPayment(userId, serviceId, packageId, itemType, bookingId, promotionCode, overrideAmount, itemName, null);
+        }
+
+        @Transactional
+        public CreateBankPaymentResponse createBankPayment(Long userId, Long serviceId, Long packageId, String itemType, Long bookingId, String promotionCode, Long overrideAmount, String itemName, Long registrationId) {
             try {
                 if (userId == null || userId <= 0) {
                     throw new BankPaymentException("Invalid user ID", "INVALID_USER_ID");
@@ -113,14 +118,17 @@ public class BankPaymentService {
                     
                     itemId = packageId;
                     finalItemName = membershipPackage.getName();
-                    amount = membershipPackage.getPrice().longValue();
+                    // Use overrideAmount if provided (pre-calculated discount from frontend)
+                    amount = (overrideAmount != null && overrideAmount > 0)
+                        ? overrideAmount
+                        : membershipPackage.getPrice().longValue();
 
                 } else if ("PRODUCT".equals(itemType)) {
                     if (overrideAmount == null || overrideAmount <= 0) {
                         throw new BankPaymentException("Amount is required for product orders", "INVALID_AMOUNT");
                     }
                     
-                    itemId = serviceId != null ? serviceId : 0L; // Store product IDs (can be 0 if not provided)
+                    itemId = serviceId != null ? serviceId : 0L;
                     finalItemName = itemName != null && !itemName.trim().isEmpty() ? itemName : "Product Order";
                     amount = overrideAmount;
                     
@@ -138,7 +146,10 @@ public class BankPaymentService {
                     }
                     itemId = serviceId;
                     finalItemName = service.getName();
-                    amount = service.getPrice().longValue();
+                    // Use overrideAmount if provided (pre-calculated discount from frontend)
+                    amount = (overrideAmount != null && overrideAmount > 0)
+                        ? overrideAmount
+                        : service.getPrice().longValue();
                 }
                 Long promotionId = null;
                 if (promotionCode != null && !promotionCode.trim().isEmpty()) {
@@ -237,6 +248,9 @@ public class BankPaymentService {
                     order.setExpiredAt(now.plusMinutes(expiryMinutes));
                     order.setPromotionId(promotionId);
                     order.setPromotionCode(promotionCode);
+                    if (registrationId != null) {
+                        order.setRegistrationId(registrationId);
+                    }
                 }
                 PaymentOrder savedOrder = DatabaseRetryUtil.executeWithRetry(
                     () -> paymentOrderRepository.save(order),
@@ -618,8 +632,19 @@ public class BankPaymentService {
                             "Service not found during activation: " + serviceId, "SERVICE_NOT_FOUND")),
                     "findServiceForActivation"
                 );
-                Optional<ServiceRegistration> pendingReg = serviceRegistrationRepository
-                    .findByUserAndGymServiceAndStatus(user, service, RegistrationStatus.PENDING);
+
+                // Prefer direct registrationId link; fall back to userId+serviceId lookup
+                Optional<ServiceRegistration> pendingReg;
+                if (order.getRegistrationId() != null) {
+                    pendingReg = serviceRegistrationRepository.findById(order.getRegistrationId())
+                        .filter(r -> r.getStatus() == RegistrationStatus.PENDING);
+                    log.info("Activating registration by direct registrationId={}", order.getRegistrationId());
+                } else {
+                    // Legacy fallback: find the most recent PENDING registration for this user+service
+                    pendingReg = serviceRegistrationRepository
+                        .findTopByUserAndGymServiceAndStatusOrderByRegistrationDateDesc(user, service, RegistrationStatus.PENDING);
+                    log.info("Activating registration by userId={} serviceId={} (no registrationId on order)", userId, serviceId);
+                }
 
                 ServiceRegistration activatedRegistration = null;
                 

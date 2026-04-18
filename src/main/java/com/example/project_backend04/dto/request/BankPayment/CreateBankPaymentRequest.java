@@ -1,5 +1,6 @@
 package com.example.project_backend04.dto.request.BankPayment;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CreateBankPaymentRequest {
     
     @NotNull(message = "User ID is required")
@@ -26,4 +28,6 @@ public class CreateBankPaymentRequest {
     private Long amount; // Override amount (for products or discounted price)
     
     private String itemName; // Item name (for products)
+
+    private Long registrationId; // Link to existing ServiceRegistration (avoids ambiguity when user has multiple PENDING registrations)
 }

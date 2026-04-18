@@ -37,23 +37,11 @@ public class WebhookValidationService {
         log.debug("Starting comprehensive webhook payload validation");
         
         try {
-            // Validate required fields presence
             validateRequiredFields(payload);
-            
-            // Validate and sanitize description
             validateAndSanitizeDescription(payload);
-            
-            // Validate amount constraints
             validateAmount(payload);
-            
-            // Validate and sanitize transaction ID
             validateAndSanitizeTransactionId(payload);
-            
-            // Validate timestamp
             validateTimestamp(payload);
-            
-            log.debug("Webhook payload validation completed successfully");
-            
         } catch (BankPaymentException e) {
             log.warn("Webhook payload validation failed: {}", e.getMessage());
             throw e;
@@ -173,17 +161,12 @@ public class WebhookValidationService {
         
         if (timestamp != null) {
             LocalDateTime now = LocalDateTime.now();
-            
-            // Prevent future timestamps (potential security issue)
             if (timestamp.isAfter(now)) {
                 throw new BankPaymentException("Timestamp cannot be in the future", "INVALID_TIMESTAMP");
             }
-            
-            // Prevent very old timestamps (potential replay attack)
             LocalDateTime oneWeekAgo = now.minusWeeks(1);
             if (timestamp.isBefore(oneWeekAgo)) {
                 log.warn("Received webhook with very old timestamp: {}", timestamp);
-                // Note: We log but don't reject as legitimate delayed webhooks might occur
             }
         }
     }
@@ -198,15 +181,10 @@ public class WebhookValidationService {
         if (payload.getTransactionId() != null) {
             checkForInjectionAttempts(payload.getTransactionId(), "transactionId");
         }
-        
-        // Log security-relevant information for monitoring
-        log.debug("Security validation passed for webhook payload - Description: {}, Amount: {}", 
+        log.debug("Security validation passed for webhook payload - Description: {}, Amount: {}",
             payload.getDescription(), payload.getAmount());
     }
 
-    /**
-     * Check for potential injection attempts in string fields
-     */
     private void checkForInjectionAttempts(String value, String fieldName) {
         if (value == null) return;
         

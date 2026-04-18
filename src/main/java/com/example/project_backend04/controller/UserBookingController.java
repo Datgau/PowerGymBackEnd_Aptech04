@@ -76,6 +76,18 @@ public class UserBookingController {
                 if (trainerHasConflict) {
                     return conflict("Trainer is already booked for this time slot");
                 }
+
+                // Also validate trainer working hours
+                boolean withinWorkingHours = workingHoursService.isWithinWorkingHours(
+                    request.getTrainerId(),
+                    request.getBookingDate(),
+                    request.getStartTime(),
+                    request.getEndTime()
+                );
+
+                if (!withinWorkingHours) {
+                    return conflict("Selected time is outside the trainer's working hours");
+                }
             }
             
             return ok("Time slot is available", "Validation successful");

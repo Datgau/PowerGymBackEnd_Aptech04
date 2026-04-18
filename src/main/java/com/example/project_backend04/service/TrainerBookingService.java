@@ -8,6 +8,7 @@ import com.example.project_backend04.dto.response.User.UserResponse;
 import com.example.project_backend04.entity.*;
 import com.example.project_backend04.enums.BookingStatus;
 import com.example.project_backend04.enums.PaymentStatus;
+import com.example.project_backend04.enums.RegistrationStatus;
 import com.example.project_backend04.repository.*;
 import com.example.project_backend04.service.IService.ITrainerBookingService;
 import com.example.project_backend04.service.IService.ITrainerWorkingHoursService;
@@ -55,8 +56,11 @@ public class TrainerBookingService implements ITrainerBookingService {
             throw new IllegalArgumentException("This ServiceRegistration does not belong to the user");
         }
 
-        // Registration must be ACTIVE
-        if (!"ACTIVE".equals(reg.getStatus() != null ? reg.getStatus().name() : "")) {
+        // Registration must be ACTIVE, or PENDING for counter registrations (payment confirmed later at counter)
+        boolean isActive = reg.getStatus() == RegistrationStatus.ACTIVE;
+        boolean isPendingCounter = reg.getStatus() == RegistrationStatus.PENDING
+                && reg.getRegistrationType() == com.example.project_backend04.enums.RegistrationType.COUNTER;
+        if (!isActive && !isPendingCounter) {
             throw new IllegalStateException(
                     "ServiceRegistration is not ACTIVE (status: " + reg.getStatus() + ")");
         }
@@ -153,27 +157,23 @@ public class TrainerBookingService implements ITrainerBookingService {
                 .build();
 
         TrainerBooking saved = bookingRepo.save(booking);
-        
-        // 7. Link to existing PaymentOrder if exists
-        // PaymentOrder should already exist from payment flow
-        // For ONLINE registrations, find SUCCESS payment (already paid)
-        // For COUNTER registrations, find PENDING payment (will pay at counter)
+
         Optional<PaymentOrder> existingPaymentOrder = Optional.empty();
         
         if (reg.getRegistrationType() == com.example.project_backend04.enums.RegistrationType.ONLINE) {
             // Online registration - find SUCCESS payment
-            existingPaymentOrder = paymentOrderRepo.findByUserAndItemIdAndStatus(
+            existingPaymentOrder = paymentOrderRepo.findFirstByUserAndItemIdAndStatusOrderByCreatedAtDesc(
                 user, reg.getGymService().getId().toString(), PaymentStatus.SUCCESS);
             
             if (existingPaymentOrder.isEmpty()) {
                 log.warn("No SUCCESS PaymentOrder found for ONLINE booking {} - checking PENDING", saved.getBookingId());
                 // Fallback to PENDING if SUCCESS not found (edge case)
-                existingPaymentOrder = paymentOrderRepo.findByUserAndItemIdAndStatus(
+                existingPaymentOrder = paymentOrderRepo.findFirstByUserAndItemIdAndStatusOrderByCreatedAtDesc(
                     user, reg.getGymService().getId().toString(), PaymentStatus.PENDING);
             }
         } else {
             // Counter registration - find PENDING payment (will pay at counter)
-            existingPaymentOrder = paymentOrderRepo.findByUserAndItemIdAndStatus(
+            existingPaymentOrder = paymentOrderRepo.findFirstByUserAndItemIdAndStatusOrderByCreatedAtDesc(
                 user, reg.getGymService().getId().toString(), PaymentStatus.PENDING);
         }
         

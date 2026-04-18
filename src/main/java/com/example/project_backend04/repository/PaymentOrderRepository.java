@@ -41,9 +41,10 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Stri
     Optional<PaymentOrder> findByItemTypeAndItemId(String itemType, String itemId);
     
     /**
-     * Find PaymentOrder by user, itemId, and status
+     * Find PaymentOrder by user, itemId, and status — returns the most recent one.
+     * Uses findFirst to avoid NonUniqueResultException when multiple orders exist.
      */
-    Optional<PaymentOrder> findByUserAndItemIdAndStatus(User user, String itemId, PaymentStatus status);
+    Optional<PaymentOrder> findFirstByUserAndItemIdAndStatusOrderByCreatedAtDesc(User user, String itemId, PaymentStatus status);
     
     @Query("SELECT p FROM PaymentOrder p WHERE p.user = :user AND p.itemType = :itemType AND p.itemId = :itemId ORDER BY p.createdAt DESC")
     List<PaymentOrder> findByUserAndItemTypeAndItemIdOrderByCreatedAtDesc(@Param("user") User user, @Param("itemType") String itemType, @Param("itemId") String itemId);

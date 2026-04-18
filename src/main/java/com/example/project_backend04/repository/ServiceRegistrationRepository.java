@@ -50,6 +50,8 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
    
     Optional<ServiceRegistration> findByUserAndGymServiceAndStatus(User user, GymService gymService, RegistrationStatus status);
 
+    Optional<ServiceRegistration> findTopByUserAndGymServiceAndStatusOrderByRegistrationDateDesc(User user, GymService gymService, RegistrationStatus status);
+
     List<ServiceRegistration> findByUserIdAndTrainerIsNotNull(Long userId);
     
  

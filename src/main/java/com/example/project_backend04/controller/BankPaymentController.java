@@ -41,7 +41,7 @@ public class BankPaymentController {
             CreateBankPaymentResponse response = bankPaymentService.createBankPayment(
                 request.getUserId(), request.getServiceId(), request.getPackageId(), 
                 request.getItemType(), request.getBookingId(), request.getPromotionCode(),
-                request.getAmount(), request.getItemName());
+                request.getAmount(), request.getItemName(), request.getRegistrationId());
             return ResponseEntity.ok(ApiResponse.success(response, "Bank payment created successfully"));
             
         } catch (Exception e) {
@@ -59,28 +59,19 @@ public class BankPaymentController {
 
             log.info("AUDIT_LOG - WEBHOOK_API_REQUEST - Endpoint: /api/bank-payments/webhook, Description: {}, Amount: {}, TransactionId: {}, Timestamp: {}",
                     request.getDescription(), request.getAmount(), request.getTransactionId(), java.time.LocalDateTime.now());
-
-            // ===== Validate Authorization header =====
             if (authorization == null || !authorization.startsWith("Apikey ")) {
                 log.warn("AUDIT_LOG - WEBHOOK_API_RESPONSE - Result: INVALID_AUTH_HEADER, Timestamp: {}",
                         java.time.LocalDateTime.now());
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
             }
-
-            // ===== Extract API key =====
             String apiKey = authorization.replace("Apikey ", "").trim();
-
-            // ===== Compare API key =====
             if (!bankPaymentConfig.sepayApiKey().equals(apiKey)) {
                 log.warn("AUDIT_LOG - WEBHOOK_API_RESPONSE - Result: INVALID_API_KEY, Timestamp: {}",
                         java.time.LocalDateTime.now());
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
             }
 
-            // ===== Process webhook =====
             bankPaymentService.handleSepayWebhook(request);
-
-            // ===== Success log =====
             log.info("AUDIT_LOG - WEBHOOK_API_RESPONSE - Description: {}, Result: SUCCESS, Timestamp: {}",
                     request.getDescription(), java.time.LocalDateTime.now());
 

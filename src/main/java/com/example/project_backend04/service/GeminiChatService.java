@@ -50,7 +50,7 @@ public class GeminiChatService {
             SAU KHI GỌI TOOL:
             - Tóm tắt kết quả ngắn gọn, thân thiện bằng tiếng Việt
             - Đề xuất bước tiếp theo cho khách
-            - KHÔNG liệt kê lại toàn bộ dữ liệu (frontend đã hiển thị cards)
+            - Cần liệt kê lại toàn bộ dữ liệu và hiển thị card nếu có dịch vụ/trainer/membership nào phù hợp
             
             LƯU Ý:
             - Luôn trả lời tiếng Việt
@@ -71,8 +71,6 @@ public class GeminiChatService {
     private final TrainerSpecialtyRepository trainerSpecialtyRepository;
     private final TrainerBookingRepository trainerBookingRepository;
     private final ObjectMapper objectMapper;
-
-    // Session store: sessionId -> conversation history (30 min TTL)
     private final Cache<String, List<GeminiRequest.Content>> sessionStore = Caffeine.newBuilder()
             .expireAfterAccess(30, TimeUnit.MINUTES)
             .maximumSize(500)
