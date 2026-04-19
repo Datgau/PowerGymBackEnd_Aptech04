@@ -1,5 +1,6 @@
 package com.example.project_backend04.dto.response.Service;
 
+import com.example.project_backend04.dto.response.TrainerBooking.TrainerBookingResponse;
 import com.example.project_backend04.dto.response.User.UserResponse;
 import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.enums.PaymentStatus;
@@ -11,6 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -31,4 +33,5 @@ public class ServiceRegistrationResponse {
     private Long trainerId;
     private RegistrationType registrationType;
     private String paymentOrderId;
+    private List<TrainerBookingResponse> upcomingBookings; // Include booking info for client view
 }

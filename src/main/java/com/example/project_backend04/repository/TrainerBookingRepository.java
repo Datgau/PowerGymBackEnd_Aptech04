@@ -110,13 +110,13 @@ AND (tb.startTime < :endTime AND tb.endTime > :startTime)
         @Param("statuses") List<BookingStatus> statuses);
     
     /**
-     * Find pending bookings with service information
+     * Find pending and rejected bookings with service information
      */
     @Query("SELECT tb FROM TrainerBooking tb " +
            "LEFT JOIN FETCH tb.serviceRegistration sr " +
            "LEFT JOIN FETCH sr.gymService gs " +
-           "WHERE tb.trainer.id = :trainerId AND tb.status = com.example.project_backend04.enums.BookingStatus.PENDING " +
-           "ORDER BY tb.createdAt")
+           "WHERE tb.trainer.id = :trainerId AND tb.status IN (com.example.project_backend04.enums.BookingStatus.PENDING, com.example.project_backend04.enums.BookingStatus.REJECTED) " +
+           "ORDER BY tb.status ASC, tb.createdAt DESC")
     List<TrainerBooking> findPendingBookingsWithServiceInfo(@Param("trainerId") Long trainerId);
     
 

@@ -197,6 +197,46 @@ public class TrainerWorkingHoursService implements ITrainerWorkingHoursService {
     }
 
 
+    @Override
+    public void requestDayOff(Long trainerId, com.example.project_backend04.dto.request.TrainerWorkingHours.DayOffRequest request) {
+        loadTrainer(trainerId); // validate trainer exists
+        DayOfWeek dow = request.getDate().getDayOfWeek();
+
+        if (Boolean.TRUE.equals(request.getAllDay())) {
+            // Đánh dấu toàn bộ slot của ngày đó là isDayOff
+            List<TrainerWorkingHours> daySlots = workingHoursRepo.findSlotsByTrainerAndDay(trainerId, dow);
+            if (daySlots.isEmpty()) {
+                log.warn("Trainer {} không có slot nào cho ngày {} ({})", trainerId, request.getDate(), dow);
+            }
+            String note = request.getReason() != null ? request.getReason() : "Xin nghỉ ngày " + request.getDate();
+            daySlots.forEach(s -> {
+                s.setIsDayOff(true);
+                s.setNote(note);
+            });
+            workingHoursRepo.saveAll(daySlots);
+            log.info("Trainer {} xin nghỉ cả ngày {}", trainerId, request.getDate());
+        } else {
+            // Tắt các slot được chọn
+            if (request.getSlotIds() == null || request.getSlotIds().isEmpty()) {
+                throw new IllegalArgumentException("Phải chọn ít nhất một khung giờ khi không nghỉ cả ngày");
+            }
+            List<TrainerWorkingHours> slots = workingHoursRepo.findAllById(request.getSlotIds());
+            // Validate tất cả slot thuộc trainer này và đúng ngày
+            slots.forEach(s -> {
+                if (!s.getTrainer().getId().equals(trainerId)) {
+                    throw new SecurityException("Slot " + s.getId() + " không thuộc trainer " + trainerId);
+                }
+                if (s.getDayOfWeek() != dow) {
+                    throw new IllegalArgumentException("Slot " + s.getId() + " không thuộc ngày " + request.getDate());
+                }
+                s.setIsActive(false);
+                if (request.getReason() != null) s.setNote(request.getReason());
+            });
+            workingHoursRepo.saveAll(slots);
+            log.info("Trainer {} tắt {} slot ngày {}", trainerId, slots.size(), request.getDate());
+        }
+    }
+
     private User loadTrainer(Long trainerId) {
         return userRepo.findById(trainerId)
                 .orElseThrow(() -> new IllegalArgumentException(

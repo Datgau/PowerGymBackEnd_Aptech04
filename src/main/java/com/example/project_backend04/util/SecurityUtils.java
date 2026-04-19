@@ -5,7 +5,9 @@ import com.example.project_backend04.security.CustomUserDetails;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
 
+@Component("securityUtils")
 public class SecurityUtils {
 
     public static User getCurrentUser() {
@@ -21,6 +23,15 @@ public class SecurityUtils {
             return ((CustomUserDetails) principal).getUser();
         }
         return null;
+    }
+
+    /**
+     * Check if the current authenticated user matches the given user ID
+     * Used in @PreAuthorize annotations
+     */
+    public boolean isCurrentUser(Long userId) {
+        User currentUser = getCurrentUser();
+        return currentUser != null && currentUser.getId().equals(userId);
     }
 
 }

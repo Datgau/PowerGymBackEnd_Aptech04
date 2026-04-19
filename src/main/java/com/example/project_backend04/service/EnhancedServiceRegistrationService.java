@@ -253,6 +253,10 @@ public class EnhancedServiceRegistrationService {
         var user = registration.getUser();
         var svc  = registration.getGymService();
         var trainer = registration.getTrainer();
+        
+        // Fetch all bookings for this service registration (including REJECTED, PENDING, etc.)
+        var allBookings = trainerBookingService.getBookingsByServiceRegistration(registration.getId());
+        
         return ServiceRegistrationWithTrainerResponse.builder()
             .id(registration.getId())
             .userId(user != null ? user.getId() : null)
@@ -271,6 +275,7 @@ public class EnhancedServiceRegistrationService {
             .hasTrainer(registration.hasTrainer())
             .canBookTrainer(registration.canBookTrainer())
             .totalBookings(registration.getTotalBookingsCount())
+            .upcomingBookings(allBookings)  // Include all bookings with all statuses
             .build();
     }
 
@@ -374,7 +379,7 @@ public class EnhancedServiceRegistrationService {
                 .bookingDate(date)
                 .startTime(start)
                 .endTime(end)
-                .notes("Yêu cầu đặt lịch từ đăng ký dịch vụ tại quầy - vui lòng xác nhận hoặc đổi lịch")
+                .notes("In-store booking request – confirm or reschedule")
                 .sessionType("SERVICE_REGISTRATION")
                 .status(BookingStatus.PENDING)
                 .isAssignedByAdmin(true)

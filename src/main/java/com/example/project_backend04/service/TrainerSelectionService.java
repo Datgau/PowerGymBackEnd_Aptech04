@@ -77,6 +77,22 @@ public class TrainerSelectionService implements ITrainerSelectionService {
         User trainer = userRepository.findById(trainerId)
             .orElseThrow(() -> new EntityNotFoundException("Trainer not found"));
 
+        // Check if this trainer has previously rejected a booking for this registration
+        List<TrainerBooking> rejectedBookings = trainerBookingRepository
+            .findByServiceRegistration_Id(registrationId)
+            .stream()
+            .filter(b -> b.getStatus() == BookingStatus.REJECTED && 
+                        b.getTrainer() != null && 
+                        b.getTrainer().getId().equals(trainerId))
+            .collect(Collectors.toList());
+        
+        if (!rejectedBookings.isEmpty()) {
+            throw new IllegalArgumentException(
+                "Cannot assign this trainer - they have previously rejected a booking for this service registration. " +
+                "Rejection reason: " + rejectedBookings.get(0).getRejectionReason()
+            );
+        }
+
         TrainerMatchingResult matchResult = matchTrainerToService(trainerId, registration.getGymService().getId());
         if (!matchResult.isMatch()) {
             throw new IllegalArgumentException("Trainer does not match service requirements: " +
@@ -165,7 +181,7 @@ public class TrainerSelectionService implements ITrainerSelectionService {
                 .bookingDate(placeholderDate)
                 .startTime(placeholderStart)
                 .endTime(placeholderEnd)
-                .notes("Yêu cầu đặt lịch từ đăng ký dịch vụ tại quầy - vui lòng xác nhận hoặc đổi lịch")
+                .notes("In-store booking request – confirm or reschedule")
                 .sessionType("SERVICE_REGISTRATION")
                 .status(BookingStatus.PENDING)
                 .isAssignedByAdmin(true)

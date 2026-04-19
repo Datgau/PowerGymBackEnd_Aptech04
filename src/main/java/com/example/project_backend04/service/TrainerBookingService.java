@@ -43,6 +43,7 @@ public class TrainerBookingService implements ITrainerBookingService {
     private final GymServiceRepository gymServiceRepository;
     private final TrainerSpecialtyRepository trainerSpecialtyRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TrainerSalaryService trainerSalaryService;
 
     @Override
     public TrainerBookingResponse createBooking(Long userId, CreateBookingRequest req) {
@@ -342,6 +343,26 @@ public class TrainerBookingService implements ITrainerBookingService {
         log.info("Trainer {} rejected booking {}: {}",
                 trainerId, booking.getBookingId(), req.getRejectionReason());
         TrainerBookingResponse response = toResponse(bookingRepo.save(booking));
+        
+        // Deduct salary from trainer when booking is rejected
+        try {
+            ServiceRegistration registration = booking.getServiceRegistration();
+            if (registration != null && registration.getPaymentOrder() != null) {
+                Long serviceId = registration.getGymService().getId();
+                Long paymentAmount = registration.getPaymentOrder().getAmount();
+                
+                log.info("Deducting salary from trainer {} for rejected booking {} (serviceId={}, amount={})",
+                        trainerId, bookingId, serviceId, paymentAmount);
+                
+                trainerSalaryService.deductSalaryFromTrainer(trainerId, serviceId, paymentAmount);
+                
+                log.info("Salary deducted successfully from trainer {} for rejected booking {}", trainerId, bookingId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to deduct salary from trainer {} for rejected booking {}: {}", 
+                    trainerId, bookingId, e.getMessage(), e);
+            // Don't throw exception, just log error - booking rejection should still succeed
+        }
 
         // Push realtime update to trainer dashboard
         try {

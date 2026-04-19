@@ -17,4 +17,6 @@ public class AvailableTrainerResponse {
     private String avatar;
     private List<String> specialtyNames;
     private Integer totalExperienceYears;
+    private Boolean hasRejected; // True if this trainer has previously rejected a booking for this registration
+    private String rejectionReason; // Reason for rejection if hasRejected is true
 }

@@ -7,6 +7,7 @@ import com.example.project_backend04.entity.ServiceRegistration;
 import com.example.project_backend04.enums.PaymentStatus;
 import com.example.project_backend04.enums.RegistrationType;
 import com.example.project_backend04.service.GymServiceService;
+import com.example.project_backend04.service.TrainerBookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,7 @@ public class ServiceRegistrationMapper {
 
     private final UserMapper userMapper;
     private final GymServiceService gymServiceService;
+    private final TrainerBookingService trainerBookingService;
 
     public ServiceRegistrationResponse toResponse(ServiceRegistration registration) {
         UserResponse userResponse = userMapper.toResponse(registration.getUser());
@@ -47,6 +49,9 @@ public class ServiceRegistrationMapper {
         if (registration.getPaymentOrder() != null) {
             paymentOrderId = registration.getPaymentOrder().getId();
         }
+        
+        // Fetch all bookings for this registration (including REJECTED, PENDING, etc.)
+        var bookings = trainerBookingService.getBookingsByServiceRegistration(registration.getId());
 
         return ServiceRegistrationResponse.builder()
                 .id(registration.getId())
@@ -63,6 +68,8 @@ public class ServiceRegistrationMapper {
                 .trainerId(trainerId)
                 .registrationType(registrationType)
                 .paymentOrderId(paymentOrderId)
+                .upcomingBookings(bookings) // Include all bookings with all statuses
                 .build();
     }
 }
+

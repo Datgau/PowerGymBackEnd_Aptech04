@@ -165,4 +165,36 @@ public class TrainerSalaryService implements ITrainerSalaryService {
         log.info("Added salary {} to trainer {} (trainerId={}, serviceId={}, paymentAmount={}, percentage={})",
             salaryToAdd, trainer.getFullName(), trainerId, serviceId, paymentAmount, trainerPercentage);
     }
+    
+    @Transactional
+    public void deductSalaryFromTrainer(Long trainerId, Long serviceId, Long paymentAmount) {
+        // Find trainer
+        User trainer = userRepository.findById(trainerId)
+            .orElseThrow(() -> new TrainerNotFoundException(trainerId));
+        
+        // Validate user has TRAINER role
+        if (!trainer.isTrainer()) {
+            throw new InvalidRoleException(trainerId);
+        }
+        
+        // Find service to get trainer percentage
+        com.example.project_backend04.entity.GymService service = gymServiceRepository.findById(serviceId)
+            .orElseThrow(() -> new RuntimeException("Service not found with id: " + serviceId));
+        
+        // Calculate salary to deduct: paymentAmount * trainerPercentage
+        BigDecimal trainerPercentage = service.getTrainerPercentage();
+        BigDecimal salaryToDeduct = BigDecimal.valueOf(paymentAmount)
+            .multiply(trainerPercentage)
+            .setScale(2, java.math.RoundingMode.HALF_UP);
+        
+        // Deduct from trainer's salary balance
+        BigDecimal currentBalance = trainer.getSalaryBalance() != null ? trainer.getSalaryBalance() : BigDecimal.ZERO;
+        trainer.setSalaryBalance(currentBalance.subtract(salaryToDeduct));
+        
+        // Save trainer
+        userRepository.save(trainer);
+        
+        log.info("Deducted salary {} from trainer {} (trainerId={}, serviceId={}, paymentAmount={}, percentage={})",
+            salaryToDeduct, trainer.getFullName(), trainerId, serviceId, paymentAmount, trainerPercentage);
+    }
 }

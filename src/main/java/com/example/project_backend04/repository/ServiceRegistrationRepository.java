@@ -157,11 +157,13 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
      * Find active registrations by trainer ID
      * Used for trainer salary calculation
      * Filters by trainerId, status = 'ACTIVE', and non-expired registrations
+     * Excludes registrations that have REJECTED bookings
      */
     @Query("SELECT sr FROM ServiceRegistration sr " +
            "WHERE sr.trainer.id = :trainerId " +
            "AND sr.status = 'ACTIVE' " +
-           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP)")
+           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP) " +
+           "AND NOT EXISTS (SELECT 1 FROM TrainerBooking tb WHERE tb.serviceRegistration.id = sr.id AND tb.status = 'REJECTED')")
     List<ServiceRegistration> findActiveRegistrationsByTrainerId(
         @Param("trainerId") Long trainerId
     );
@@ -171,6 +173,7 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
      * Used for trainer salary calculation per service
      * Includes LEFT JOIN FETCH for paymentOrder and gymService to avoid N+1 queries
      * Filters by trainerId, serviceId, status = 'ACTIVE', and non-expired registrations
+     * Excludes registrations that have REJECTED bookings (trainer rejected the booking)
      */
     @Query("SELECT sr FROM ServiceRegistration sr " +
            "LEFT JOIN FETCH sr.paymentOrder " +
@@ -178,7 +181,8 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
            "WHERE sr.trainer.id = :trainerId " +
            "AND sr.gymService.id = :serviceId " +
            "AND sr.status = 'ACTIVE' " +
-           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP)")
+           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP) " +
+           "AND NOT EXISTS (SELECT 1 FROM TrainerBooking tb WHERE tb.serviceRegistration.id = sr.id AND tb.status = 'REJECTED')")
     List<ServiceRegistration> findActiveRegistrationsByTrainerAndService(
         @Param("trainerId") Long trainerId,
         @Param("serviceId") Long serviceId
@@ -188,11 +192,13 @@ public interface ServiceRegistrationRepository extends JpaRepository<ServiceRegi
      * Find distinct gym services by trainer ID
      * Used for trainer salary calculation to get all services a trainer teaches
      * Filters by trainerId, status = 'ACTIVE', and non-expired registrations
+     * Excludes services where all registrations have REJECTED bookings
      */
     @Query("SELECT DISTINCT sr.gymService FROM ServiceRegistration sr " +
            "WHERE sr.trainer.id = :trainerId " +
            "AND sr.status = 'ACTIVE' " +
-           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP)")
+           "AND (sr.expirationDate IS NULL OR sr.expirationDate > CURRENT_TIMESTAMP) " +
+           "AND NOT EXISTS (SELECT 1 FROM TrainerBooking tb WHERE tb.serviceRegistration.id = sr.id AND tb.status = 'REJECTED')")
     List<GymService> findDistinctServicesByTrainerId(
         @Param("trainerId") Long trainerId
     );

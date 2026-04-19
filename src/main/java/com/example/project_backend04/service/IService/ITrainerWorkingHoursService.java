@@ -68,4 +68,10 @@ public interface ITrainerWorkingHoursService {
      */
     boolean isWithinWorkingHours(Long trainerId, LocalDate date,
                                   LocalTime startTime, LocalTime endTime);
+    /**
+     * Xin nghỉ theo ngày cụ thể (không phải DayOfWeek lặp lại).
+     * - allDay = true  → set isDayOff=true cho tất cả slot của ngày đó
+     * - allDay = false → set isActive=false cho các slotIds được chọn
+     */
+    void requestDayOff(Long trainerId, com.example.project_backend04.dto.request.TrainerWorkingHours.DayOffRequest request);
 }

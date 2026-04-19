@@ -127,6 +127,18 @@ public class TrainerBookingController {
         }
     }
 
+    @GetMapping("/{trainerId}/schedule/daily")
+    public ResponseEntity<ApiResponse<TrainerScheduleResponse>> getDailySchedule(
+            @PathVariable Long trainerId,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
+        try {
+            return ok(workingHoursService.getDailyAvailability(trainerId, date),
+                    "Lấy lịch ngày thành công");
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
+        }
+    }
+
 
     @PutMapping("/{trainerId}/schedule")
     public ResponseEntity<ApiResponse<TrainerScheduleResponse>> saveWeeklySchedule(
@@ -140,6 +152,23 @@ public class TrainerBookingController {
         }
     }
 
+
+    @PostMapping("/{trainerId}/day-off-request")
+    public ResponseEntity<ApiResponse<Void>> requestDayOff(
+            @PathVariable Long trainerId,
+            @Valid @RequestBody com.example.project_backend04.dto.request.TrainerWorkingHours.DayOffRequest request) {
+        try {
+            workingHoursService.requestDayOff(trainerId, request);
+            String msg = Boolean.TRUE.equals(request.getAllDay())
+                    ? "Đã đăng ký nghỉ cả ngày " + request.getDate()
+                    : "Đã đăng ký nghỉ các khung giờ được chọn ngày " + request.getDate();
+            return ok(null, msg);
+        } catch (SecurityException e) {
+            return forbidden(e.getMessage());
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
+        }
+    }
 
     @PatchMapping("/{trainerId}/schedule/day-off")
     public ResponseEntity<ApiResponse<Void>> markDayOff(

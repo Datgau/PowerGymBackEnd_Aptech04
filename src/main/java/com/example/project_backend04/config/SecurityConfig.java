@@ -83,7 +83,6 @@ public class SecurityConfig {
                             .requestMatchers("/api/admin/rewards/**").hasAnyRole("ADMIN", "STAFF")
                             // PUBLIC GET ENDPOINTS
                             .requestMatchers(HttpMethod.GET, "/api/gym/**").permitAll()
-                            .requestMatchers(HttpMethod.GET, "/api/service-registrations/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/stories/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/membership-packages/active").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/user/memberships/**").authenticated()

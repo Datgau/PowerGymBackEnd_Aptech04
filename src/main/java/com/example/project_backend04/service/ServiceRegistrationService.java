@@ -82,12 +82,23 @@ public class ServiceRegistrationService {
             throw new RuntimeException("Service is not active");
         }
 
+        // Block if user already has an ACTIVE registration (payment completed)
         if (registrationRepository.existsByUserAndGymServiceAndStatus(
-                currentUser, gymService, RegistrationStatus.ACTIVE)
-            || registrationRepository.existsByUserAndGymServiceAndStatus(
-                currentUser, gymService, RegistrationStatus.PENDING)) {
+                currentUser, gymService, RegistrationStatus.ACTIVE)) {
             throw new RuntimeException("You have already registered for this service");
         }
+        
+        // If user has a PENDING registration (payment not completed), delete it to allow retry
+        Optional<ServiceRegistration> existingPending = registrationRepository
+            .findTopByUserAndGymServiceAndStatusOrderByRegistrationDateDesc(
+                currentUser, gymService, RegistrationStatus.PENDING);
+        
+        if (existingPending.isPresent()) {
+            log.info("Deleting existing PENDING registration {} for user {} to allow retry", 
+                existingPending.get().getId(), currentUser.getId());
+            registrationRepository.delete(existingPending.get());
+        }
+        
         ServiceRegistration registration = new ServiceRegistration();
         registration.setUser(currentUser);
         registration.setGymService(gymService);
@@ -342,6 +353,22 @@ public class ServiceRegistrationService {
         List<TrainerSpecialty> trainerSpecialties = trainerSpecialtyRepository
                 .findTrainerSpecialtiesByCategory(serviceCategory.getId());
 
+        // Get all rejected bookings for this registration
+        List<TrainerBooking> rejectedBookings = trainerBookingRepository
+                .findByServiceRegistration_Id(registrationId)
+                .stream()
+                .filter(b -> b.getStatus() == BookingStatus.REJECTED)
+                .collect(Collectors.toList());
+        
+        // Create a map of trainerId -> rejection reason
+        Map<Long, String> rejectedTrainers = rejectedBookings.stream()
+                .filter(b -> b.getTrainer() != null)
+                .collect(Collectors.toMap(
+                    b -> b.getTrainer().getId(),
+                    TrainerBooking::getRejectionReason,
+                    (existing, replacement) -> existing // Keep first rejection reason if multiple
+                ));
+
         // Group by trainer and map to AvailableTrainerResponse
         Map<Long, List<TrainerSpecialty>> specialtiesByTrainer = trainerSpecialties.stream()
                 .collect(Collectors.groupingBy(ts -> ts.getUser().getId()));
@@ -361,6 +388,11 @@ public class ServiceRegistrationService {
                             .map(TrainerSpecialty::getExperienceYears)
                             .filter(years -> years != null)
                             .reduce(0, Integer::sum);
+                    
+                    // Check if this trainer has rejected
+                    Long trainerId = trainer.getId();
+                    boolean hasRejected = rejectedTrainers.containsKey(trainerId);
+                    String rejectionReason = rejectedTrainers.get(trainerId);
 
                     return AvailableTrainerResponse.builder()
                             .id(trainer.getId())
@@ -368,6 +400,8 @@ public class ServiceRegistrationService {
                             .avatar(trainer.getAvatar())
                             .specialtyNames(specialtyNames)
                             .totalExperienceYears(totalExperienceYears)
+                            .hasRejected(hasRejected)
+                            .rejectionReason(rejectionReason)
                             .build();
                 })
                 .collect(Collectors.toList());
