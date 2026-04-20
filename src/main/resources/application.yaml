@@ -79,7 +79,13 @@ gemini:
   api-key: ${GEMINI_API_KEY}
   model: ${GEMINI_MODEL:gemini-2.5-flash}
 
+# OpenAI Configuration (ChatGPT)
+openai:
+  api-key: ${OPENAI_API_KEY}
+  model: ${OPENAI_MODEL:gpt-4o-mini}
+
 # Logging
 logging:
   level:
     com.example.project_backend04.service.GeminiChatService: DEBUG
+    com.example.project_backend04.service.OpenAIChatService: DEBUG

@@ -60,24 +60,15 @@ public class ImportReceiptController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         if (userDetails == null) {
-            log.error("POST /api/import-receipts - User is null, authentication failed");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Authentication required", HttpStatus.UNAUTHORIZED.value()));
         }
-        
         User user = userDetails.getUser();
-        log.info("POST /api/import-receipts - User: {}", user.getEmail());
-        
         ImportReceiptResponse receipt = importReceiptService.createImportReceipt(request, user);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(receipt, "Import receipt created successfully"));
     }
-    
-    /**
-     * Update an existing import receipt
-     * Requires password verification
-     * ADMIN only
-     */
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<ImportReceiptResponse>> updateImportReceipt(
@@ -86,29 +77,19 @@ public class ImportReceiptController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         if (userDetails == null) {
-            log.error("PUT /api/import-receipts/{} - User is null, authentication failed", id);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Authentication required", HttpStatus.UNAUTHORIZED.value()));
         }
-        
         User user = userDetails.getUser();
-        log.info("PUT /api/import-receipts/{} - User: {}", id, user.getEmail());
-        
         try {
             ImportReceiptResponse receipt = importReceiptService.updateImportReceipt(id, request, user);
             return ResponseEntity.ok(ApiResponse.success(receipt, "Import receipt updated successfully"));
         } catch (IllegalArgumentException e) {
-            log.error("PUT /api/import-receipts/{} - Password verification failed", id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(e.getMessage(), HttpStatus.FORBIDDEN.value()));
         }
     }
-    
-    /**
-     * Delete an import receipt
-     * Requires password verification
-     * ADMIN only
-     */
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Void>> deleteImportReceipt(
@@ -117,19 +98,14 @@ public class ImportReceiptController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         if (userDetails == null) {
-            log.error("DELETE /api/import-receipts/{} - User is null, authentication failed", id);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Authentication required", HttpStatus.UNAUTHORIZED.value()));
         }
-        
         User user = userDetails.getUser();
-        log.info("DELETE /api/import-receipts/{} - User: {}", id, user.getEmail());
-        
         try {
             importReceiptService.deleteImportReceipt(id, request.getPassword(), user);
             return ResponseEntity.ok(ApiResponse.success(null, "Import receipt deleted successfully"));
         } catch (IllegalArgumentException e) {
-            log.error("DELETE /api/import-receipts/{} - Password verification failed", id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(e.getMessage(), HttpStatus.FORBIDDEN.value()));
         }

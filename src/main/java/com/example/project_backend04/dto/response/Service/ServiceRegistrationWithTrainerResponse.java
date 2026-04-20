@@ -31,6 +31,7 @@ public class ServiceRegistrationWithTrainerResponse {
     private String trainerBio;
     private RegistrationStatus status;
     private LocalDateTime registrationDate;
+    private LocalDateTime expirationDate;
     private LocalDateTime trainerSelectedAt;
     private String trainerSelectionNotes;
     private String notes;

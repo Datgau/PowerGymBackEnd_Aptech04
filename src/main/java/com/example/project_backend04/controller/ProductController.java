@@ -41,9 +41,6 @@ public class ProductController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String stockStatus
     ) {
-        log.info("GET /api/products - page: {}, size: {}, search: {}, stockStatus: {}", 
-                page, size, search, stockStatus);
-        
         Page<ProductResponse> products = productService.getAllProducts(page, size, search, stockStatus);
         return ResponseEntity.ok(ApiResponse.success(products, "Products retrieved successfully"));
     }

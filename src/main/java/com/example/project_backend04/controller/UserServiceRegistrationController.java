@@ -15,10 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Endpoints cho mobile app lấy service registrations của user đang login.
- * Tách riêng để không ảnh hưởng UserMembershipController.
- */
 @RestController
 @RequestMapping("/api/user/service-registrations")
 @RequiredArgsConstructor
@@ -33,7 +29,6 @@ public class UserServiceRegistrationController {
             Authentication authentication) {
         try {
             Long userId = uid(authentication);
-            // Fetch tất cả status, eager load bookings
             var list = serviceRegistrationRepository
                     .findByUserIdAndStatusWithBookings(userId, RegistrationStatus.ACTIVE);
             return ResponseEntity.ok(ApiResponse.success(toMaps(list), "OK"));
@@ -42,14 +37,12 @@ public class UserServiceRegistrationController {
         }
     }
 
-    /** GET /api/user/service-registrations/active — chỉ ACTIVE chưa hết hạn */
     @GetMapping("/active")
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyActiveRegistrations(
             Authentication authentication) {
         try {
             Long userId = uid(authentication);
-            // Dùng query fetch bookings eagerly để tránh LazyInitializationException
             var list = serviceRegistrationRepository
                     .findByUserIdAndStatusWithBookings(userId, RegistrationStatus.ACTIVE)
                     .stream()
@@ -61,7 +54,6 @@ public class UserServiceRegistrationController {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Long uid(Authentication auth) {
         return ((CustomUserDetails) auth.getPrincipal()).getId();

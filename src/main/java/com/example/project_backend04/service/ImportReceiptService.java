@@ -172,13 +172,15 @@ public class ImportReceiptService {
 
     private ImportReceiptResponse mapToResponse(ImportReceipt importReceipt) {
         String createdByName = null;
+        String createdByEmail = null;
         try {
-            // Try to get fullName, handle lazy loading gracefully
+            // Try to get fullName and email, handle lazy loading gracefully
             if (importReceipt.getCreatedBy() != null) {
                 createdByName = importReceipt.getCreatedBy().getFullName();
+                createdByEmail = importReceipt.getCreatedBy().getEmail();
             }
         } catch (Exception e) {
-            log.warn("Could not fetch createdBy name for receipt {}: {}", importReceipt.getId(), e.getMessage());
+            log.warn("Could not fetch createdBy info for receipt {}: {}", importReceipt.getId(), e.getMessage());
         }
         
         return ImportReceiptResponse.builder()
@@ -188,6 +190,7 @@ public class ImportReceiptService {
                 .notes(importReceipt.getNotes())
                 .createdById(importReceipt.getCreatedBy() != null ? importReceipt.getCreatedBy().getId() : null)
                 .createdByName(createdByName)
+                .createdByEmail(createdByEmail)
                 .createdAt(importReceipt.getCreatedAt())
                 .itemCount(importReceipt.getItems().size())
                 .build();

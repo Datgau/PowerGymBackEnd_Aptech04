@@ -24,9 +24,6 @@ public class TrainerManagementController {
     
     private final TrainerManagementService trainerManagementService;
 
-    /**
-     * Get trainer's schedule for a specific date range
-     */
     @GetMapping("/trainer/{trainerId}/schedule")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
     public ResponseEntity<ApiResponse<TrainerScheduleResponse>> getTrainerSchedule(
@@ -42,63 +39,54 @@ public class TrainerManagementController {
             
             TrainerScheduleResponse schedule = 
                 trainerManagementService.getTrainerSchedule(trainerId, startDate, endDate);
-            
+
             return ResponseEntity.ok(ApiResponse.<TrainerScheduleResponse>builder()
-                .success(true)
-                .message("Lấy lịch trình trainer thành công")
-                .data(schedule)
-                .status(HttpStatus.OK.value())
-                .build());
+                    .success(true)
+                    .message("Successfully retrieved trainer schedule")
+                    .data(schedule)
+                    .status(HttpStatus.OK.value())
+                    .build());
                 
         } catch (Exception e) {
-            log.error("Error getting trainer schedule for trainer {}", trainerId, e);
             return ResponseEntity.badRequest()
-                .body(ApiResponse.<TrainerScheduleResponse>builder()
-                    .success(false)
-                    .message("Lỗi khi lấy lịch trình: " + e.getMessage())
-                    .status(HttpStatus.BAD_REQUEST.value())
-                    .build());
+                    .body(ApiResponse.<TrainerScheduleResponse>builder()
+                            .success(false)
+                            .message("Error while retrieving schedule: " + e.getMessage())
+                            .status(HttpStatus.BAD_REQUEST.value())
+                            .build());
         }
     }
 
-    /**
-     * Get pending booking requests for a trainer
-     */
     @GetMapping("/trainer/{trainerId}/pending-requests")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
     public ResponseEntity<ApiResponse<List<TrainerBookingResponse>>> getPendingBookingRequests(
             @PathVariable Long trainerId) {
-        
-        log.info("Getting pending booking requests for trainer {}", trainerId);
-        
         try {
-            List<TrainerBookingResponse> pendingRequests = 
-                trainerManagementService.getPendingBookingRequests(trainerId);
-            String message = pendingRequests.isEmpty() ? 
-                "Không có yêu cầu đặt lịch nào đang chờ" : 
-                String.format("Có %d yêu cầu đặt lịch đang chờ xử lý", pendingRequests.size());
-            
+            List<TrainerBookingResponse> pendingRequests =
+                    trainerManagementService.getPendingBookingRequests(trainerId);
+
+            String message = pendingRequests.isEmpty() ?
+                    "No pending booking requests" :
+                    String.format("There are %d pending booking requests", pendingRequests.size());
+
             return ResponseEntity.ok(ApiResponse.<List<TrainerBookingResponse>>builder()
-                .success(true)
-                .message(message)
-                .data(pendingRequests)
-                .status(HttpStatus.OK.value())
-                .build());
-                
+                    .success(true)
+                    .message(message)
+                    .data(pendingRequests)
+                    .status(HttpStatus.OK.value())
+                    .build());
+
         } catch (Exception e) {
             log.error("Error getting pending requests for trainer {}", trainerId, e);
             return ResponseEntity.badRequest()
-                .body(ApiResponse.<List<TrainerBookingResponse>>builder()
-                    .success(false)
-                    .message("Lỗi khi lấy danh sách yêu cầu: " + e.getMessage())
-                    .status(HttpStatus.BAD_REQUEST.value())
-                    .build());
+                    .body(ApiResponse.<List<TrainerBookingResponse>>builder()
+                            .success(false)
+                            .message("Error while fetching requests: " + e.getMessage())
+                            .status(HttpStatus.BAD_REQUEST.value())
+                            .build());
         }
     }
 
-    /**
-     * Get trainer statistics
-     */
     @GetMapping("/trainer/{trainerId}/statistics")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF') or (hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId))")
     public ResponseEntity<ApiResponse<TrainerStatisticsResponse>> getTrainerStatistics(
@@ -112,31 +100,28 @@ public class TrainerManagementController {
             // Default to current month if no dates provided
             LocalDate startDate = fromDate != null ? fromDate : LocalDate.now().withDayOfMonth(1);
             LocalDate endDate = toDate != null ? toDate : LocalDate.now();
-            
-            TrainerStatisticsResponse statistics = 
-                trainerManagementService.getTrainerStatistics(trainerId, startDate, endDate);
-            
+
+            TrainerStatisticsResponse statistics =
+                    trainerManagementService.getTrainerStatistics(trainerId, startDate, endDate);
+
             return ResponseEntity.ok(ApiResponse.<TrainerStatisticsResponse>builder()
-                .success(true)
-                .message("Lấy thống kê trainer thành công")
-                .data(statistics)
-                .status(HttpStatus.OK.value())
-                .build());
-                
+                    .success(true)
+                    .message("Successfully retrieved trainer statistics")
+                    .data(statistics)
+                    .status(HttpStatus.OK.value())
+                    .build());
+
         } catch (Exception e) {
             log.error("Error getting trainer statistics for trainer {}", trainerId, e);
             return ResponseEntity.badRequest()
-                .body(ApiResponse.<TrainerStatisticsResponse>builder()
-                    .success(false)
-                    .message("Lỗi khi lấy thống kê: " + e.getMessage())
-                    .status(HttpStatus.BAD_REQUEST.value())
-                    .build());
+                    .body(ApiResponse.<TrainerStatisticsResponse>builder()
+                            .success(false)
+                            .message("Error while fetching statistics: " + e.getMessage())
+                            .status(HttpStatus.BAD_REQUEST.value())
+                            .build());
         }
     }
 
-    /**
-     * Get all trainers with their current status (for admin overview)
-     */
     @GetMapping("/overview")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<TrainerScheduleResponse>>> getTrainersOverview(
@@ -144,33 +129,28 @@ public class TrainerManagementController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         
         LocalDate targetDate = date != null ? date : LocalDate.now();
-        log.info("Getting trainers overview for date {}", targetDate);
-        
         try {
-            List<TrainerScheduleResponse> trainersOverview = 
-                trainerManagementService.getTrainersOverview(targetDate);
-            
+            List<TrainerScheduleResponse> trainersOverview =
+                    trainerManagementService.getTrainersOverview(targetDate);
+
             return ResponseEntity.ok(ApiResponse.<List<TrainerScheduleResponse>>builder()
-                .success(true)
-                .message(String.format("Lấy tổng quan %d trainer thành công", trainersOverview.size()))
-                .data(trainersOverview)
-                .status(HttpStatus.OK.value())
-                .build());
-                
+                    .success(true)
+                    .message(String.format("Successfully retrieved overview of %d trainers", trainersOverview.size()))
+                    .data(trainersOverview)
+                    .status(HttpStatus.OK.value())
+                    .build());
+
         } catch (Exception e) {
             log.error("Error getting trainers overview for date {}", targetDate, e);
             return ResponseEntity.badRequest()
-                .body(ApiResponse.<List<TrainerScheduleResponse>>builder()
-                    .success(false)
-                    .message("Lỗi khi lấy tổng quan trainer: " + e.getMessage())
-                    .status(HttpStatus.BAD_REQUEST.value())
-                    .build());
+                    .body(ApiResponse.<List<TrainerScheduleResponse>>builder()
+                            .success(false)
+                            .message("Error while retrieving trainer overview: " + e.getMessage())
+                            .status(HttpStatus.BAD_REQUEST.value())
+                            .build());
         }
     }
 
-    /**
-     * Get trainer workload summary (for admin resource planning)
-     */
     @GetMapping("/workload-summary")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<List<TrainerStatisticsResponse>>> getWorkloadSummary(
@@ -178,32 +158,29 @@ public class TrainerManagementController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-        
-        log.info("Getting workload summary from {} to {}", fromDate, toDate);
-        
         try {
             // Default to current month if no dates provided
             LocalDate startDate = fromDate != null ? fromDate : LocalDate.now().withDayOfMonth(1);
             LocalDate endDate = toDate != null ? toDate : LocalDate.now();
-            
-            List<TrainerStatisticsResponse> workloadSummary = 
-                trainerManagementService.getWorkloadSummary(startDate, endDate);
-            
+
+            List<TrainerStatisticsResponse> workloadSummary =
+                    trainerManagementService.getWorkloadSummary(startDate, endDate);
+
             return ResponseEntity.ok(ApiResponse.<List<TrainerStatisticsResponse>>builder()
-                .success(true)
-                .message("Lấy tổng quan khối lượng công việc thành công")
-                .data(workloadSummary)
-                .status(HttpStatus.OK.value())
-                .build());
-                
+                    .success(true)
+                    .message("Successfully retrieved workload summary")
+                    .data(workloadSummary)
+                    .status(HttpStatus.OK.value())
+                    .build());
+
         } catch (Exception e) {
             log.error("Error getting workload summary", e);
             return ResponseEntity.badRequest()
-                .body(ApiResponse.<List<TrainerStatisticsResponse>>builder()
-                    .success(false)
-                    .message("Lỗi khi lấy tổng quan khối lượng công việc: " + e.getMessage())
-                    .status(HttpStatus.BAD_REQUEST.value())
-                    .build());
+                    .body(ApiResponse.<List<TrainerStatisticsResponse>>builder()
+                            .success(false)
+                            .message("Error while retrieving workload summary: " + e.getMessage())
+                            .status(HttpStatus.BAD_REQUEST.value())
+                            .build());
         }
     }
 }

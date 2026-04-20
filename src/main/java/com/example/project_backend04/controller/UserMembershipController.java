@@ -22,8 +22,6 @@ public class UserMembershipController {
 
     private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
-
-    /** GET /api/user/memberships — tất cả membership của user đang login */
     @GetMapping
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyMemberships(
             Authentication authentication) {
@@ -59,7 +57,6 @@ public class UserMembershipController {
         }
     }
 
-    /** GET /api/user/memberships/active — chỉ gói đang ACTIVE */
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyActiveMemberships(
             Authentication authentication) {
@@ -99,7 +96,6 @@ public class UserMembershipController {
         }
     }
 
-    /** GET /api/user/memberships/active-packages — chỉ trả về list package ID (cũ) */
     @GetMapping("/active-packages")
     public ResponseEntity<ApiResponse<List<Long>>> getMyActivePackages(Authentication authentication) {
         try {

@@ -16,18 +16,12 @@ public class ServiceCategoryController {
 
     private final IServiceCategoryService serviceCategoryService;
 
-    /**
-     * Lấy tất cả service categories active (public)
-     */
     @GetMapping
     public ResponseEntity<ApiResponse<List<ServiceCategoryResponse>>> getAllActiveServiceCategories() {
         ApiResponse<List<ServiceCategoryResponse>> response = serviceCategoryService.getAllActiveServiceCategories();
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Lấy service category theo name (public)
-     */
     @GetMapping("/name/{name}")
     public ResponseEntity<ApiResponse<ServiceCategoryResponse>> getServiceCategoryByName(@PathVariable String name) {
         ApiResponse<ServiceCategoryResponse> response = serviceCategoryService.getServiceCategoryByName(name);
@@ -36,9 +30,6 @@ public class ServiceCategoryController {
                 .body(response);
     }
 
-    /**
-     * Lấy service category theo ID (public)
-     */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ServiceCategoryResponse>> getServiceCategoryById(@PathVariable Long id) {
         ApiResponse<ServiceCategoryResponse> response = serviceCategoryService.getServiceCategoryById(id);
@@ -47,9 +38,6 @@ public class ServiceCategoryController {
                 .body(response);
     }
 
-    /**
-     * Tìm kiếm service categories (public)
-     */
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<ServiceCategoryResponse>>> searchServiceCategories(
             @RequestParam String keyword) {

@@ -145,23 +145,11 @@ public class ProductOrderController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Authentication required", HttpStatus.UNAUTHORIZED.value()));
         }
-        
-        log.info("POST /api/product-orders - Creating order for user: {}", user.getId());
-        
         ProductOrderResponse order = productOrderService.createProductOrder(request, user);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(order, "Product order created successfully"));
     }
-    
-    /**
-     * Create product order from successful payment
-     * This endpoint is called after payment succeeds to create the actual order
-     * Access: Authenticated users only
-     * 
-     * @param request Order creation request with payment ID and delivery info
-     * @param userDetails Authenticated user details
-     * @return Created product order
-     */
+
     @PostMapping("/from-payment")
     public ResponseEntity<ApiResponse<ProductOrderResponse>> createOrderFromPayment(
             @Valid @RequestBody CreateOrderFromPaymentRequest request,
@@ -172,8 +160,6 @@ public class ProductOrderController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Authentication required", HttpStatus.UNAUTHORIZED.value()));
         }
-        
-        // Extract User from CustomUserDetails
         User user = null;
         if (userDetails instanceof com.example.project_backend04.security.CustomUserDetails) {
             user = ((com.example.project_backend04.security.CustomUserDetails) userDetails).getUser();
@@ -184,23 +170,12 @@ public class ProductOrderController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Authentication required", HttpStatus.UNAUTHORIZED.value()));
         }
-        
-        log.info("POST /api/product-orders/from-payment - Creating order from payment: {} for user: {}", 
-                request.getPaymentId(), user.getId());
+
         
         ProductOrderResponse order = productOrderService.createProductOrderFromPayment(request, user);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(order, "Product order created from payment successfully"));
     }
-    
-    /**
-     * Update payment status of a product order
-     * Access: ADMIN only
-     * 
-     * @param id Product order ID
-     * @param request Payment status update request
-     * @return Updated product order
-     */
     @PutMapping("/{id}/payment-status")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<ProductOrderResponse>> updatePaymentStatus(
@@ -212,15 +187,7 @@ public class ProductOrderController {
         ProductOrderResponse order = productOrderService.updatePaymentStatus(id, request.getPaymentStatus());
         return ResponseEntity.ok(ApiResponse.success(order, "Payment status updated successfully"));
     }
-    
-    /**
-     * Update delivery status of a product order
-     * Access: ADMIN only
-     * 
-     * @param id Product order ID
-     * @param request Delivery status update request
-     * @return Updated product order
-     */
+
     @PutMapping("/{id}/delivery-status")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<ProductOrderResponse>> updateDeliveryStatus(
@@ -232,48 +199,30 @@ public class ProductOrderController {
         ProductOrderResponse order = productOrderService.updateDeliveryStatus(id, request.getDeliveryStatus());
         return ResponseEntity.ok(ApiResponse.success(order, "Delivery status updated successfully"));
     }
-    
-    /**
-     * Generate and download product order invoice as PDF
-     * Access: Authenticated users (can only access their own orders, admins can access all)
-     * 
-     * @param id Product order ID
-     * @param userDetails Authenticated user details
-     * @return PDF file as byte array
-     */
+
     @GetMapping("/{id}/invoice")
     public ResponseEntity<?> downloadInvoice(
             @PathVariable Long id,
             @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails
     ) {
         if (userDetails == null) {
-            log.error("GET /api/product-orders/{}/invoice - UserDetails is null, authentication failed", id);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Authentication required", HttpStatus.UNAUTHORIZED.value()));
         }
         
-        // Extract User from CustomUserDetails
         User user = null;
         if (userDetails instanceof com.example.project_backend04.security.CustomUserDetails) {
             user = ((com.example.project_backend04.security.CustomUserDetails) userDetails).getUser();
         }
         
         if (user == null) {
-            log.error("GET /api/product-orders/{}/invoice - Could not extract User from UserDetails", id);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Authentication required", HttpStatus.UNAUTHORIZED.value()));
         }
-        
-        log.info("GET /api/product-orders/{}/invoice - Generating invoice for user: {}", id, user.getId());
-        
+
         try {
-            // Get order details (this also checks access permissions)
             ProductOrderDetailResponse order = productOrderService.getProductOrderById(id, user);
-            
-            // Generate PDF
             byte[] pdfBytes = invoicePrintService.generateProductOrderInvoicePdf(order);
-            
-            // Set headers for PDF download
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", "invoice-order-" + id + ".pdf");

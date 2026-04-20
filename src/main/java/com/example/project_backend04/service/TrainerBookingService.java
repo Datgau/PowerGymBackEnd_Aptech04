@@ -44,6 +44,7 @@ public class TrainerBookingService implements ITrainerBookingService {
     private final TrainerSpecialtyRepository trainerSpecialtyRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final TrainerSalaryService trainerSalaryService;
+    private final GymNotificationService gymNotificationService;
 
     @Override
     public TrainerBookingResponse createBooking(Long userId, CreateBookingRequest req) {
@@ -211,6 +212,13 @@ public class TrainerBookingService implements ITrainerBookingService {
             } catch (Exception e) {
                 log.warn("Failed to push WebSocket notification to trainer {}: {}", trainer.getId(), e.getMessage());
             }
+            
+            // Save notification to database and push via user notification channel
+            try {
+                gymNotificationService.notifyTrainerNewBooking(saved);
+            } catch (Exception e) {
+                log.warn("Failed to send new booking notification to trainer: {}", e.getMessage());
+            }
         }
 
         return toResponse(saved);
@@ -322,6 +330,13 @@ public class TrainerBookingService implements ITrainerBookingService {
             log.warn("Failed to push booking-updated WebSocket event: {}", e.getMessage());
         }
 
+        // Notify user that booking was confirmed
+        try {
+            gymNotificationService.notifyBookingConfirmed(booking);
+        } catch (Exception e) {
+            log.warn("Failed to send booking confirmed notification to user: {}", e.getMessage());
+        }
+
         return response;
     }
 
@@ -372,6 +387,13 @@ public class TrainerBookingService implements ITrainerBookingService {
             );
         } catch (Exception e) {
             log.warn("Failed to push booking-updated WebSocket event: {}", e.getMessage());
+        }
+
+        // Notify user that booking was rejected
+        try {
+            gymNotificationService.notifyBookingRejected(booking);
+        } catch (Exception e) {
+            log.warn("Failed to send booking rejected notification to user: {}", e.getMessage());
         }
 
         return response;

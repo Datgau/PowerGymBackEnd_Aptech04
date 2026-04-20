@@ -139,6 +139,7 @@ public class SecurityConfig {
                             // AUTHENTICATED ENDPOINTS
                             .requestMatchers("/api/payment/**").authenticated()
                             .requestMatchers(HttpMethod.POST, "/api/payment/momo/ipn").permitAll() // MoMo IPN callback doesn't need auth
+                            .requestMatchers("/api/gym-notifications/**").authenticated()
                             
                             // BANK PAYMENT ENDPOINTS
                             .requestMatchers("/api/bank-payments/create").authenticated()

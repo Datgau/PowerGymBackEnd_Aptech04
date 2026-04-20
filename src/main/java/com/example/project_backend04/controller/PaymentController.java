@@ -28,9 +28,6 @@ public class PaymentController {
     private final MoMoPaymentService moMoPaymentService;
     private final PaymentOrderMapper paymentOrderMapper;
 
-    /**
-     * Create MoMo payment
-     */
     @PostMapping("/momo/create")
     public ResponseEntity<ApiResponse<MoMoPaymentResponse>> createMoMoPayment(
             @RequestBody CreatePaymentRequest request) {
@@ -55,9 +52,6 @@ public class PaymentController {
         }
     }
 
-    /**
-     * MoMo IPN endpoint
-     */
     @PostMapping("/momo/ipn")
     public ResponseEntity<String> handleMoMoIPN(@RequestBody MoMoIPNRequest ipnRequest) {
         try {
@@ -70,18 +64,12 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Get payment status with trainer selection info (for post-payment workflow)
-     */
     @GetMapping("/status/{orderId}/with-trainer-selection")
     public ResponseEntity<ApiResponse<PaymentWithTrainerSelectionResponse>> getPaymentStatusWithTrainerSelection(
             @PathVariable String orderId) {
         try {
             User user = SecurityUtils.getCurrentUser();
-            
-            log.info("Getting payment status with trainer selection for orderId: {} by user: {}", 
-                orderId, user != null ? user.getId() : "NULL");
-            
+
             if (user == null) {
                 log.error("User is null in getPaymentStatusWithTrainerSelection endpoint");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -89,16 +77,13 @@ public class PaymentController {
             }
             
             PaymentOrder paymentOrder = moMoPaymentService.getPaymentStatus(orderId);
-            
-            // Check if the payment belongs to the authenticated user
             if (paymentOrder.getUser() == null) {
-                log.error("PaymentOrder {} has null user", orderId);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(ApiResponse.error("Payment order has no associated user"));
             }
             
             if (!paymentOrder.getUser().getId().equals(user.getId())) {
-                log.warn("Access denied: PaymentOrder {} belongs to user {} but requested by user {}", 
+                log.warn("Access denied: PaymentOrder {} belongs to user {} but requested by user {}",
                     orderId, paymentOrder.getUser().getId(), user.getId());
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("Access denied"));
@@ -115,9 +100,6 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Debug endpoint - Get payment status without user check (for debugging)
-     */
     @GetMapping("/debug/status/{orderId}")
     public ResponseEntity<ApiResponse<PaymentOrderResponse>> getPaymentStatusDebug(
             @PathVariable String orderId) {
@@ -165,9 +147,6 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Cancel payment (if still pending)
-     */
     @PostMapping("/cancel/{orderId}")
     public ResponseEntity<ApiResponse<String>> cancelPayment(@PathVariable String orderId) {
         try {
@@ -177,9 +156,6 @@ public class PaymentController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.error("User authentication required"));
             }
-            
-            // This would need to be implemented in the service
-            // moMoPaymentService.cancelPayment(orderId, user);
             return ResponseEntity.ok(ApiResponse.success("Payment cancelled successfully"));
         } catch (Exception e) {
             log.error("Error cancelling payment", e);

@@ -20,7 +20,6 @@ import java.util.Map;
 public class GymServiceController {
 
     private final IGymService gymService;
-
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<List<GymServiceResponse>>> getActiveServices() {
         try {
@@ -32,7 +31,6 @@ public class GymServiceController {
                     .body(ApiResponse.error("Failed to fetch services: " + e.getMessage()));
         }
     }
-
     @GetMapping("/active/paginated")
     public ResponseEntity<ApiResponse<Page<GymServiceResponse>>> getActiveServicesPaginated(
             @RequestParam(defaultValue = "0") int page,
@@ -47,7 +45,6 @@ public class GymServiceController {
                     .body(ApiResponse.error("Failed to fetch services: " + e.getMessage()));
         }
     }
-
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<GymServiceResponse>>> getAllServices() {
@@ -110,8 +107,6 @@ public class GymServiceController {
         }
     }
 
-    // ===================== CREATE =====================
-
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<GymServiceResponse>> createService(
@@ -155,8 +150,7 @@ public class GymServiceController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error(e.getMessage()));
             }
-            if (e.getMessage().contains("đang có") && e.getMessage().contains("người đăng ký")) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
+            if (e.getMessage().contains("is already") && e.getMessage().contains("registered user")) {                return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(ApiResponse.error(e.getMessage()));
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

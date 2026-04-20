@@ -19,6 +19,7 @@ public class ImportReceiptResponse {
     private String notes;
     private Long createdById;
     private String createdByName;
+    private String createdByEmail;
     private LocalDateTime createdAt;
     private int itemCount;
 }

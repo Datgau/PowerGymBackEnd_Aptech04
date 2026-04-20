@@ -63,6 +63,7 @@ public class BankPaymentService {
         private final RewardService rewardService;
         private final com.example.project_backend04.mapper.ServiceRegistrationMapper serviceRegistrationMapper;
         private final TrainerSalaryService trainerSalaryService;
+        private final GymNotificationService gymNotificationService;
 
         @Transactional
         public CreateBankPaymentResponse createBankPayment(Long userId, Long serviceId) {
@@ -595,6 +596,13 @@ public class BankPaymentService {
             
             log.info("Membership {} activated for userId={}, packageId={}, orderId={}, startDate={}, endDate={}",
                 savedMembership.getId(), userId, packageId, order.getId(), startDate, endDate);
+
+            // Notify user that membership is activated
+            try {
+                gymNotificationService.notifyMembershipActivated(savedMembership);
+            } catch (Exception e) {
+                log.warn("Failed to send membership activated notification: {}", e.getMessage());
+            }
         }
         
         private void activateProductOrder(PaymentOrder order) {

@@ -2,7 +2,7 @@ package com.example.project_backend04.controller;
 
 import com.example.project_backend04.dto.request.Chat.ChatRequest;
 import com.example.project_backend04.dto.response.ChatResponse;
-import com.example.project_backend04.service.GeminiChatService;
+import com.example.project_backend04.service.OpenAIChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -17,8 +17,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChatController {
 
-    private final GeminiChatService geminiChatService;
-
+    private final OpenAIChatService openAIChatService;
     @PostMapping("/ask")
     public ResponseEntity<ChatResponse> askAgent(@RequestBody ChatRequest request) {
         try {
@@ -29,15 +28,13 @@ public class ChatController {
             String sessionId = (request.sessionId() != null && !request.sessionId().isBlank())
                     ? request.sessionId()
                     : UUID.randomUUID().toString();
-
-            ChatResponse response = geminiChatService.chat(sessionId, request.message());
+            ChatResponse response = openAIChatService.chat(sessionId, request.message());
             log.info("Chat OK session={} services={} memberships={} trainers={}",
                     sessionId,
                     response.services() != null ? response.services().size() : 0,
                     response.memberships() != null ? response.memberships().size() : 0,
                     response.trainers() != null ? response.trainers().size() : 0);
             return ResponseEntity.ok(response);
-
         } catch (Exception e) {
             log.error("Error in chat endpoint", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)

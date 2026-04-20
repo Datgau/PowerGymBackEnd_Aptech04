@@ -111,7 +111,7 @@ public class TrainerManagementService {
             .filter(b -> b.getStatus() == BookingStatus.PENDING)
             .count();
         int rejectedBookings = (int) bookings.stream()
-            .filter(b -> b.getStatus() == BookingStatus.CANCELLED)
+            .filter(b -> b.getStatus() == BookingStatus.REJECTED)
             .count();
         
         // Calculate rates
@@ -152,6 +152,57 @@ public class TrainerManagementService {
             .collect(Collectors.toSet());
         int uniqueClients = uniqueClientIds.size();
         
+        // Calculate trainer earnings - only for CONFIRMED and COMPLETED bookings, exclude REJECTED
+        double totalRevenue = bookings.stream()
+            .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.COMPLETED)
+            .filter(b -> b.getServiceRegistration() != null && b.getServiceRegistration().getGymService() != null)
+            .mapToDouble(b -> {
+                var registration = b.getServiceRegistration();
+                var service = registration.getGymService();
+                
+                // Use locked trainer percentage if available, otherwise use service's trainer percentage
+                java.math.BigDecimal percentage = registration.getLockedTrainerPercentage() != null
+                    ? registration.getLockedTrainerPercentage()
+                    : service.getTrainerPercentage();
+                
+                // Use payment amount if available, otherwise use service price
+                java.math.BigDecimal amount = (registration.getPaymentOrder() != null && registration.getPaymentOrder().getAmount() != null)
+                    ? java.math.BigDecimal.valueOf(registration.getPaymentOrder().getAmount())
+                    : service.getPrice();
+                
+                return amount.multiply(percentage).doubleValue();
+            })
+            .sum();
+        
+        // Calculate service revenue breakdown
+        Map<String, Double> serviceRevenue = bookings.stream()
+            .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.COMPLETED)
+            .filter(b -> b.getServiceRegistration() != null && b.getServiceRegistration().getGymService() != null)
+            .collect(Collectors.groupingBy(
+                b -> b.getServiceRegistration().getGymService().getName(),
+                Collectors.summingDouble(b -> {
+                    var registration = b.getServiceRegistration();
+                    var service = registration.getGymService();
+                    
+                    java.math.BigDecimal percentage = registration.getLockedTrainerPercentage() != null
+                        ? registration.getLockedTrainerPercentage()
+                        : service.getTrainerPercentage();
+                    
+                    java.math.BigDecimal amount = (registration.getPaymentOrder() != null && registration.getPaymentOrder().getAmount() != null)
+                        ? java.math.BigDecimal.valueOf(registration.getPaymentOrder().getAmount())
+                        : service.getPrice();
+                    
+                    return amount.multiply(percentage).doubleValue();
+                })
+            ));
+        
+        int revenueBookingsCount = (int) bookings.stream()
+            .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.COMPLETED)
+            .filter(b -> b.getServiceRegistration() != null && b.getServiceRegistration().getGymService() != null)
+            .count();
+        
+        double averageRevenuePerBooking = revenueBookingsCount > 0 ? totalRevenue / revenueBookingsCount : 0;
+        
         return TrainerStatisticsResponse.builder()
             .trainerId(trainer.getId())
             .trainerName(trainer.getFullName())
@@ -175,9 +226,9 @@ public class TrainerManagementService {
             .bookingsByDayOfWeek(bookingsByDayOfWeek)
             .bookingsByHour(bookingsByHour)
             .uniqueClients(uniqueClients)
-            .totalRevenue(0)
-            .averageRevenuePerBooking(0)
-            .serviceRevenue(new HashMap<>())
+            .totalRevenue(totalRevenue)
+            .averageRevenuePerBooking(averageRevenuePerBooking)
+            .serviceRevenue(serviceRevenue)
             .totalWorkingHours(0)
             .averageSessionDuration(0)
             .returningClients(0)

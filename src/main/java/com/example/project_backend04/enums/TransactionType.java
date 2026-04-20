@@ -1,8 +1,8 @@
 package com.example.project_backend04.enums;
 
 public enum TransactionType {
-    EARN("Tích điểm"),
-    REDEEM("Đổi điểm");
+    EARN("Earn"),
+    REDEEM("Redeem");
 
     private final String displayName;
 

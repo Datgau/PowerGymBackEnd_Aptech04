@@ -93,8 +93,6 @@ public class ServiceRegistrationController {
                     .body(ApiResponse.error("Failed to fetch registrations: " + e.getMessage()));
         }
     }
-
-    /** GET /api/service-registrations/my-clients — trainer lấy danh sách học viên của mình */
     @GetMapping("/my-clients")
     @PreAuthorize("hasRole('TRAINER')")
     public ResponseEntity<ApiResponse<List<ServiceRegistrationWithTrainerResponse>>> getMyClients() {

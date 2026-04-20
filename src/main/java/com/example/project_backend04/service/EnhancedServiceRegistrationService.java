@@ -43,6 +43,7 @@ public class EnhancedServiceRegistrationService {
     private final PaymentOrderRepository paymentOrderRepository;
     private final TrainerSalaryService trainerSalaryService;
     private final TrainerBookingRepository trainerBookingRepository;
+    private final GymNotificationService gymNotificationService;
     
     @Transactional
     public ServiceRegistrationWithTrainerResponse registerServiceWithTrainer(
@@ -78,6 +79,13 @@ public class EnhancedServiceRegistrationService {
         notificationService.notifyServiceRegistrationCreated(saved);
         if (saved.hasTrainer()) {
             notificationService.notifyTrainerAssigned(saved);
+        }
+
+        // Notify user via WebSocket
+        try {
+            gymNotificationService.notifyServiceRegistered(saved);
+        } catch (Exception e) {
+            log.warn("Failed to send service registered notification: {}", e.getMessage());
         }
         
         log.info("Successfully registered service with trainer for registration {}", saved.getId());
@@ -269,6 +277,7 @@ public class EnhancedServiceRegistrationService {
             .trainerName(trainer != null ? trainer.getFullName() : null)
             .status(registration.getStatus())
             .registrationDate(registration.getRegistrationDate())
+            .expirationDate(registration.getExpirationDate())
             .trainerSelectedAt(registration.getTrainerSelectedAt())
             .trainerSelectionNotes(registration.getTrainerSelectionNotes())
             .notes(registration.getNotes())

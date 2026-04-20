@@ -18,11 +18,9 @@ public class MembershipController {
     @GetMapping("/current")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCurrentMembership(Authentication authentication) {
         try {
-            // Mock membership data
             Map<String, Object> membership = createMembershipInfo(
                 1L, "PREMIUM", "2024-01-01", "2024-12-31", "ACTIVE"
             );
-
             ApiResponse<Map<String, Object>> response = new ApiResponse<>(
                 true, "Membership retrieved successfully", membership, 200
             );
@@ -75,8 +73,6 @@ public class MembershipController {
             String packageId = (String) registrationRequest.get("packageId");
             String paymentMethod = (String) registrationRequest.get("paymentMethod");
             String notes = (String) registrationRequest.get("notes");
-            
-            // Mock registration logic
             String orderId = "order-" + UUID.randomUUID().toString().substring(0, 8);
             
             Map<String, String> result = new HashMap<>();

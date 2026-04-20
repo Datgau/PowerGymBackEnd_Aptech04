@@ -22,10 +22,7 @@ import java.util.List;
 public class TrainerLeaveRequestController {
     
     private final TrainerLeaveRequestService leaveRequestService;
-    
-    /**
-     * Create a new leave request (Trainer only)
-     */
+
     @PostMapping("/trainer/{trainerId}")
     @PreAuthorize("hasRole('TRAINER') and @securityUtils.isCurrentUser(#trainerId)")
     public ResponseEntity<ApiResponse<LeaveRequestResponse>> createLeaveRequest(

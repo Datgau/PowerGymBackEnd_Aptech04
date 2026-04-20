@@ -17,12 +17,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controller cho User — đặt lịch, hủy, xem lịch của mình,
- * và xem lịch trống của trainer trước khi đặt.
- *
- * Base path: /api/bookings
- */
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
@@ -37,7 +31,7 @@ public class UserBookingController {
             @Valid @RequestBody CreateBookingRequest request) {
         try {
             TrainerBookingResponse booking = bookingService.createBooking(userId, request);
-            return ok(booking, "Tạo lịch hẹn thành công");
+            return ok(booking, "Booking created successfully");
         } catch (IllegalArgumentException e) {
             return badRequest(e.getMessage());
         } catch (IllegalStateException e) {
@@ -52,7 +46,6 @@ public class UserBookingController {
             @RequestParam Long userId,
             @Valid @RequestBody CreateBookingRequest request) {
         try {
-            // Check time slot conflicts for user
             boolean hasConflict = bookingService.checkUserTimeSlotConflict(
                 userId, 
                 request.getBookingDate(), 
@@ -64,7 +57,6 @@ public class UserBookingController {
                 return conflict("You already have a booking in this time slot");
             }
             
-            // Check trainer conflicts if trainer is specified
             if (request.getTrainerId() != null) {
                 boolean trainerHasConflict = bookingService.checkTrainerTimeSlotConflict(
                     request.getTrainerId(),
@@ -105,7 +97,7 @@ public class UserBookingController {
             @RequestParam(required = false) String status) {
         try {
             List<TrainerBookingResponse> bookings = bookingService.getMyBookings(userId, status);
-            return ok(bookings, "Lấy danh sách booking thành công");
+            return ok(bookings, "Successfully retrieved booking list");
         } catch (Exception e) {
             return badRequest(e.getMessage());
         }
@@ -120,7 +112,7 @@ public class UserBookingController {
             @RequestParam(required = false) String reason) {
         try {
             TrainerBookingResponse booking = bookingService.cancelBookingByUser(userId, bookingId, reason);
-            return ok(booking, "Hủy lịch hẹn thành công");
+            return ok(booking, "Booking cancelled successfully");
         } catch (IllegalStateException e) {
             return conflict(e.getMessage());
         } catch (SecurityException e) {
@@ -130,7 +122,6 @@ public class UserBookingController {
         }
     }
 
-    //Xem lịch trống của trainer (trước khi đặt)
     @GetMapping("/trainers/{trainerId}/schedule")
     public ResponseEntity<ApiResponse<TrainerScheduleResponse>> getTrainerDailySchedule(
             @PathVariable Long trainerId,
@@ -149,16 +140,12 @@ public class UserBookingController {
             @PathVariable Long trainerId) {
         try {
             TrainerScheduleResponse schedule = workingHoursService.getWeeklySchedule(trainerId);
-            return ok(schedule, "Lấy lịch tuần trainer thành công");
+            return ok(schedule, "Successfully retrieved trainer weekly schedule");
         } catch (Exception e) {
             return badRequest(e.getMessage());
         }
     }
 
-    /**
-     * Get list of dates in a month that have bookings for a trainer
-     * Used to disable dates in date picker
-     */
     @GetMapping("/trainers/{trainerId}/booked-dates")
     public ResponseEntity<ApiResponse<Map<String, List<LocalDate>>>> getTrainerBookedDates(
             @PathVariable Long trainerId,
@@ -166,8 +153,7 @@ public class UserBookingController {
             @RequestParam int month) {
         try {
             Map<String, List<LocalDate>> result = bookingService.getTrainerBookedDatesInMonth(trainerId, year, month);
-            return ok(result, "Lấy danh sách ngày đã có lịch thành công");
-        } catch (Exception e) {
+            return ok(result, "Successfully retrieved list of days with scheduled bookings");        } catch (Exception e) {
             return badRequest(e.getMessage());
         }
     }

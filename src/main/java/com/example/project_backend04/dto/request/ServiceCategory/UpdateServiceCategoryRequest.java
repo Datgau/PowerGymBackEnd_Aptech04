@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class UpdateServiceCategoryRequest {
 
-    @NotNull(message = "ID không được để trống")
+    // ID is set from path parameter by controller, not from request body
     private Long id;
 
     @NotBlank(message = "Display name không được để trống")
