@@ -24,14 +24,7 @@ import java.util.stream.Collectors;
 public class OrderStatisticsService {
     
     private final ProductOrderRepository productOrderRepository;
-    
-    /**
-     * Get comprehensive order statistics for a date range
-     * 
-     * @param startDate Start of date range (inclusive)
-     * @param endDate End of date range (inclusive)
-     * @return OrderStatisticsResponse with all statistics
-     */
+
     public OrderStatisticsResponse getOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
         BigDecimal totalRevenue = productOrderRepository.calculateTotalRevenue(startDate, endDate);
 
@@ -74,26 +67,16 @@ public class OrderStatisticsService {
             .deliveredOrders((int) deliveredOrders)
             .build();
     }
-    
-    /**
-     * Get top-selling products ranked by total quantity sold
-     * 
-     * @param startDate Start of date range (inclusive)
-     * @param endDate End of date range (inclusive)
-     * @param limit Maximum number of products to return
-     * @return List of TopSellingProductResponse sorted by quantity descending
-     */
+
     public List<TopSellingProductResponse> getTopSellingProducts(
         LocalDateTime startDate, 
         LocalDateTime endDate, 
         int limit
     ) {
-        // Get all PAID orders in date range
         List<ProductOrder> paidOrders = productOrderRepository.findPaidOrdersByDateRange(
             startDate, endDate
         );
         
-        // Map to aggregate product sales: productId -> {totalQuantity, totalRevenue, productInfo}
         Map<Long, ProductSalesData> productSalesMap = new HashMap<>();
         
         for (ProductOrder order : paidOrders) {
@@ -126,10 +109,7 @@ public class OrderStatisticsService {
             .limit(limit)
             .collect(Collectors.toList());
     }
-    
-    /**
-     * Helper class to aggregate product sales data
-     */
+
     private static class ProductSalesData {
         private final Long productId;
         private final String productName;

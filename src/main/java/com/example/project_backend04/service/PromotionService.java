@@ -42,129 +42,123 @@ public class PromotionService {
                 .map(promotionMapper::toResponse)
                 .collect(Collectors.toList());
     }
-    
     @Transactional(readOnly = true)
     public ApplyPromotionResponse validateAndCalculatePromotion(Long userId, ApplyPromotionRequest request) {
-        log.info("Validating promotion: code={}, userId={}, orderAmount={}", 
-            request.getPromotionCode(), userId, request.getOrderAmount());
-        
+        log.info("Validating promotion: code={}, userId={}, orderAmount={}",
+                request.getPromotionCode(), userId, request.getOrderAmount());
+
         Promotion promotion = promotionRepository.findByCode(request.getPromotionCode())
-            .orElse(null);
-        
+                .orElse(null);
+
         if (promotion == null) {
             log.warn("Promotion not found: code={}", request.getPromotionCode());
             return ApplyPromotionResponse.builder()
-                .success(false)
-                .message("Mã khuyến mãi không tồn tại")
-                .build();
+                    .success(false)
+                    .message("Promotion code does not exist")
+                    .build();
         }
-        
+
         LocalDateTime now = LocalDateTime.now();
-        log.info("Found promotion: id={}, title={}, type={}, isActive={}, validFrom={}, validUntil={}, minPurchase={}", 
-            promotion.getId(), promotion.getTitle(), promotion.getType(), 
-            promotion.getIsActive(), promotion.getValidFrom(), promotion.getValidUntil(),
-            promotion.getMinPurchaseAmount());
-        
+        log.info("Found promotion: id={}, title={}, type={}, isActive={}, validFrom={}, validUntil={}, minPurchase={}",
+                promotion.getId(), promotion.getTitle(), promotion.getType(),
+                promotion.getIsActive(), promotion.getValidFrom(), promotion.getValidUntil(),
+                promotion.getMinPurchaseAmount());
+
         // Validate promotion with detailed error messages
         if (!promotion.isValid(request.getOrderAmount())) {
             log.warn("Promotion validation failed");
-            
+
             // Build debug info
             ApplyPromotionResponse.DebugInfo debugInfo = ApplyPromotionResponse.DebugInfo.builder()
-                .isActive(promotion.getIsActive())
-                .validFrom(promotion.getValidFrom())
-                .validUntil(promotion.getValidUntil())
-                .currentTime(now)
-                .usageCount(promotion.getUsageCount())
-                .usageLimit(promotion.getUsageLimit())
-                .minPurchaseAmount(promotion.getMinPurchaseAmount())
-                .orderAmount(request.getOrderAmount())
-                .build();
-            
+                    .isActive(promotion.getIsActive())
+                    .validFrom(promotion.getValidFrom())
+                    .validUntil(promotion.getValidUntil())
+                    .currentTime(now)
+                    .usageCount(promotion.getUsageCount())
+                    .usageLimit(promotion.getUsageLimit())
+                    .minPurchaseAmount(promotion.getMinPurchaseAmount())
+                    .orderAmount(request.getOrderAmount())
+                    .build();
+
             // Check specific failure reason
             if (!Boolean.TRUE.equals(promotion.getIsActive())) {
                 debugInfo.setFailureReason("Promotion is not active");
                 return ApplyPromotionResponse.builder()
-                    .success(false)
-                    .message("Mã khuyến mãi đã bị vô hiệu hóa")
-                    .debugInfo(debugInfo)
-                    .build();
+                        .success(false)
+                        .message("Promotion is disabled")
+                        .debugInfo(debugInfo)
+                        .build();
             }
             if (promotion.getValidFrom() != null && now.isBefore(promotion.getValidFrom())) {
                 debugInfo.setFailureReason("Current time is before validFrom");
                 return ApplyPromotionResponse.builder()
-                    .success(false)
-                    .message("Mã khuyến mãi chưa có hiệu lực")
-                    .debugInfo(debugInfo)
-                    .build();
+                        .success(false)
+                        .message("Promotion is not yet active")
+                        .debugInfo(debugInfo)
+                        .build();
             }
             if (promotion.getValidUntil() != null && now.isAfter(promotion.getValidUntil())) {
                 debugInfo.setFailureReason("Current time is after validUntil");
                 return ApplyPromotionResponse.builder()
-                    .success(false)
-                    .message("Mã khuyến mãi đã hết hạn")
-                    .debugInfo(debugInfo)
-                    .build();
+                        .success(false)
+                        .message("Promotion has expired")
+                        .debugInfo(debugInfo)
+                        .build();
             }
             if (promotion.getUsageLimit() != null && promotion.getUsageCount() >= promotion.getUsageLimit()) {
                 debugInfo.setFailureReason("Usage limit exceeded");
                 return ApplyPromotionResponse.builder()
-                    .success(false)
-                    .message("Mã khuyến mãi đã hết lượt sử dụng")
-                    .debugInfo(debugInfo)
-                    .build();
+                        .success(false)
+                        .message("Promotion usage limit has been reached")
+                        .debugInfo(debugInfo)
+                        .build();
             }
             if (promotion.getMinPurchaseAmount() != null && request.getOrderAmount().compareTo(promotion.getMinPurchaseAmount()) < 0) {
                 debugInfo.setFailureReason("Order amount is less than minimum purchase amount");
                 return ApplyPromotionResponse.builder()
-                    .success(false)
-                    .message(String.format("Đơn hàng tối thiểu phải từ %s VND để sử dụng mã này", 
-                        promotion.getMinPurchaseAmount().intValue()))
-                    .debugInfo(debugInfo)
-                    .build();
+                        .success(false)
+                        .message(String.format("Minimum order must be at least %s VND to use this code",
+                                promotion.getMinPurchaseAmount().intValue()))
+                        .debugInfo(debugInfo)
+                        .build();
             }
-            
+
             debugInfo.setFailureReason("Unknown validation failure");
             return ApplyPromotionResponse.builder()
-                .success(false)
-                .message("Mã khuyến mãi không hợp lệ hoặc đã hết hạn")
-                .debugInfo(debugInfo)
-                .build();
+                    .success(false)
+                    .message("Invalid or expired promotion code")
+                    .debugInfo(debugInfo)
+                    .build();
         }
-        
-        // Check usage limit per user (if needed)
         long userUsageCount = promotionUsageRepository.countByPromotionIdAndUserId(promotion.getId(), userId);
-        log.info("User usage count: userId={}, promotionId={}, count={}", userId, promotion.getId(), userUsageCount);
-        
         if (userUsageCount > 0) {
             return ApplyPromotionResponse.builder()
-                .success(false)
-                .message("Bạn đã sử dụng mã khuyến mãi này rồi")
-                .debugInfo(ApplyPromotionResponse.DebugInfo.builder()
-                    .failureReason("User has already used this promotion")
-                    .build())
-                .build();
+                    .success(false)
+                    .message("You have already used this promotion code")
+                    .debugInfo(ApplyPromotionResponse.DebugInfo.builder()
+                            .failureReason("User has already used this promotion")
+                            .build())
+                    .build();
         }
-        
+
         // Calculate discount
         BigDecimal discountAmount = promotion.calculateDiscount(request.getOrderAmount());
         BigDecimal finalAmount = request.getOrderAmount().subtract(discountAmount);
-        
-        log.info("Promotion applied successfully: code={}, originalAmount={}, discountAmount={}, finalAmount={}", 
-            promotion.getCode(), request.getOrderAmount(), discountAmount, finalAmount);
-        
+
+        log.info("Promotion applied successfully: code={}, originalAmount={}, discountAmount={}, finalAmount={}",
+                promotion.getCode(), request.getOrderAmount(), discountAmount, finalAmount);
+
         return ApplyPromotionResponse.builder()
-            .success(true)
-            .message("Áp dụng mã khuyến mãi thành công")
-            .promotionId(promotion.getId())
-            .promotionCode(promotion.getCode())
-            .promotionName(promotion.getTitle())
-            .originalAmount(request.getOrderAmount())
-            .discountAmount(discountAmount)
-            .finalAmount(finalAmount)
-            .build();
+                .success(true)
+                .message("Promotion applied successfully")
+                .promotionId(promotion.getId())
+                .promotionCode(promotion.getCode())
+                .promotionName(promotion.getTitle())
+                .originalAmount(request.getOrderAmount())
+                .discountAmount(discountAmount)
+                .finalAmount(finalAmount)
+                .build();
     }
-    
     @Transactional
     public void recordPromotionUsage(Long promotionId, Long userId, String paymentOrderId, BigDecimal discountAmount) {
         PromotionUsage usage = PromotionUsage.builder()

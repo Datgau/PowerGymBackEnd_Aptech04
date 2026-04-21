@@ -89,10 +89,10 @@ public class JwtService {
     public void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(true)                          // true nếu dùng HTTPS
-                .path("/")                              // Cookie gửi cho tất cả paths
-                .maxAge(refreshableDuration)            // Thời gian sống (seconds)
-                .sameSite("None")                        // Lax thay vì Strict để tương thích tốt hơn lên server thì là none
+                .secure(true)
+                .path("/")
+                .maxAge(refreshableDuration)
+                .sameSite("None")
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());

@@ -45,8 +45,14 @@ public class OpenAIChatService {
             TOOL USAGE RULES:
             - When customer asks about membership packages -> call searchMembershipPackages
             - When customer asks about services/classes/PT -> call searchGymServices
-            - When customer asks about trainers -> call searchTrainers
+            - When customer asks about trainers/người hướng dẫn/giáo viên/PT -> ask which service they need trainer for first, then call searchTrainers with appropriate specialty
             - When customer wants to book -> call createTrainerBooking (requires: trainerId, bookingDate, startTime, endTime)
+            
+            TRAINER INQUIRY HANDLING:
+            When customer asks about trainers (using words like: trainer, người hướng dẫn, giáo viên, PT, huấn luyện viên), follow this flow:
+            1. If they haven't specified a service/specialty, ask: "Bạn cần trainer cho dịch vụ nào? Ví dụ: Yoga, Boxing, Personal Training, Gym, Cardio, v.v."
+            2. Once they specify the service, call searchTrainers with the appropriate specialtyName
+            3. Display the trainers for that specific service/specialty
             
             REGISTRATION INSTRUCTIONS (IMPORTANT):
             
@@ -83,6 +89,7 @@ public class OpenAIChatService {
             - After calling tools, summarize results briefly and guide next steps
             - When displaying cards (services/memberships/trainers), always explain registration process
             - Ask for more information if customer needs are unclear
+            - For trainer inquiries, always clarify the service/specialty first before searching
             
             COMMUNICATION STYLE:
             - Friendly and enthusiastic like a friend
@@ -242,7 +249,7 @@ public class OpenAIChatService {
             throw new RuntimeException("OpenAI API error: " + e.getResponseBodyAsString());
         } catch (Exception e) {
             log.error("Error calling OpenAI API: {}", e.getMessage(), e);
-            throw new RuntimeException("Lỗi kết nối OpenAI API: " + e.getMessage());
+            throw new RuntimeException("Connection error OpenAI API: " + e.getMessage());
         }
     }
 
@@ -260,7 +267,7 @@ public class OpenAIChatService {
             default -> new ToolResult("Tool does not exist: " + toolName, List.of());
         };
     }
-    
+
     private ToolResult searchGymServices(Map<String, Object> args) {
         try {
             String keyword = (String) args.get("keyword");
@@ -399,6 +406,32 @@ public class OpenAIChatService {
                                 (ts.getSpecialty().getName().toLowerCase().contains(sn) ||
                                         ts.getSpecialty().getDisplayName().toLowerCase().contains(sn)))
                         .collect(Collectors.toList());
+                
+                // If no direct specialty match, try to find by service name
+                if (trainerSpecialties.isEmpty()) {
+                    List<GymService> matchingServices = gymServiceRepository.findByIsActiveTrueWithImages().stream()
+                            .filter(s -> s.getName().toLowerCase().contains(sn) ||
+                                    (s.getCategory() != null && s.getCategory().getName().toLowerCase().contains(sn)))
+                            .collect(Collectors.toList());
+                    
+                    if (!matchingServices.isEmpty()) {
+                        // Get all trainer specialties and filter by related keywords
+                        trainerSpecialties = trainerSpecialtyRepository.findAllActiveTrainerSpecialties().stream()
+                                .filter(ts -> {
+                                    String specName = ts.getSpecialty().getName().toLowerCase();
+                                    String specDisplay = ts.getSpecialty().getDisplayName().toLowerCase();
+                                    // Match common keywords
+                                    return specName.contains("personal") || specName.contains("pt") || 
+                                           specName.contains("gym") || specName.contains("fitness") ||
+                                           specDisplay.contains("personal") || specDisplay.contains("pt") ||
+                                           specDisplay.contains("gym") || specDisplay.contains("fitness") ||
+                                           matchingServices.stream().anyMatch(s -> 
+                                               specName.contains(s.getName().toLowerCase()) ||
+                                               specDisplay.contains(s.getName().toLowerCase()));
+                                })
+                                .collect(Collectors.toList());
+                    }
+                }
             }
 
             List<User> trainers = trainerSpecialties.stream()
@@ -409,11 +442,20 @@ public class OpenAIChatService {
                     .collect(Collectors.toList());
 
             if (trainers.isEmpty()) {
-                return new ToolResult("No matching trainers found.", List.of());
+                String message = specialtyName != null && !specialtyName.isBlank() 
+                    ? "Không tìm thấy trainer cho dịch vụ \"" + specialtyName + "\". Bạn có thể thử tìm trainer cho các dịch vụ khác như Yoga, Boxing, Personal Training, Gym, Cardio."
+                    : "Không tìm thấy trainer nào. Vui lòng chỉ định dịch vụ cụ thể.";
+                return new ToolResult(message, List.of());
             }
 
             List<Map<String, Object>> data = new ArrayList<>();
-            StringBuilder summary = new StringBuilder("Found " + trainers.size() + " trainers:\n");
+            StringBuilder summary = new StringBuilder();
+            
+            if (specialtyName != null && !specialtyName.isBlank()) {
+                summary.append("Tìm thấy ").append(trainers.size()).append(" trainer cho dịch vụ \"").append(specialtyName).append("\":\n");
+            } else {
+                summary.append("Tìm thấy ").append(trainers.size()).append(" trainer:\n");
+            }
 
             for (User trainer : trainers) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -439,8 +481,8 @@ public class OpenAIChatService {
                 String specStr = specs.stream()
                         .map(ts -> ts.getSpecialty().getDisplayName())
                         .collect(Collectors.joining(", "));
-                summary.append(String.format("- %s (ID: %d): %d years experience, specialties: %s\n",
-                        trainer.getFullName(), trainer.getId(),
+                summary.append(String.format("- %s: %d năm kinh nghiệm, chuyên môn: %s\n",
+                        trainer.getFullName(),
                         trainer.getTotalExperienceYears() != null ? trainer.getTotalExperienceYears() : 0,
                         specStr));
             }
@@ -448,7 +490,7 @@ public class OpenAIChatService {
             return new ToolResult(summary.toString(), data);
         } catch (Exception e) {
             log.error("Error in searchTrainers", e);
-            return new ToolResult("Error searching for trainers.", List.of());
+            return new ToolResult("Lỗi khi tìm kiếm trainer.", List.of());
         }
     }
 
@@ -528,11 +570,11 @@ public class OpenAIChatService {
                         "type", "function",
                         "function", Map.of(
                                 "name", "searchTrainers",
-                                "description", "Search for trainers by specialty.",
+                                "description", "Search for trainers by specialty/service. Only call this after customer specifies which service they need trainer for.",
                                 "parameters", Map.of(
                                         "type", "object",
                                         "properties", Map.of(
-                                                "specialtyName", Map.of("type", "string", "description", "Specialty name")
+                                                "specialtyName", Map.of("type", "string", "description", "Specialty name (e.g., Yoga, Boxing, Personal Training, Gym, Cardio)")
                                         )
                                 )
                         )
