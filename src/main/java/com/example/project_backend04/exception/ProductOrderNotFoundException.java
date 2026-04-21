@@ -1,8 +1,6 @@
 package com.example.project_backend04.exception;
 
-/**
- * Exception thrown when a product order is not found
- */
+
 public class ProductOrderNotFoundException extends RuntimeException {
     
     private final Long orderId;

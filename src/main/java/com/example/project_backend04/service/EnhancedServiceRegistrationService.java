@@ -25,7 +25,9 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,33 +64,21 @@ public class EnhancedServiceRegistrationService {
         if (hasActiveRegistration) {
             throw new IllegalStateException("User already has an active registration for this service");
         }
-        
-        // Create service registration
         ServiceRegistration registration = createServiceRegistration(user, gymService, request);
-        
-        // Assign trainer if specified
         if (request.getTrainerId() != null) {
             assignTrainerToRegistration(registration, request.getTrainerId(), 
                                       request.getTrainerSelectionNotes());
         }
-        
-        // Save registration
         ServiceRegistration saved = serviceRegistrationRepository.save(registration);
-        
-        // Send notifications
         notificationService.notifyServiceRegistrationCreated(saved);
         if (saved.hasTrainer()) {
             notificationService.notifyTrainerAssigned(saved);
         }
-
-        // Notify user via WebSocket
         try {
             gymNotificationService.notifyServiceRegistered(saved);
         } catch (Exception e) {
             log.warn("Failed to send service registered notification: {}", e.getMessage());
         }
-        
-        log.info("Successfully registered service with trainer for registration {}", saved.getId());
         return mapToResponseWithTrainer(saved);
     }
     
@@ -102,13 +92,9 @@ public class EnhancedServiceRegistrationService {
     
     @Transactional
     public ServiceRegistrationWithTrainerResponse assignTrainer(Long registrationId, Long trainerId, String notes) {
-        log.info("Assigning trainer {} to registration {}", trainerId, registrationId);
-        
         ServiceRegistration registration = serviceRegistrationRepository.findById(registrationId)
             .orElseThrow(() -> new EntityNotFoundException("Service registration not found"));
         
-        // Allow assignment for ACTIVE registrations (online, already paid)
-        // and PENDING COUNTER registrations (will pay at counter after trainer is assigned)
         boolean isActive = registration.getStatus() == RegistrationStatus.ACTIVE;
         boolean isPendingCounter = registration.getStatus() == RegistrationStatus.PENDING
                 && registration.getRegistrationType() == RegistrationType.COUNTER;
@@ -116,16 +102,11 @@ public class EnhancedServiceRegistrationService {
         if (!isActive && !isPendingCounter) {
             throw new IllegalStateException("Can only assign trainer to active registrations or pending counter registrations");
         }
-        
-        // Use trainer selection service to assign trainer (this will also add salary if payment is SUCCESS)
         trainerSelectionService.assignTrainerToServiceRegistration(registrationId, trainerId, notes);
-        
-        // Reload registration with trainer info
         ServiceRegistration updated = serviceRegistrationRepository
             .findByIdWithFullDetails(registrationId)
             .orElseThrow(() -> new EntityNotFoundException("Registration not found after update"));
         
-        // Send notification
         notificationService.notifyTrainerAssigned(updated);
         
         log.info("Successfully assigned trainer {} to registration {}", trainerId, registrationId);
@@ -212,8 +193,6 @@ public class EnhancedServiceRegistrationService {
         if (request.getServiceId() == null) {
             throw new IllegalArgumentException("Service ID is required");
         }
-        
-        // Validate trainer if specified
         if (request.getTrainerId() != null) {
             User trainer = userRepository.findById(request.getTrainerId())
                 .orElseThrow(() -> new EntityNotFoundException("Trainer not found"));
@@ -242,8 +221,6 @@ public class EnhancedServiceRegistrationService {
     private void assignTrainerToRegistration(ServiceRegistration registration, Long trainerId, String notes) {
         User trainer = userRepository.findById(trainerId)
             .orElseThrow(() -> new EntityNotFoundException("Trainer not found"));
-        
-        // Validate trainer matches service requirements
         var matchResult = trainerSelectionService.matchTrainerToService(
             trainerId, registration.getGymService().getId());
         
@@ -261,8 +238,6 @@ public class EnhancedServiceRegistrationService {
         var user = registration.getUser();
         var svc  = registration.getGymService();
         var trainer = registration.getTrainer();
-        
-        // Fetch all bookings for this service registration (including REJECTED, PENDING, etc.)
         var allBookings = trainerBookingService.getBookingsByServiceRegistration(registration.getId());
         
         return ServiceRegistrationWithTrainerResponse.builder()
@@ -321,13 +296,8 @@ public class EnhancedServiceRegistrationService {
         paymentOrder.setCreatedAt(now);
         
         PaymentOrder savedPaymentOrder = paymentOrderRepository.save(paymentOrder);
-        
-        // Link payment order to registration
         registration.setPaymentOrder(savedPaymentOrder);
         ServiceRegistration savedRegistration = serviceRegistrationRepository.save(registration);
-        
-        // Link payment order to all PENDING TrainerBookings of this registration
-        // (bookings created before payment was confirmed will have paymentOrder = null)
         List<TrainerBooking> pendingBookings = trainerBookingRepository
             .findByServiceRegistration_Id(registrationId)
             .stream()
@@ -342,14 +312,11 @@ public class EnhancedServiceRegistrationService {
             log.info("Linked PaymentOrder {} to {} pending TrainerBooking(s) for registration {}",
                 savedPaymentOrder.getId(), pendingBookings.size(), registrationId);
         } else if (savedRegistration.getTrainer() != null) {
-            // No TrainerBooking exists yet — create one so the trainer can see the request
             createPendingBookingForServiceRegistration(savedRegistration, savedPaymentOrder, bookingDate, startTime, endTime);
         }
         
         log.info("Successfully confirmed counter payment for registration {} - Service start date: {}, expiration date: {}", 
             registrationId, registration.getRegistrationDate(), registration.getExpirationDate());
-        
-        // Add salary if trainer is already assigned
         if (savedRegistration.getTrainer() != null) {
             try {
                 Long trainerId = savedRegistration.getTrainer().getId();
@@ -367,18 +334,12 @@ public class EnhancedServiceRegistrationService {
         }
     }
 
-    /**
-     * Creates a TrainerBooking with the admin-selected date/time so the trainer can see
-     * the request in their pending-requests tab.
-     */
     private void createPendingBookingForServiceRegistration(
             ServiceRegistration registration, PaymentOrder paymentOrder,
-            java.time.LocalDate bookingDate, java.time.LocalTime startTime, java.time.LocalTime endTime) {
-
-        // Fall back to tomorrow 09:00-10:00 only if no date/time was provided
-        java.time.LocalDate date  = bookingDate != null ? bookingDate : java.time.LocalDate.now().plusDays(1);
-        java.time.LocalTime start = startTime  != null ? startTime  : java.time.LocalTime.of(9, 0);
-        java.time.LocalTime end   = endTime    != null ? endTime    : java.time.LocalTime.of(10, 0);
+            LocalDate bookingDate, java.time.LocalTime startTime, java.time.LocalTime endTime) {
+        LocalDate date  = bookingDate != null ? bookingDate : java.time.LocalDate.now().plusDays(1);
+        LocalTime start = startTime  != null ? startTime  : java.time.LocalTime.of(9, 0);
+        LocalTime end   = endTime    != null ? endTime    : java.time.LocalTime.of(10, 0);
 
         TrainerBooking booking = TrainerBooking.builder()
                 .user(registration.getUser())

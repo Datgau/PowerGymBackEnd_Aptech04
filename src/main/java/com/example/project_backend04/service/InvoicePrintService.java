@@ -18,14 +18,11 @@ public class InvoicePrintService {
 
     public byte[] generateInvoicePdf(Object data) {
         try {
-            // 1. Bind data to template
             Context context = new Context();
             context.setVariable("invoice", data);
 
-            // 2. Render HTML
             String html = templateEngine.process("invoice-template", context);
 
-            // 3. Convert HTML → PDF
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ITextRenderer renderer = new ITextRenderer();
 
@@ -42,14 +39,11 @@ public class InvoicePrintService {
 
     public byte[] generateProductOrderInvoicePdf(Object orderData) {
         try {
-            // 1. Bind data to template
             Context context = new Context();
             context.setVariable("order", orderData);
 
-            // 2. Render HTML with UTF-8 encoding
             String html = templateEngine.process("product-order-invoice-template", context);
 
-            // 3. Convert HTML → PDF
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ITextRenderer renderer = new ITextRenderer();
 

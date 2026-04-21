@@ -41,14 +41,11 @@ public class InventoryStatisticsService {
         
         for (Product product : allProducts) {
             if (product.isOutOfStock()) {
-                // Out of stock: stock <= 0
                 outOfStockCount++;
             } else if (product.isLowStock()) {
-                // Low stock: stock < lowStockThreshold AND stock > 0
                 lowStockCount++;
                 lowStockProducts.add(product);
             } else {
-                // In stock: stock > 0 and not low stock
                 inStockCount++;
             }
         }
@@ -78,10 +75,7 @@ public class InventoryStatisticsService {
                 .map(receipt -> receipt.getTotalCost())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
-    
-    /**
-     * Map Product entity to ProductResponse DTO
-     */
+
     private ProductResponse mapToProductResponse(Product product) {
         return ProductResponse.builder()
                 .id(product.getId())

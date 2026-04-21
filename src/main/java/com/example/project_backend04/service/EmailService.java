@@ -490,14 +490,14 @@ font-size:15px;">
                             <tr>
                                 <td style="padding:8px 0;">
                                     <p style="margin:0; color:#4a5568; font-size:14px;">
-                                        📧 Email: <a href="mailto:support@powergym.com" style="color:#045668; text-decoration:none;">support@powergym.com</a>
+                                        Email: <a href="mailto:support@powergym.com" style="color:#045668; text-decoration:none;">support@powergym.com</a>
                                     </p>
                                 </td>
                             </tr>
                             <tr>
                                 <td style="padding:8px 0;">
                                     <p style="margin:0; color:#4a5568; font-size:14px;">
-                                        📞 Hotline: <a href="tel:0789179033" style="color:#045668; text-decoration:none;">0789179033</a>
+                                        Hotline: <a href="tel:0789179033" style="color:#045668; text-decoration:none;">0789179033</a>
                                     </p>
                                 </td>
                             </tr>
@@ -602,7 +602,7 @@ font-size:15px;">
                             <tr>
                                 <td style="padding:18px;">
                                     <p style="margin:0 0 8px 0; font-size:15px; color:#742a2a; font-weight:600;">
-                                        🔔 Important Notice:
+                                        Important Notice:
                                     </p>
                                     <p style="margin:0; font-size:14px; color:#742a2a; line-height:1.6;">
                                         Please visit PowerGym directly to complete the payment within <strong>3 days</strong> from the time of registration.
@@ -623,14 +623,14 @@ font-size:15px;">
                             <tr>
                                 <td style="padding:8px 0;">
                                     <p style="margin:0; color:#4a5568; font-size:14px;">
-                                        📧 Email: <a href="mailto:support@powergym.com" style="color:#045668; text-decoration:none;">support@powergym.com</a>
+                                        Email: <a href="mailto:support@powergym.com" style="color:#045668; text-decoration:none;">support@powergym.com</a>
                                     </p>
                                 </td>
                             </tr>
                             <tr>
                                 <td style="padding:8px 0;">
                                     <p style="margin:0; color:#4a5568; font-size:14px;">
-                                        📞 Hotline: <a href="tel:0789179033" style="color:#045668; text-decoration:none;">0789179033</a>
+                                        Hotline: <a href="tel:0789179033" style="color:#045668; text-decoration:none;">0789179033</a>
                                     </p>
                                 </td>
                             </tr>

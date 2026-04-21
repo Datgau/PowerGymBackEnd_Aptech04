@@ -118,18 +118,14 @@ public class OpenAIChatService {
         log.info("Session {}: Current history size = {}, New message: {}", 
                 sessionId, history.size(), userMessage);
         
-        // Add user message
         Map<String, Object> userMsg = new HashMap<>();
         userMsg.put("role", "user");
         userMsg.put("content", userMessage);
         history.add(userMsg);
 
-        // Collect rich data from tool calls
         List<Map<String, Object>> foundServices = new ArrayList<>();
         List<Map<String, Object>> foundMemberships = new ArrayList<>();
         List<Map<String, Object>> foundTrainers = new ArrayList<>();
-
-        // Agentic loop (max 5 iterations)
         for (int i = 0; i < 5; i++) {
             JsonNode response = callOpenAI(history);
 
@@ -141,10 +137,7 @@ public class OpenAIChatService {
             JsonNode toolCalls = message.path("tool_calls");
 
             if (!toolCalls.isMissingNode() && toolCalls.isArray() && toolCalls.size() > 0) {
-                // Has tool calls
-                log.info("Loop {}: has {} tool calls", i, toolCalls.size());
-                
-                // Add assistant message with tool calls to history
+
                 Map<String, Object> assistantMsg = new HashMap<>();
                 assistantMsg.put("role", "assistant");
                 assistantMsg.put("content", message.path("content").asText(""));
@@ -212,14 +205,11 @@ public class OpenAIChatService {
         return ChatResponse.textOnly("Sorry, processing error occurred. Please try again.");
     }
 
-    // ==================== OPENAI API CALL ====================
-
     private JsonNode callOpenAI(List<Map<String, Object>> messages) {
         try {
             ObjectNode request = objectMapper.createObjectNode();
             request.put("model", model);
             
-            // Add system message + conversation history
             ArrayNode messagesArray = objectMapper.createArrayNode();
             ObjectNode systemMsg = objectMapper.createObjectNode();
             systemMsg.put("role", "system");
@@ -231,7 +221,6 @@ public class OpenAIChatService {
             }
             request.set("messages", messagesArray);
             
-            // Add tools
             request.set("tools", objectMapper.valueToTree(buildTools()));
             request.put("tool_choice", "auto");
 
@@ -257,8 +246,6 @@ public class OpenAIChatService {
         }
     }
 
-    // ==================== TOOL DISPATCH ====================
-
     private record ToolResult(String summary, List<Map<String, Object>> data) {}
 
     private ToolResult executeToolWithData(String toolName, Map<String, Object> args) {
@@ -273,9 +260,7 @@ public class OpenAIChatService {
             default -> new ToolResult("Tool does not exist: " + toolName, List.of());
         };
     }
-
-    // ==================== TOOL IMPLEMENTATIONS (same as Gemini) ====================
-
+    
     private ToolResult searchGymServices(Map<String, Object> args) {
         try {
             String keyword = (String) args.get("keyword");

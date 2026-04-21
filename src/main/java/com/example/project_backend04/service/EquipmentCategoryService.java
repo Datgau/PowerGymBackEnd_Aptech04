@@ -83,8 +83,6 @@ public class EquipmentCategoryService implements IEquipmentCategoryService {
 
         try {
             EquipmentCategory existingCategory = existingCategoryOpt.get();
-            
-            // Check if name already exists (excluding current category)
             if (!existingCategory.getName().equals(request.getName()) &&
                 categoryRepository.existsByName(request.getName())) {
                 return ApiResponse.error("Category name already exists");
@@ -98,7 +96,6 @@ public class EquipmentCategoryService implements IEquipmentCategoryService {
             return ApiResponse.error("Failed to update category: " + e.getMessage());
         }
     }
-
     @Override
     @Transactional
     public ApiResponse<Void> deleteCategory(Long id) {

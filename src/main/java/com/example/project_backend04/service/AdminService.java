@@ -56,72 +56,75 @@ public class AdminService implements IAdminService {
 
 
     //    RoleManager
-@Override
-public ApiResponse<Role> createRole(RoleCreateDto request) {
-    if (roleRepository.findRoleByName(request.getName()).isPresent()) {
-        return new ApiResponse<>(false, "Role đã tồn tại", null, 400);
+    @Override
+    public ApiResponse<Role> createRole(RoleCreateDto request) {
+        if (roleRepository.findRoleByName(request.getName()).isPresent()) {
+            return new ApiResponse<>(false, "Role already exists", null, 400);
+        }
+
+        Role role = new Role();
+        role.setName(request.getName());
+        role.setDescription(request.getDescription());
+        roleRepository.save(role);
+
+        return new ApiResponse<>(true, "Role created successfully", role, 200);
     }
-
-    Role role = new Role();
-    role.setName(request.getName());
-    role.setDescription(request.getDescription());
-    roleRepository.save(role);
-
-    return new ApiResponse<>(true, "Tạo role thành công", role, 200);
-}
-
 
     @Override
     public ApiResponse<List<Role>> getAllRoles() {
         List<Role> roles = roleRepository.findAll();
         if (roles.isEmpty()) {
-            return new ApiResponse<>(false, "Không có role nào trong hệ thống", null, 404);
+            return new ApiResponse<>(false, "No roles found in the system", null, 404);
         }
 
-        return new ApiResponse<>(true, "Lấy danh sách role thành công", roles, 200);
+        return new ApiResponse<>(true, "Retrieved role list successfully", roles, 200);
     }
 
     @Override
     public ApiResponse<Page<Role>> getAllRoles(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
         Page<Role> rolePage = roleRepository.findAll(pageable);
-        return new ApiResponse<>(true, "Lấy danh sách role thành công", rolePage, 200);
+        return new ApiResponse<>(true, "Retrieved role list successfully", rolePage, 200);
     }
 
-        @Override
-        public ApiResponse<Role> updateRole(RoleUpdateDto dto) {
-            Optional<Role> existingRoleOpt = roleRepository.findById(dto.getId());
-            if (existingRoleOpt.isEmpty()) {
-                return new ApiResponse<>(false, "Role không tồn tại", null, 404);
-            }
-            Role existingRole = existingRoleOpt.get();
-            Optional<Role> duplicateRole = roleRepository.findRoleByName(dto.getName());
-            if (duplicateRole.isPresent() && !duplicateRole.get().getId().equals(dto.getId())) {
-                return new ApiResponse<>(false, "Tên role này đã tồn tại", null, 400);
-            }
-            existingRole.setName(dto.getName());
-            existingRole.setDescription(dto.getDescription());
-            roleRepository.save(existingRole);
-            return new ApiResponse<>(true, "Cập nhật role thành công", existingRole, 200);
+    @Override
+    public ApiResponse<Role> updateRole(RoleUpdateDto dto) {
+        Optional<Role> existingRoleOpt = roleRepository.findById(dto.getId());
+        if (existingRoleOpt.isEmpty()) {
+            return new ApiResponse<>(false, "Role not found", null, 404);
         }
 
-        @Override
-        public ApiResponse<Void> deleteRole(Long id) {
-            Optional<Role> roleOpt = roleRepository.findById(id);
+        Role existingRole = existingRoleOpt.get();
 
-            if (roleOpt.isEmpty()) {
-                return new ApiResponse<>(false, "Role không tồn tại", null, 404);
-            }
-
-            Role role = roleOpt.get();
-            if ("ADMIN".equals(role.getName())) {
-                return new ApiResponse<>(false, "Không thể xóa role ADMIN", null, 403);
-            }
-
-            roleRepository.delete(role);
-
-            return new ApiResponse<>(true, "Xóa role thành công", null, 200);
+        Optional<Role> duplicateRole = roleRepository.findRoleByName(dto.getName());
+        if (duplicateRole.isPresent() && !duplicateRole.get().getId().equals(dto.getId())) {
+            return new ApiResponse<>(false, "Role name already exists", null, 400);
         }
+
+        existingRole.setName(dto.getName());
+        existingRole.setDescription(dto.getDescription());
+        roleRepository.save(existingRole);
+
+        return new ApiResponse<>(true, "Role updated successfully", existingRole, 200);
+    }
+
+    @Override
+    public ApiResponse<Void> deleteRole(Long id) {
+        Optional<Role> roleOpt = roleRepository.findById(id);
+
+        if (roleOpt.isEmpty()) {
+            return new ApiResponse<>(false, "Role not found", null, 404);
+        }
+
+        Role role = roleOpt.get();
+        if ("ADMIN".equals(role.getName())) {
+            return new ApiResponse<>(false, "Cannot delete ADMIN role", null, 403);
+        }
+
+        roleRepository.delete(role);
+
+        return new ApiResponse<>(true, "Role deleted successfully", null, 200);
+    }
 
 
 

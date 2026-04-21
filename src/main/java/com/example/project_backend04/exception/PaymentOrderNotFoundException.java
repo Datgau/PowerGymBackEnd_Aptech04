@@ -1,8 +1,5 @@
 package com.example.project_backend04.exception;
 
-/**
- * Exception thrown when a payment order is not found
- */
 public class PaymentOrderNotFoundException extends BankPaymentException {
     
     private final String content;

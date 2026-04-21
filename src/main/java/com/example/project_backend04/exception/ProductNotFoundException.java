@@ -1,8 +1,5 @@
 package com.example.project_backend04.exception;
 
-/**
- * Exception thrown when a product is not found
- */
 public class ProductNotFoundException extends RuntimeException {
     
     private final Long productId;

@@ -105,45 +105,18 @@ public class CloudinaryService implements ICloudinaryService {
         return (String) uploadResult.get("secure_url");
     }
 
-    /**
-     * Upload avatar - tự động resize 600x600 (hiển thị 300x300 cho retina)
-     */
-    public String uploadAvatar(MultipartFile file) throws IOException {
-        return uploadWithTransformation(file, "avatars", 600, 600, "fill");
-    }
-
-    /**
-     * Upload post image - resize 1200x1200 (hiển thị 600x600)
-     */
-    public String uploadPostImage(MultipartFile file) throws IOException {
-        return uploadWithTransformation(file, "posts", 1200, 1200, "fill");
-    }
-
-    /**
-     * Upload story - resize 1080x1920 (9:16 ratio cho mobile)
-     */
     public String uploadStory(MultipartFile file) throws IOException {
         return uploadWithTransformation(file, "stories", 1080, 1920, "fill");
     }
 
-    /**
-     * Upload service image - resize 1600x900 (16:9 ratio)
-     */
     public String uploadServiceImage(MultipartFile file) throws IOException {
         return uploadWithTransformation(file, "services", 1600, 900, "fill");
     }
 
-    /**
-     * Tạo URL với transformation động
-     * Dùng khi cần nhiều size khác nhau từ 1 ảnh gốc
-     */
     public String getOptimizedUrl(String originalUrl, int width, int height, String cropMode) {
         try {
-            // Extract public_id from URL
             String publicId = extractPublicIdFromUrl(originalUrl);
             if (publicId == null) return originalUrl;
-
-            // Generate optimized URL
             return cloudinary.url()
                 .transformation(new Transformation()
                     .width(width)
@@ -157,10 +130,6 @@ public class CloudinaryService implements ICloudinaryService {
             return originalUrl;
         }
     }
-
-    /**
-     * Tạo responsive URLs (nhiều size cho responsive design)
-     */
     public Map<String, String> getResponsiveUrls(String originalUrl) {
         String publicId = extractPublicIdFromUrl(originalUrl);
         if (publicId == null) return Map.of("original", originalUrl);
@@ -196,27 +165,15 @@ public class CloudinaryService implements ICloudinaryService {
         }
     }
 
-    /**
-     * Extract public_id from Cloudinary URL
-     * Example URL: https://res.cloudinary.com/demo/image/upload/v1234567890/folder/filename.jpg
-     * Returns: folder/filename
-     */
     private String extractPublicIdFromUrl(String url) {
         try {
-            // Find the position after "/upload/"
             int uploadIndex = url.indexOf("/upload/");
             if (uploadIndex == -1) return null;
-
-            // Get substring after "/upload/v{version}/"
             String afterUpload = url.substring(uploadIndex + 8); // 8 = length of "/upload/"
-            
-            // Skip version number (e.g., "v1234567890/")
             int slashIndex = afterUpload.indexOf('/');
             if (slashIndex == -1) return null;
             
             String pathWithExtension = afterUpload.substring(slashIndex + 1);
-            
-            // Remove file extension
             int lastDotIndex = pathWithExtension.lastIndexOf('.');
             if (lastDotIndex != -1) {
                 return pathWithExtension.substring(0, lastDotIndex);

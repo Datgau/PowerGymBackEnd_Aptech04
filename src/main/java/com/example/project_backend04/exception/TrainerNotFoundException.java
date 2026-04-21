@@ -1,8 +1,5 @@
 package com.example.project_backend04.exception;
 
-/**
- * Exception thrown when a trainer is not found
- */
 public class TrainerNotFoundException extends RuntimeException {
     
     private final Long trainerId;

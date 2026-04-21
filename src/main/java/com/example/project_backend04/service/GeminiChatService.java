@@ -75,53 +75,32 @@ public class GeminiChatService {
             .expireAfterAccess(30, TimeUnit.MINUTES)
             .maximumSize(500)
             .build();
-
-    // ==================== MAIN CHAT METHOD ====================
-
     public ChatResponse chat(String sessionId, String userMessage) {
         List<GeminiRequest.Content> history = sessionStore.get(sessionId, k -> new ArrayList<>());
         history.add(new GeminiRequest.Content("user", List.of(GeminiRequest.Part.text(userMessage))));
-
-        // Collect rich data from tool calls to embed in response
         List<Map<String, Object>> foundServices = new ArrayList<>();
         List<Map<String, Object>> foundMemberships = new ArrayList<>();
         List<Map<String, Object>> foundTrainers = new ArrayList<>();
-
-        // Agentic loop (max 5 iterations)
         for (int i = 0; i < 5; i++) {
             GeminiResponse response = callGemini(history);
 
             if (response == null || response.candidates() == null || response.candidates().isEmpty()) {
-                return ChatResponse.textOnly("Xin lỗi, không nhận được phản hồi từ AI. Vui lòng thử lại.");
-            }
-
-            log.info("Loop {}: hasFunctionCall={}", i, response.hasFunctionCall());
-
+                return ChatResponse.textOnly("Sorry, no response was received from the AI. Please try again.");            }
             if (response.hasFunctionCall()) {
                 GeminiResponse.FunctionCall fc = response.getFunctionCall();
-                log.info("Tool called: {}", fc.name());
-
-                // Save clean function_call to history (no thoughtSignature)
                 history.add(new GeminiRequest.Content("model",
                         List.of(new GeminiRequest.Part(null,
                                 new GeminiRequest.FunctionCall(fc.name(), fc.args()), null))));
-
-                // Execute tool — returns text summary for Gemini + collects rich data
                 ToolResult result = executeToolWithData(fc.name(), fc.args());
-
-                // Collect rich data by tool type
                 switch (fc.name()) {
                     case "searchGymServices"        -> foundServices.addAll(result.data());
                     case "searchMembershipPackages" -> foundMemberships.addAll(result.data());
                     case "searchTrainers"           -> foundTrainers.addAll(result.data());
                 }
-
-                // Give Gemini the text summary to reason about
                 history.add(new GeminiRequest.Content("user",
                         List.of(GeminiRequest.Part.functionResponse(fc.name(), result.summary()))));
 
             } else {
-                // Final text response from Gemini
                 String text = response.getText();
                 if (text != null && !text.isBlank()) {
                     history.add(new GeminiRequest.Content("model",
@@ -130,8 +109,7 @@ public class GeminiChatService {
                 sessionStore.put(sessionId, history);
 
                 String finalText = (text != null && !text.isBlank())
-                        ? text : "Xin lỗi, không có phản hồi. Vui lòng thử lại.";
-
+                        ? text : "Sorry, no response is available. Please try again.";
                 return ChatResponse.builder(finalText)
                         .services(foundServices.isEmpty() ? null : foundServices)
                         .memberships(foundMemberships.isEmpty() ? null : foundMemberships)
@@ -141,10 +119,8 @@ public class GeminiChatService {
         }
 
         sessionStore.put(sessionId, history);
-        return ChatResponse.textOnly("Xin lỗi, đã xảy ra lỗi xử lý. Vui lòng thử lại.");
+        return ChatResponse.textOnly("Sorry, an error occurred while processing. Please try again.");
     }
-
-    // ==================== GEMINI API CALL ====================
 
     private GeminiResponse callGemini(List<GeminiRequest.Content> contents) {
         try {

@@ -2,9 +2,6 @@ package com.example.project_backend04.exception;
 
 import com.example.project_backend04.entity.PaymentStatus;
 
-/**
- * Exception thrown when an invalid payment status transition is attempted
- */
 public class InvalidStatusTransitionException extends RuntimeException {
     
     private final PaymentStatus currentStatus;

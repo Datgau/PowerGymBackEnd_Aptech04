@@ -486,8 +486,6 @@ public class AuthService implements IAuthService {
         user.setRefreshToken(newRefreshToken);
         user.setRefreshTokenExpiryTime(LocalDateTime.now().plusDays(7));
         authRepository.save(user);
-
-        // Web: set cookie; mobile: cookie sẽ bị ignore nhưng không gây lỗi
         jwtService.addRefreshTokenCookie(response, newRefreshToken);
 
         JwtResponse jwtResponse = includeMobileToken
@@ -622,7 +620,7 @@ public class AuthService implements IAuthService {
                 user.getPhoneNumber(),
                 user.getBio(),
                 user.getDateOfBirth(),
-                refreshToken   // trả về trong body để mobile lưu
+                refreshToken
         );
 
         return new ApiResponse<>(

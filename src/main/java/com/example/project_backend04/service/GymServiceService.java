@@ -38,21 +38,17 @@ public class GymServiceService implements IGymService {
 
     private static final String SERVICE_FOLDER = "services";
 
-    // ===================== GET PUBLIC SERVICES =====================
     @Transactional(readOnly = true)
     public List<GymServiceResponse> getPublicServices() {
         List<GymService> services = gymServiceRepository.findByIsActiveTrueWithImages();
         return gymServiceMapper.toResponseList(services);
     }
 
-    // ===================== GET PUBLIC SERVICES WITH PAGINATION =====================
     @Override
     @Transactional(readOnly = true)
     public Page<GymServiceResponse> getPublicServices(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<GymService> servicePage = gymServiceRepository.findByIsActiveTrueWithImagesPaginated(pageable);
-        
-        // Fetch images separately to avoid pagination count issue
         List<Long> ids = servicePage.getContent().stream()
                 .map(GymService::getId)
                 .toList();
@@ -72,15 +68,12 @@ public class GymServiceService implements IGymService {
         return servicePage.map(gymServiceMapper::toResponse);
     }
 
-    // ===================== GET SERVICE BY ID =====================
     @Transactional(readOnly = true)
     public GymServiceResponse getServiceById(Long id) {
         GymService service = gymServiceRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
         return gymServiceMapper.toResponse(service);
     }
-
-    // ===================== GET SERVICE REGISTRATION STATS =====================
     @Transactional(readOnly = true)
     public Map<String, Object> getServiceRegistrationStats(Long id) {
         GymService service = gymServiceRepository.findByIdWithImages(id)
@@ -98,29 +91,22 @@ public class GymServiceService implements IGymService {
         
         return stats;
     }
-
-    // ===================== GET ALL SERVICES =====================
     @Transactional(readOnly = true)
     public List<GymServiceResponse> getAllServices() {
         List<GymService> services = gymServiceRepository.findAllWithImages();
         return gymServiceMapper.toResponseList(services);
     }
-
-    // ===================== GET ALL SERVICES WITH PAGINATION =====================
     @Override
     @Transactional(readOnly = true)
     public Page<GymServiceResponse> getAllServices(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<GymService> servicePage = gymServiceRepository.findAllWithImagesPaginated(pageable);
-        
-        // Fetch images separately to avoid pagination count issue
         List<Long> ids = servicePage.getContent().stream()
                 .map(GymService::getId)
                 .toList();
         
         if (!ids.isEmpty()) {
             List<GymService> servicesWithImages = gymServiceRepository.findByIdsWithImages(ids);
-            // Map back to maintain order
             return servicePage.map(service -> {
                 GymService withImages = servicesWithImages.stream()
                         .filter(s -> s.getId().equals(service.getId()))
@@ -132,13 +118,9 @@ public class GymServiceService implements IGymService {
         
         return servicePage.map(gymServiceMapper::toResponse);
     }
-
-    // ===================== CREATE =====================
     @Transactional
     public GymServiceResponse createService(GymServiceRequest request) {
         validateServiceRequest(request);
-
-        // Fetch ServiceCategory by ID
         ServiceCategory category = serviceCategoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new IllegalArgumentException("ServiceCategory not found with id: " + request.getCategoryId()));
 
@@ -150,8 +132,6 @@ public class GymServiceService implements IGymService {
         service.setDuration(request.getDuration());
         service.setMaxParticipants(request.getMaxParticipants());
         service.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
-        
-        // Set trainer percentage (default to 0.30 if not provided)
         if (request.getTrainerPercentage() != null) {
             service.setTrainerPercentage(request.getTrainerPercentage());
         }
@@ -182,14 +162,12 @@ public class GymServiceService implements IGymService {
             savedService = gymServiceRepository.save(savedService);
         }
         
-        // Reload the service with all relationships to ensure proper mapping
         GymService reloadedService = gymServiceRepository.findByIdWithImages(savedService.getId())
                 .orElseThrow(() -> new RuntimeException("Failed to reload created service"));
         
         return gymServiceMapper.toResponse(reloadedService);
     }
 
-    // ===================== UPDATE =====================
     @Transactional
     public GymServiceResponse updateService(Long id, UpdateGymServiceDto request) {
 
@@ -219,21 +197,15 @@ public class GymServiceService implements IGymService {
 
         if (request.getIsActive() != null)
             service.setIsActive(request.getIsActive());
-        
-        // Update trainer percentage if provided
         if (request.getTrainerPercentage() != null)
             service.setTrainerPercentage(request.getTrainerPercentage());
-
-        // Handle image updates
         if (request.getDeletedImages() != null && !request.getDeletedImages().isEmpty()) {
-            // Remove deleted images
             List<GymServiceImage> imagesToDelete = service.getImages().stream()
                     .filter(img -> request.getDeletedImages().contains(img.getImageUrl()))
                     .toList();
             
             for (GymServiceImage imageToDelete : imagesToDelete) {
                 try {
-                    // Delete from cloud storage
                     cloudStorageService.deleteFile(imageToDelete.getImageUrl());
                 } catch (Exception e) {
                     System.err.println("Failed to delete image from cloud storage: " + e.getMessage());
@@ -242,7 +214,6 @@ public class GymServiceService implements IGymService {
             }
         }
 
-        // Add new images
         if (request.getImages() != null && !request.getImages().isEmpty()) {
             int currentMaxOrder = service.getImages().stream()
                     .mapToInt(GymServiceImage::getSortOrder)

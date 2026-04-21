@@ -119,7 +119,6 @@ public class BankPaymentService {
                     
                     itemId = packageId;
                     finalItemName = membershipPackage.getName();
-                    // Use overrideAmount if provided (pre-calculated discount from frontend)
                     amount = (overrideAmount != null && overrideAmount > 0)
                         ? overrideAmount
                         : membershipPackage.getPrice().longValue();
@@ -339,23 +338,16 @@ public class BankPaymentService {
 
         @Transactional(isolation = org.springframework.transaction.annotation.Isolation.SERIALIZABLE)
         public void handleSepayWebhook(SepayWebhookRequest payload) {
-            // Audit log: Webhook processing attempt
             log.info("AUDIT_LOG - WEBHOOK_PROCESSING_ATTEMPT - Description: {}, Amount: {}, TransactionId: {}, TransferType: {}, Timestamp: {}",
                 payload.getDescription(), payload.getAmount(), payload.getTransactionId(), payload.getTransferType(), LocalDateTime.now());
 
             try {
-                // Ignore outgoing or reversal transactions
                 if (!"in".equalsIgnoreCase(payload.getTransferType())) {
                     log.info("AUDIT_LOG - WEBHOOK_PROCESSING_SKIPPED - Description: {}, TransferType: {} - Ignoring non-incoming transaction",
                         payload.getDescription(), payload.getTransferType());
                     return;
                 }
-
-                // Enhanced webhook payload validation and sanitization
                 webhookValidationService.validateWebhookPayload(payload);
-                log.debug("Webhook payload validation completed successfully");
-
-                // Find PaymentOrder by description content
                 Optional<PaymentOrder> orderOpt = DatabaseRetryUtil.executeWithRetry(
                     () -> {
                         String rawDescription = payload.getDescription();
@@ -377,10 +369,7 @@ public class BankPaymentService {
                     },
                     "findPaymentOrderByContentRobust"
                 );
-
-                // Skip processing if order not found
                 if (orderOpt.isEmpty()) {
-                    // Audit log: Webhook processing - order not found
                     log.info("AUDIT_LOG - WEBHOOK_PROCESSING_COMPLETE - Description: {}, Amount: {}, OrderId: NOT_FOUND, FinalStatus: SKIPPED, Result: ORDER_NOT_FOUND, Timestamp: {}",
                         payload.getDescription(), payload.getAmount(), LocalDateTime.now());
                     return;
@@ -390,18 +379,13 @@ public class BankPaymentService {
                 log.debug("Found payment order - ID: {}, Status: {}, Amount: {}, ExpiredAt: {}",
                     order.getId(), order.getStatus(), order.getAmount(), order.getExpiredAt());
 
-                // Skip processing if order already PAID (SUCCESS)
                 if (order.getStatus() == PaymentStatus.SUCCESS) {
-                    // Audit log: Webhook processing - already paid
                     log.info("AUDIT_LOG - WEBHOOK_PROCESSING_COMPLETE - Description: {}, Amount: {}, OrderId: {}, FinalStatus: SUCCESS, Result: ALREADY_PAID, Timestamp: {}",
                         payload.getDescription(), payload.getAmount(), order.getId(), LocalDateTime.now());
                     return;
                 }
-
-                // Handle expired payments by setting status to FAILED
                 if (order.getExpiredAt() != null && order.getExpiredAt().isBefore(LocalDateTime.now())) {
                     log.warn("Payment order {} has expired, updating status to FAILED", order.getId());
-
                     order.setStatus(PaymentStatus.FAILED);
                     DatabaseRetryUtil.executeWithRetry(
                         () -> paymentOrderRepository.save(order),
@@ -411,8 +395,6 @@ public class BankPaymentService {
                         payload.getDescription(), payload.getAmount(), order.getId(), LocalDateTime.now());
                     return;
                 }
-
-                // Update status to PAID (SUCCESS) when amount matches and activate service
                 if (order.getAmount().intValue() == payload.getAmount()) {
                     log.info("Payment amounts match, updating order {} to SUCCESS status", order.getId());
 
@@ -433,13 +415,9 @@ public class BankPaymentService {
                                 updatedOrder.getPromotionId(), e);
                         }
                     }
-
-                    // Activate service for user
                     try {
                         activateService(updatedOrder);
                         sendPaymentConfirmationEmail(updatedOrder, payload);
-                        
-                        // Earn reward points for the payment
                         try {
                             Long userId = updatedOrder.getUser().getId();
                             BigDecimal amount = BigDecimal.valueOf(updatedOrder.getAmount());
@@ -495,7 +473,6 @@ public class BankPaymentService {
                 );
 
                 if (orderOpt.isEmpty()) {
-                    // Audit log: Status check - order not found
                     log.warn("AUDIT_LOG - STATUS_CHECK_RESPONSE - Content: {}, Result: ORDER_NOT_FOUND, Timestamp: {}",
                         content, LocalDateTime.now());
                     throw new PaymentOrderNotFoundException(content);
@@ -528,7 +505,6 @@ public class BankPaymentService {
                 throw new BankPaymentException("Database error checking payment status", "DATABASE_ERROR", e);
 
             } catch (Exception e) {
-                // Audit log: Status check failure
                 log.error("AUDIT_LOG - STATUS_CHECK_RESPONSE - Content: {}, Result: UNEXPECTED_ERROR, Error: {}, Timestamp: {}",
                     content, e.getMessage(), LocalDateTime.now());
                 throw new BankPaymentException("Unexpected error checking payment status", "STATUS_CHECK_ERROR", e);
@@ -608,20 +584,12 @@ public class BankPaymentService {
         private void activateProductOrder(PaymentOrder order) {
             Long userId = order.getUser().getId();
             String productInfo = order.getItemId(); // Contains product IDs or info
-            
-            log.info("Activating product order for user: {} - OrderId: {}, ProductInfo: {}", 
+
+            log.info("Activating product order for user: {} - OrderId: {}, ProductInfo: {}",
                 userId, order.getId(), productInfo);
-            
-            // Product orders are handled differently - they don't need activation
-            // The payment success itself is enough to mark the order as paid
-            // The actual ProductOrder entity should be created by the frontend/cart service
-            // Here we just log the successful payment
-            
             log.info("Product order payment confirmed for userId={}, orderId={}, amount={}",
                 userId, order.getId(), order.getAmount());
-            
-            // TODO: If you have a ProductOrder entity, create/update it here
-            // For now, we just mark the payment as successful
+
         }
         
         private void activateServiceRegistration(PaymentOrder order) {

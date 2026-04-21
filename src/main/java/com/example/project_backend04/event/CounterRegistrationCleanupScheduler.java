@@ -15,11 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
-/**
- * Scheduled job để tự động hủy các đăng ký tại quầy (COUNTER) 
- * chưa thanh toán (status = PENDING) sau 3 ngày
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -33,8 +28,6 @@ public class CounterRegistrationCleanupScheduler {
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
     public void cleanupExpiredCounterRegistrations() {
-        log.info("Starting cleanup of expired counter registrations...");
-        
         try {
             LocalDateTime expiryThreshold = LocalDateTime.now().minusDays(EXPIRY_DAYS);
             List<ServiceRegistration> expiredRegistrations = serviceRegistrationRepository
@@ -44,9 +37,6 @@ public class CounterRegistrationCleanupScheduler {
                 log.info("No expired counter registrations found");
                 return;
             }
-            
-            log.info("Found {} expired counter registrations to cancel", expiredRegistrations.size());
-            
             int cancelledCount = 0;
             for (ServiceRegistration registration : expiredRegistrations) {
                 try {
@@ -74,9 +64,6 @@ public class CounterRegistrationCleanupScheduler {
                     log.error("Error cancelling registration ID: {}", registration.getId(), e);
                 }
             }
-            
-            log.info("Cleanup completed. Cancelled {} registrations", cancelledCount);
-            
         } catch (Exception e) {
             log.error("Error during counter registration cleanup", e);
         }

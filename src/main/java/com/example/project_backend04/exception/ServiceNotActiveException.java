@@ -1,8 +1,5 @@
 package com.example.project_backend04.exception;
 
-/**
- * Exception thrown when trying to create payment for inactive service
- */
 public class ServiceNotActiveException extends BankPaymentException {
     
     private final Long serviceId;

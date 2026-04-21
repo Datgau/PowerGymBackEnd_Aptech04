@@ -29,8 +29,6 @@ public class GymNotificationService {
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    // ─── Create & push helpers ────────────────────────────────────────────────
-
     public void notifyServiceRegistered(ServiceRegistration reg) {
         String serviceName = reg.getGymService().getName();
         GymNotification n = save(reg.getUser(),
@@ -91,8 +89,6 @@ public class GymNotificationService {
         push(booking.getTrainer().getId(), n);
     }
 
-    // ─── REST operations ──────────────────────────────────────────────────────
-
     @Transactional(readOnly = true)
     public List<GymNotification> getMyNotifications() {
         User user = currentUser();
@@ -122,8 +118,6 @@ public class GymNotificationService {
         notifRepo.deleteById(id);
     }
 
-    // ─── Private helpers ──────────────────────────────────────────────────────
-
     private GymNotification save(User user, String title, String content, String type, Long relatedId) {
         GymNotification n = GymNotification.builder()
                 .user(user)
@@ -147,7 +141,6 @@ public class GymNotificationService {
             payload.put("isRead", false);
             payload.put("createdAt", n.getCreatedAt().toString());
             messagingTemplate.convertAndSend("/topic/user/" + userId + "/notifications", payload);
-            log.info("[WS] Pushed notification to user {}: {}", userId, n.getType());
         } catch (Exception e) {
             log.warn("[WS] Failed to push notification to user {}: {}", userId, e.getMessage());
         }
