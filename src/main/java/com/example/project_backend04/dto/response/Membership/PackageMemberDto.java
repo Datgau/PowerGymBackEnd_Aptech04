@@ -19,4 +19,5 @@ public class PackageMemberDto {
     private LocalDate endDate;
     private BigDecimal paidAmount;
     private String status;
+    private String orderId; // For invoice printing
 }

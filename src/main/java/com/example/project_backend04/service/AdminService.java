@@ -20,8 +20,12 @@ import com.example.project_backend04.mapper.UserMapper;
 import com.example.project_backend04.repository.RoleRepository;
 import com.example.project_backend04.repository.UserRepository;
 import com.example.project_backend04.repository.MembershipRepository;
+import com.example.project_backend04.repository.MembershipPackageRepository;
 import com.example.project_backend04.repository.ServiceRegistrationRepository;
 import com.example.project_backend04.repository.TrainerSpecialtyRepository;
+import com.example.project_backend04.repository.PaymentOrderRepository;
+import com.example.project_backend04.entity.PaymentOrder;
+import com.example.project_backend04.enums.PaymentStatus;
 import com.example.project_backend04.service.IService.IAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -37,6 +41,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.Map;
 
@@ -47,8 +52,10 @@ public class AdminService implements IAdminService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final MembershipRepository membershipRepository;
+    private final MembershipPackageRepository membershipPackageRepository;
     private final ServiceRegistrationRepository serviceRegistrationRepository;
     private final TrainerSpecialtyRepository trainerSpecialtyRepository;
+    private final PaymentOrderRepository paymentOrderRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final EmailService emailService;
@@ -390,6 +397,7 @@ public class AdminService implements IAdminService {
                         .status(membership.getStatus().name())
                         .paymentMethod(membership.getPaymentMethod().name())
                         .registrationDate(membership.getCreateDate().toString())
+                        .orderId(membership.getOrderId())
                         .build())
                 .collect(Collectors.toList());
 
@@ -493,6 +501,94 @@ public class AdminService implements IAdminService {
         
         String message = savedUser.getIsActive() ? "User activated successfully" : "User deactivated successfully";
         return new ApiResponse<>(true, message, userMapper.toResponse(savedUser), 200);
+    }
+
+    @Override
+    @Transactional
+    public ApiResponse<UserMembershipResponse> registerMembershipForUser(Long userId, Long packageId) {
+        // Find user
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return new ApiResponse<>(false, "User not found", null, 404);
+        }
+        User user = userOpt.get();
+
+        // Find membership package
+        Optional<com.example.project_backend04.entity.MembershipPackage> packageOpt = 
+            membershipPackageRepository.findById(packageId);
+        if (packageOpt.isEmpty()) {
+            return new ApiResponse<>(false, "Membership package not found", null, 404);
+        }
+        com.example.project_backend04.entity.MembershipPackage membershipPackage = packageOpt.get();
+
+        // Check if user already has an active membership for this package
+        List<Membership> existingMemberships = membershipRepository.findByUserAndStatus(
+            user, Membership.MembershipStatus.ACTIVE);
+        
+        // Check if any active membership is for the same package
+        boolean hasActivePackage = existingMemberships.stream()
+            .anyMatch(m -> m.getMembershipPackage().getId().equals(packageId) && m.isActive());
+        
+        if (hasActivePackage) {
+            return new ApiResponse<>(false, "User already has an active membership for this package", null, 400);
+        }
+
+        // Create new membership
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = startDate.plusDays(membershipPackage.getDuration());
+
+        Membership membership = new Membership();
+        membership.setUser(user);
+        membership.setMembershipPackage(membershipPackage);
+        membership.setStartDate(startDate);
+        membership.setEndDate(endDate);
+        membership.setPaidAmount(membershipPackage.getPrice());
+        membership.setPaymentMethod(Membership.PaymentMethod.CASH);
+        membership.setStatus(Membership.MembershipStatus.ACTIVE);
+        membership.setNotes("Registered by admin");
+
+        Membership savedMembership = membershipRepository.save(membership);
+
+        // Create a PaymentOrder for cash payment so invoice can be generated
+        String orderId = "CASH-MEM-" + savedMembership.getId() + "-" + System.currentTimeMillis();
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setId(orderId);
+        paymentOrder.setUser(user);
+        paymentOrder.setAmount(membershipPackage.getPrice().longValue());
+        paymentOrder.setContent("Membership: " + membershipPackage.getName());
+        paymentOrder.setStatus(PaymentStatus.SUCCESS);
+        paymentOrder.setPaymentMethod("CASH");
+        paymentOrder.setItemType("MEMBERSHIP");
+        paymentOrder.setItemId(membershipPackage.getId().toString());
+        paymentOrder.setItemName(membershipPackage.getName());
+        paymentOrder.setExpiredAt(java.time.LocalDateTime.now().plusYears(10));
+        paymentOrderRepository.save(paymentOrder);
+
+        // Link orderId back to membership
+        savedMembership.setOrderId(orderId);
+        membershipRepository.save(savedMembership);
+
+        // Create response
+        UserMembershipResponse response = UserMembershipResponse.builder()
+                .id(savedMembership.getId())
+                .membershipPackage(UserMembershipResponse.MembershipPackageInfo.builder()
+                        .id(membershipPackage.getId())
+                        .name(membershipPackage.getName())
+                        .description(membershipPackage.getDescription())
+                        .duration(membershipPackage.getDuration())
+                        .price(membershipPackage.getPrice())
+                        .build())
+                .startDate(savedMembership.getStartDate())
+                .endDate(savedMembership.getEndDate())
+                .isActive(savedMembership.isActive())
+                .paidAmount(savedMembership.getPaidAmount())
+                .status(savedMembership.getStatus().name())
+                .paymentMethod(savedMembership.getPaymentMethod().name())
+                .registrationDate(savedMembership.getCreateDate().toString())
+                .orderId(orderId)
+                .build();
+
+        return new ApiResponse<>(true, "Membership registered successfully", response, 201);
     }
 
 }

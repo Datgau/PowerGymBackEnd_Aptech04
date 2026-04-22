@@ -101,6 +101,7 @@ public class MembershipPackageController {
                     .endDate(membership.getEndDate())
                     .paidAmount(membership.getPaidAmount())
                     .status(membership.getStatus().name())
+                    .orderId(membership.getOrderId()) // Add orderId for invoice printing
                     .build())
                 .collect(java.util.stream.Collectors.toList());
             
@@ -117,6 +118,23 @@ public class MembershipPackageController {
             return ResponseEntity.ok(ApiResponse.success(activePackageIds, "Active packages retrieved successfully"));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(ApiResponse.error("Failed to retrieve active packages: " + e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<java.util.Map<Long, Integer>>> getPackageStats() {
+        try {
+            List<com.example.project_backend04.entity.MembershipPackage> packages = membershipPackageService.getAllPackages().getData();
+            java.util.Map<Long, Integer> stats = new java.util.HashMap<>();
+            
+            for (com.example.project_backend04.entity.MembershipPackage pkg : packages) {
+                int memberCount = membershipRepository.findByMembershipPackageId(pkg.getId()).size();
+                stats.put(pkg.getId(), memberCount);
+            }
+            
+            return ResponseEntity.ok(ApiResponse.success(stats, "Package statistics retrieved successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to retrieve package statistics: " + e.getMessage()));
         }
     }
 }

@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/service-registrations")
+    @RequestMapping("/api/service-registrations")
 @RequiredArgsConstructor
 @Slf4j
 public class ServiceRegistrationController {
@@ -45,6 +45,24 @@ public class ServiceRegistrationController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to register service: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/admin/for-user/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ResponseEntity<ApiResponse<ServiceRegistrationResponse>> registerServiceForUser(
+            @PathVariable Long userId,
+            @RequestBody ServiceRegistrationRequest request
+    ) {
+        try {
+            ServiceRegistrationResponse response = registrationService.registerServiceForUserById(userId, request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success(response, "Đăng ký service cho user thành công"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to register service for user: " + e.getMessage()));
         }
     }
 

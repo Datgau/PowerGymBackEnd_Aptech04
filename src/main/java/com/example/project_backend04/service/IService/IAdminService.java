@@ -40,4 +40,7 @@ public interface IAdminService {
     
     // User status management
     ApiResponse<UserResponse> toggleUserStatus(Long userId);
+    
+    // Membership management
+    ApiResponse<UserMembershipResponse> registerMembershipForUser(Long userId, Long packageId);
 }

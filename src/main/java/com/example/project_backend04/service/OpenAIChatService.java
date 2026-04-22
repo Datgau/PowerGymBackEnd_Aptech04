@@ -117,8 +117,6 @@ public class OpenAIChatService {
             .maximumSize(500)
             .build();
 
-    // ==================== MAIN CHAT METHOD ====================
-
     public ChatResponse chat(String sessionId, String userMessage) {
         List<Map<String, Object>> history = sessionStore.get(sessionId, k -> new ArrayList<>());
         

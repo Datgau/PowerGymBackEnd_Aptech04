@@ -74,6 +74,18 @@ public class ServiceRegistrationService {
     @Transactional
     public ServiceRegistrationResponse registerService(ServiceRegistrationRequest request) {
         User currentUser = getCurrentUser();
+        return registerServiceForUser(currentUser, request);
+    }
+
+    @Transactional
+    public ServiceRegistrationResponse registerServiceForUserById(Long userId, ServiceRegistrationRequest request) {
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        return registerServiceForUser(targetUser, request);
+    }
+
+    @Transactional
+    private ServiceRegistrationResponse registerServiceForUser(User targetUser, ServiceRegistrationRequest request) {
 
         GymService gymService = gymServiceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Service not found"));
@@ -84,23 +96,23 @@ public class ServiceRegistrationService {
 
         // Block if user already has an ACTIVE registration (payment completed)
         if (registrationRepository.existsByUserAndGymServiceAndStatus(
-                currentUser, gymService, RegistrationStatus.ACTIVE)) {
+                targetUser, gymService, RegistrationStatus.ACTIVE)) {
             throw new RuntimeException("You have already registered for this service");
         }
         
         // If user has a PENDING registration (payment not completed), delete it to allow retry
         Optional<ServiceRegistration> existingPending = registrationRepository
             .findTopByUserAndGymServiceAndStatusOrderByRegistrationDateDesc(
-                currentUser, gymService, RegistrationStatus.PENDING);
+                targetUser, gymService, RegistrationStatus.PENDING);
         
         if (existingPending.isPresent()) {
             log.info("Deleting existing PENDING registration {} for user {} to allow retry", 
-                existingPending.get().getId(), currentUser.getId());
+                existingPending.get().getId(), targetUser.getId());
             registrationRepository.delete(existingPending.get());
         }
         
         ServiceRegistration registration = new ServiceRegistration();
-        registration.setUser(currentUser);
+        registration.setUser(targetUser);
         registration.setGymService(gymService);
         registration.setNotes(request.getNotes());
         RegistrationType regType = request.getRegistrationType() != null 
@@ -118,9 +130,7 @@ public class ServiceRegistrationService {
         }
 
         ServiceRegistration saved = registrationRepository.save(registration);
-        
 
-        
         ServiceRegistrationResponse response = mapToResponse(saved);
         eventPublisher.publishEvent(
             new EntityChangedEvent(this, "SERVICE_REGISTRATION", "REGISTERED", response, saved.getId())

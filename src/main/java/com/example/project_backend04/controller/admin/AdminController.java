@@ -201,4 +201,15 @@ public class AdminController {
                 .status(response.isSuccess() ? HttpStatus.OK : HttpStatus.NOT_FOUND)
                 .body(response);
     }
+
+    @PostMapping("/user/{userId}/membership/{packageId}")
+    public ResponseEntity<ApiResponse<UserMembershipResponse>> registerMembershipForUser(
+            @PathVariable Long userId,
+            @PathVariable Long packageId
+    ) {
+        ApiResponse<UserMembershipResponse> response = adminService.registerMembershipForUser(userId, packageId);
+        return ResponseEntity
+                .status(response.isSuccess() ? HttpStatus.CREATED : HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
 }

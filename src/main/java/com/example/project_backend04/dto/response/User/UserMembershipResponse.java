@@ -22,6 +22,7 @@ public class UserMembershipResponse {
     private String status;
     private String paymentMethod;
     private String registrationDate;
+    private String orderId;
     
     @Data
     @NoArgsConstructor
